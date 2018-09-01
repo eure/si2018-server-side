@@ -1,0 +1,8 @@
+export LOCAL_DB_HOSTNAME=127.0.0.1
+export LOCAL_DB_DBNAME=summer_intern_2018
+export LOCAL_DB_USERNAME=root
+export LOCAL_DB_PASSWORD=
+export LOCAL_DB_PORT=3306
+export HOST_ID=000
+export ASSETS_PATH=$GOPATH/src/github.com/eure/si2018-for-frontend/assets/
+export ASSETS_BASE_URI="https://si-2018-000.eure.jp/assets/"
