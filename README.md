@@ -37,6 +37,9 @@ make init
 cp .envrc.sample .envrc
 direnv allow
 
+# ビルド
+make build
+
 # DBの初期化 & マイグレ
 make setup-db
 
