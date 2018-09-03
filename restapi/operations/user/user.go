@@ -10,6 +10,16 @@ import (
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	return si.NewGetUsersOK()
+  //FIXME Token認証は共通化したい
+  r := repositories.NewUserTokenRepository()
+
+  ent, err := r.GetByToken(p.Token)
+
+  if err != nil { return getUsersInteralServerErrorResponse("Internal Server Error") }
+  if ent == nil { return getUsersUnauthorizedResponse("Your Token Is Invalid") }
+
+  userToken := ent.Build()
+  userID := userToken.UserID
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
