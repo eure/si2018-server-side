@@ -29,6 +29,7 @@ func init() {
 
 	engine, err = xorm.NewEngine("mysql", username+":"+password+"@tcp("+hostname+":"+port+")/"+dbname)
 
+	engine.ShowSQL(true)
 	if err != nil {
 		panic(err)
 	}
