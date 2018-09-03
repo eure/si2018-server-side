@@ -49,6 +49,25 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	return nil, nil
 }
 
+func (r *UserRepository) GetByToken(token string) (*entities.User, error) {
+	var t entities.UserToken
+	_ , _ = engine.Where("Token =?",token).Get(&t)
+
+	// 検索
+	ent := entities.User{ID: t.UserID}
+
+	has, err := engine.Get(&ent)
+	if err != nil {
+		return nil, err
+	}
+
+	if has {
+		return &ent, nil
+	}
+
+	return nil, nil
+}
+
 // limit / offset / 検索対象の性別 でユーザーを取得
 // idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
 func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
