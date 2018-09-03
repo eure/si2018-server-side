@@ -8,6 +8,7 @@ import (
 	"strings"
 	"strconv"
 	"github.com/eure/si2018-server-side/models"
+	"fmt"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -78,12 +79,14 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 	// これはentitiesの配列
-	// fmt.Println(findUsers)
+	//fmt.Println(findUsers)
+	//responseData := entities.Users(findUsers).Build()
 	var responseData []*models.User
 	for _, userEnt := range findUsers {
 		userModel    := userEnt.Build()
 		responseData  = append(responseData, &userModel)
 	}
+	fmt.Println(responseData)
 
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
