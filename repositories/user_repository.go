@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"time"
-
+	
+	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/eure/si2018-server-side/entities"
 )
 
 type UserRepository struct{}
@@ -36,7 +36,6 @@ func (r *UserRepository) Update(ent *entities.User) error {
 
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
-
 	has, err := engine.Get(&ent)
 	if err != nil {
 		return nil, err
@@ -79,4 +78,23 @@ func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	}
 
 	return users, nil
+}
+
+
+func (r *UserRepository) GetByToken(token string) (entities.User, error) {
+	var t entities.UserToken
+	_, _ = engine.Where("Token = ?", token).Get(&t)
+
+
+	var ent = entities.User{ID: t.UserID}
+	has, err := engine.Get(&ent)
+	
+	if err != nil {
+		return ent, err
+	}
+
+	if has {
+		return ent, nil
+	}
+	return ent, err
 }

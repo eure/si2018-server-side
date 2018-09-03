@@ -36,6 +36,7 @@ type User struct {
 	ImageURI string `xorm:"-"`
 }
 
+
 func (u User) Build() models.User {
 	return models.User{
 		ID:             u.ID,
@@ -76,6 +77,16 @@ func (u User) GetOppositeGender() string {
 }
 
 type Users []User
+
+// func (users *Users) MakeUserResponses() LikeUserResponses {
+// 	var userResponses *LikeUserResponses
+
+// 	for _, u := range *users {
+// 		userResponse := u.MakeUserResopnse()
+// 		userResponses = append(userResponses, &userResponse)
+// 	}
+// 	return userResponses
+// }
 
 func (users *Users) Build() []*models.User {
 	var sUsers []*models.User

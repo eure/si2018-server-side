@@ -4,6 +4,10 @@ import (
 	"github.com/eure/si2018-server-side/models"
 	"github.com/go-openapi/strfmt"
 )
+// type LikeUserResponse struct {
+// 	User
+// 	LikedAt strfmt.DateTime
+// }
 
 type UserLike struct {
 	UserID    int64           `xorm:"user_id"`
@@ -20,6 +24,7 @@ func (u UserLike) Build() models.UserLike {
 		UpdatedAt: u.UpdatedAt,
 	}
 }
+
 
 type UserLikes []UserLike
 

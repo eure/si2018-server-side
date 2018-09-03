@@ -10,6 +10,7 @@ type LikeUserResponse struct {
 	LikedAt strfmt.DateTime
 }
 
+
 func (res LikeUserResponse) Build() models.LikeUserResponse {
 	return models.LikeUserResponse{
 		LikedAt:        res.LikedAt,

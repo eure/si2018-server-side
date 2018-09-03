@@ -26,7 +26,7 @@ func (r *UserLikeRepository) FindLikeAll(userID int64) ([]int64, error) {
 	if err != nil {
 		return ids, err
 	}
-
+	
 	for _, l := range likes {
 		if l.UserID == userID {
 			ids = append(ids, l.PartnerID)
@@ -54,6 +54,7 @@ func (r *UserLikeRepository) GetLikeBySenderIDReceiverID(userID, partnerID int64
 }
 
 // マッチ済みのお相手を除き、もらったいいねを、limit/offsetで取得する.
+// いいね！表示API
 func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, offset int, matchIDs []int64) ([]entities.UserLike, error) {
 	var likes []entities.UserLike
 

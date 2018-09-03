@@ -5,6 +5,7 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
+
 type UserMatch struct {
 	UserID    int64           `xorm:"user_id"`
 	PartnerID int64           `xorm:"partner_id"`

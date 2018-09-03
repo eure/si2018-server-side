@@ -24,7 +24,6 @@ func (r *UserImageRepository) Create(ent entities.UserImage) error {
 
 func (r *UserImageRepository) Update(ent entities.UserImage) error {
 	now := strfmt.DateTime(time.Now())
-
 	s := engine.NewSession().Where("user_id = ?", ent.UserID)
 	ent.UpdatedAt = now
 
