@@ -17,6 +17,14 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 
+	if tokenEnt == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
 	// 401エラー
 	if err != nil {
 		return si.NewGetUsersUnauthorized().WithPayload(
@@ -122,6 +130,15 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 
 	// 401エラー
+	if tokenEnt == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
+	// 401エラー
 	if err != nil {
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
@@ -152,5 +169,29 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+
+	//ユーザートークンレポジトリを初期化する
+	tokenR := repositories.NewUserTokenRepository()
+
+	// トークンを検索する
+	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
+
+	// 401エラー
+	if tokenEnt == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
+	if err != nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
 	return si.NewPutProfileOK()
 }
