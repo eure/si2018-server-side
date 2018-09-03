@@ -17,3 +17,19 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	return si.NewPutProfileOK()
 }
+
+func getUsersInteralServerErrorResponse(message string) middleware.Responder {
+  return si.NewGetUsersInternalServerError().WithPayload(
+    &si.GetUsersInternalServerErrorBody {
+      Code:    "500",
+      Message: message,
+  })
+}
+
+func getUsersUnauthorizedResponse(message string) middleware.Responder {
+  return si.NewGetUsersUnauthorized().WithPayload(
+    &si.GetUsersUnauthorizedBody{
+      Code:    "401",
+      Message: "Your Token Is Invalid",
+    })
+  }
