@@ -5,8 +5,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/repositories"
 
-	"fmt"
-	"github.com/eure/si2018-server-side/models"
+	"github.com/eure/si2018-server-side/entities"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
@@ -39,8 +38,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	for _, u := range matchUsers {
 		matchUserIds = append(matchUserIds, u.PartnerID)
 	}
-	fmt.Println(matchUserIds)
-
 	userR := repositories.NewUserRepository()
 	responseModels, err := userR.FindByIDs(matchUserIds)
 	if err != nil {
@@ -50,19 +47,13 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-	// ここではできていそう
-	//fmt.Println(responseModels)
 
-
-	var responseData []*models.User
-	for _, userEnt := range responseModels {
-		userModel    := userEnt.Build()
-		responseData  = append(responseData, &userModel)
+	var array entities.MatchUserResponses
+	for _, u := range responseModels {
+		var tmp = entities.MatchUserResponse{}
+		tmp.ApplyUser(u)
+		array = append(array, tmp)
 	}
-	//var tmp = models.MatchUserResponse(responseData)
 
-
-	// 取り敢えず動かすためにUserのものを使用
-	return si.NewGetUsersOK().WithPayload(responseData)
-	//return si.NewGetMatchesOK()
+	return si.NewGetMatchesOK().WithPayload(array.Build())
 }
