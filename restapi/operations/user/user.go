@@ -12,7 +12,13 @@ import (
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// TODO: 400エラー
-	// TODO: 401エラー
+	if !(strings.HasPrefix(p.Token, "USERTOKEN")) || !(strings.HasSuffix(p.Token, strconv.FormatInt(p.UserID, 10))) {
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code    : "401",
+				Message : "Token Is Invalid",
+			})
+	}
 
 	// TokenからUserIdを取得する
 	tokenR         := repositories.NewUserTokenRepository()
