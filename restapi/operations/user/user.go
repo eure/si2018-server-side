@@ -6,6 +6,7 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/models"
+	"github.com/eure/si2018-server-side/entities"
 )
 
 // get users
@@ -170,8 +171,9 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 
-	//ユーザートークンレポジトリを初期化する
+	// レポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
+	//userR := repositories.NewUserRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
@@ -192,6 +194,12 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message:  "Your token is invalid.",
 			})
 	}
+
+	// ユーザーエンティティにリクエストをマップする
+	//userEnt := entities.User{
+	//	I
+	//}
+
 
 	return si.NewPutProfileOK()
 }
