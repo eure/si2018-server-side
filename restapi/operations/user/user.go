@@ -11,12 +11,13 @@ import (
 // get users
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 
-	// get login user by token
+	// ユーザートークンレポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
 
+	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 
-	// Unauthorized
+	// 401エラー
 	if err != nil {
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
@@ -114,7 +115,40 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	return si.NewGetProfileByUserIDOK()
+	// ユーザートークンレポジトリを初期化する
+	tokenR := repositories.NewUserTokenRepository()
+
+	// トークンを検索する
+	tokenEnt, err := tokenR.GetByToken(p.Token)
+
+	// 401エラー
+	if err != nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
+	// ユーザーレポジトリの初期化
+	userR := repositories.NewUserRepository()
+
+	// tokenのidからユーザーを取得する
+	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// ユーザーモデルを作る
+	myUser := myUserEnt.Build()
+
+	return si.NewGetProfileByUserIDOK().WithPayload(&myUser)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
