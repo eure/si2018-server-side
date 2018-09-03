@@ -21,7 +21,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
 				Code:    "401",
-				Message:  "this token is invalid.",
+				Message:  "Your token is invalid.",
 			})
 	}
 
