@@ -9,7 +9,6 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	return si.NewGetUsersOK()
   //FIXME Token認証は共通化したい
   r := repositories.NewUserTokenRepository()
 
@@ -20,6 +19,27 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
   userToken := ent.Build()
   userID := userToken.UserID
+
+  userLikeRepository := repositories.NewUserLikeRepository()
+  exclusionIds, err := userLikeRepository.FindLikeAll(userID)
+
+  if err != nil { return getUsersInteralServerErrorResponse("Internal Server Error") }
+
+  userRepository := repositories.NewUserRepository()
+  userEnt, err  := userRepository.GetByUserID(userID)
+  if err != nil { return getUsersInteralServerErrorResponse("Internal Server Error") }
+
+  // int64になっているのでcastする必要がある
+  limit := int(p.Limit)
+  offset := int(p.Offset)
+  gender := userEnt.GetOppositeGender()
+
+  var usersEnt entities.Users
+  usersEnt, err = userRepository.FindUsers(limit, offset, gender, exclusionIds)
+  if err != nil { return getUsersInteralServerErrorResponse("Internal Server Error") }
+
+  users := usersEnt.Build()
+  return si.NewGetUsersOK().WithPayload(users)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
