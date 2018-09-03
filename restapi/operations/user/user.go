@@ -1,6 +1,7 @@
 package user
 
 import (
+	"encoding/json"
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/eure/si2018-server-side/repositories"
@@ -25,7 +26,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 
-	ent, err := r.GetByUserID(p.UserID)
+	userEnt, err := r.GetByUserID(p.UserID)
 
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
@@ -34,7 +35,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if ent == nil {
+	if userEnt == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
@@ -42,11 +43,30 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	userEnt := ent.Build()
+	user := userEnt.Build()
 
-	return si.NewGetProfileByUserIDOK().WithPayload(&userEnt)
+	return si.NewGetProfileByUserIDOK().WithPayload(&user)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	r := repositories.NewUserRepository()
+
+	userEnt, _:= r.GetByUserID(p.UserID)
+
+	// paramsをjsonに変換
+	params, _ := p.Params.MarshalBinary()
+	// userEntにjsonに変換したparamを入れる
+	json.Unmarshal(params, &userEnt)
+
+	err := r.Update(userEnt)
+
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
 	return si.NewPutProfileOK()
 }
