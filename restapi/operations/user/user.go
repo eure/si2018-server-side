@@ -12,13 +12,7 @@ import (
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// TODO: 400エラー
-	if !(strings.HasPrefix(p.Token, "USERTOKEN")) || !(strings.HasSuffix(p.Token, strconv.FormatInt(p.UserID, 10))) {
-		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-			&si.GetProfileByUserIDUnauthorizedBody{
-				Code    : "401",
-				Message : "Token Is Invalid",
-			})
-	}
+	// TODO: 401エラー
 
 	// TokenからUserIdを取得する
 	tokenR         := repositories.NewUserTokenRepository()
@@ -104,8 +98,8 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	r        := repositories.NewUserRepository()
-	ent, err := r.GetByUserID(p.UserID)
+	userR    := repositories.NewUserRepository()
+	userEnt, err := userR.GetByUserID(p.UserID)
 
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -114,7 +108,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if ent == nil {
+	if userEnt == nil {
 		return si.NewGetTokenByUserIDNotFound().WithPayload(
 			&si.GetTokenByUserIDNotFoundBody{
 				Code: "404",
@@ -122,7 +116,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	sEnt := ent.Build()
+	sEnt := userEnt.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
 }
 
