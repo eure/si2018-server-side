@@ -34,6 +34,7 @@ func (r *UserMatchRepository) Get(userID, partnerID int64) (*entities.UserMatch,
 	return nil, nil
 }
 
+// マッチング済みのお相手一覧を返す
 func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, offset int) ([]entities.UserMatch, error) {
 	var matches []entities.UserMatch
 
@@ -45,6 +46,7 @@ func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, o
 	return matches, nil
 }
 
+// 自分が既にマッチングしている全てのお相手のUserのIDを返す.
 func (r *UserMatchRepository) FindAllByUserID(userID int64) ([]int64, error) {
 	var matches []entities.UserMatch
 	var ids []int64
