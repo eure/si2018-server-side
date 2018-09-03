@@ -70,6 +70,28 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	return users, nil
 }
 
+// limit / offset / 検索対象の性別 でユーザーを取得
+// idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
+func (r *UserRepository) FindUsers(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
+	var users []entities.User
+
+	s := engine.NewSession()
+
+	s.Where("gender = ?", gender)
+	if len(ids) > 0 {
+		s.NotIn("id", ids)
+	}
+	s.Limit(limit, offset)
+	s.Desc("created_at")
+
+	err := s.Find(&users)
+	if err != nil {
+		return users, err
+	}
+
+	return users, nil
+}
+
 func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
