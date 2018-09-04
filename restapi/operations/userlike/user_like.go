@@ -2,11 +2,13 @@ package userlike
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -55,5 +57,45 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
+	nulr := repositories.NewUserLikeRepository()
+	nutr := repositories.NewUserTokenRepository()
+	//numr := repositories.NewUserMatchRepository()
+	nur := repositories.NewUserRepository()
+	// find myuser data
+	userid, _ := nutr.GetByToken(p.Params.Token)
+	// validate if send same sex
+	partner, err := nur.GetByUserID(p.UserID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	user, err := nur.GetByUserID(userid.UserID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if user.GetOppositeGender() == partner.GetOppositeGender() {
+		fmt.Println("err")
+	}
+	// duplicate like send
+	duplicatelike, err := nulr.GetLikeBySenderIDReceiverID(userid.UserID, p.UserID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if duplicatelike == nil {
+		fmt.Println(duplicatelike)
+	}
+	var userlike entities.UserLike
+	BindUserLike(&userlike, userid.UserID, partner.ID)
+
+	err = nulr.Create(userlike)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("OK")
 	return si.NewPostLikeOK()
+}
+func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
+	like.UserID = userid
+	like.PartnerID = partnerid
+	like.CreatedAt = strfmt.DateTime(time.Now())
+	like.UpdatedAt = strfmt.DateTime(time.Now())
 }
