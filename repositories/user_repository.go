@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/strfmt"
 
 	"github.com/eure/si2018-server-side/entities"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
 type UserRepository struct{}
@@ -101,4 +102,34 @@ func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	}
 
 	return users, nil
+}
+
+func (r *UserRepository) ParamsToUserEnt(u *entities.User, params si.PutProfileBody) *entities.User {
+  user := &entities.User {
+    ID:             u.ID,
+    Nickname:       params.Nickname,
+    ImageURI:       params.ImageURI,
+    Tweet:          params.Tweet,
+    Introduction:   params.Introduction,
+    ResidenceState: params.ResidenceState,
+    HomeState:      params.HomeState,
+    Education:      params.Education,
+    Job:            params.Job,
+    AnnualIncome:   params.AnnualIncome,
+    Height:         params.Height,
+    BodyBuild:      params.BodyBuild,
+    MaritalStatus:  params.MaritalStatus,
+    Child:          params.Child,
+    WhenMarry:      params.WhenMarry,
+    WantChild:      params.WantChild,
+    Smoking:        params.Smoking,
+    Drinking:       params.Drinking,
+    Holiday:        params.Holiday,
+    HowToMeet:      params.HowToMeet,
+    CostOfDate:     params.CostOfDate,
+    NthChild:       params.NthChild,
+    Housework:      params.Housework,
+  }
+
+  return user
 }
