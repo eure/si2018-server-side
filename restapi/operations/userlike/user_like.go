@@ -8,17 +8,33 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
 	"time"
+	"strings"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	// TokenからユーザId取得
+	// Tokenの形式がおかしい -> 401
+	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
+	// Tokenのユーザが存在しない -> 400 Bad Request
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code    : "500",
-				Message : "Internal Server Error",
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if tokenEnt == nil{
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
 			})
 	}
 
@@ -26,8 +42,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	matchR := repositories.NewUserMatchRepository()
 	matchIds, err := matchR.FindAllByUserID(tokenEnt.UserID)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code    : "500",
 				Message : "Internal Server Error",
 			})
@@ -35,25 +51,27 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 結局はlikeのユーザ
 	likeR := repositories.NewUserLikeRepository()
+	// マッチ済みID(matchIds)を除くユーザ情報を取得
 	likeEnt, err := likeR.FindGotLikeWithLimitOffset(tokenEnt.UserID, int(p.Limit), int(p.Offset), matchIds)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code    : "500",
 				Message : "Internal Server Error",
 			})
 	}
-	//fmt.Println(likeEnt)
+
 	// likeのidからユーザ情報取得
-	var matchUserIds []int64
+	var likedIds []int64
 	for _, u := range likeEnt {
-		matchUserIds = append(matchUserIds, u.UserID)
+		likedIds = append(likedIds, u.UserID)
 	}
+	// likeしてくれているユーザIDsから各ユーザ情報を取得
 	userR := repositories.NewUserRepository()
-	responseModels, err := userR.FindByIDs(matchUserIds)
+	responseModels, err := userR.FindByIDs(likedIds)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code    : "500",
 				Message : "Internal Server Error",
 			})
@@ -64,8 +82,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		tmp.ApplyUser(u)
 		array = append(array, tmp)
 	}
+	responseData := array.Build()
 
-	return si.NewGetLikesOK().WithPayload(array.Build())
+	return si.NewGetLikesOK().WithPayload(responseData)
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
