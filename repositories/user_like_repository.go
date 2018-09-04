@@ -54,7 +54,7 @@ func (r *UserLikeRepository) GetLikeBySenderIDReceiverID(userID, partnerID int64
 }
 
 // マッチ済みのお相手を除き、もらったいいねを、limit/offsetで取得する.
-func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, offset int, matchIDs []int64) ([]entities.UserLike, error) {
+func (r *UserLikeRepository) FindGetLikeWithLimitOffset(userID int64, limit, offset int, matchIDs []int64) ([]entities.UserLike, error) {
 	var likes []entities.UserLike
 
 	s := engine.NewSession()
