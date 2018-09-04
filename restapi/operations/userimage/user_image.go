@@ -10,5 +10,11 @@ import (
 )
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
+	/*token := p.Params.Token
+	img := p.Params.Image
+
+	r := repositories.NewUserImageRepository()
+
+	res := si.PostImagesOKBody{}*/
 	return si.NewPostImagesOK()
 }

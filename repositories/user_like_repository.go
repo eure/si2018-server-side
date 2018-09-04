@@ -22,7 +22,7 @@ func (r *UserLikeRepository) FindLikeAll(userID int64) ([]int64, error) {
 	var likes []entities.UserLike
 	var ids []int64
 
-	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Find(&likes)
+	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Find(&likes) /* TODO change query */
 	if err != nil {
 		return ids, err
 	}
