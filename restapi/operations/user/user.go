@@ -3,7 +3,6 @@ package user
 import (
 	"encoding/json"
 	"github.com/eure/si2018-server-side/entities"
-	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
@@ -23,21 +22,13 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	//いいねした/された人のidを持ってくる
 	except_ids, _ := repoUserLike.FindLikeAll(entUserToken.UserID)
 
-	// テスト
-	limit := 20
-	offset := 0
+	userEnts, _ := repoUser.FindWithCondition(int(p.Limit), int(p.Offset), opposite_gender, except_ids)
 
-	usersEnt, _ := repoUser.FindWithCondition(limit, offset, opposite_gender, except_ids)
+	usersEnt := entities.Users(userEnts)
 
-	var users []models.User
+	users := usersEnt.Build()
 
-	for i, user := range usersEnt {
-		users[i] = user.Build()
-	}
-
-	//idの取得
-
-	return si.NewGetUsersOK()
+	return si.NewGetUsersOK().WithPayload(users)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
@@ -88,7 +79,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 }
 
 // private
-
 func BindParams(p si.PutProfileBody, userEnt *entities.User ){
 	// paramsをjsonに出力
 	params, _ := p.MarshalBinary()
