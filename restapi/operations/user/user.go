@@ -2,8 +2,8 @@ package user
 
 import (
 	"fmt"
-	"reflect"
 
+	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -85,33 +85,67 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	if err != nil {
 		fmt.Println(err)
 	}
-	updateuser := reflect.Indirect(reflect.ValueOf(p.Params))
-	updatefield := updateuser.Type()
-	usr := reflect.Indirect(reflect.ValueOf(user))
-	userfield := usr.Type()
-	for i := 0; i < updatefield.NumField(); i++ {
-		nic := updatefield.Field(i).Name
-		up := updateuser.FieldByName(nic).Interface()
-		//if up == nil {
-		//	break
-		//}
-		fmt.Println(up.(string))
-		if updatefield.Field(i).Name == userfield.Field(i).Name {
+	// token validation implemtation later
 
-			user.Nickname = up.(string)
-			user.Nickname = "a"
+	/*
+		updateuser := reflect.Indirect(reflect.ValueOf(p.Params))
+		updatefield := updateuser.Type()
+		usr := reflect.Indirect(reflect.ValueOf(user))
+		userfield := usr.Type()
+		for i := 0; i < updatefield.NumField(); i++ {
+			nic := updatefield.Field(i).Name
+			up := updateuser.FieldByName(nic).Interface()
+			//if up == nil {
+			//	break
+			//}
 			fmt.Println(up.(string))
-			break
+			if updatefield.Field(i).Name == userfield.Field(i).Name {
+
+				user.Nickname = up.(string)
+				fmt.Println(up.(string))
+				break
+			}
 		}
-	}
+	*/
 	//for i := 0; i < userfield.NumField(); i++ {
 	//	fmt.Println(userfield.Field(i).Name)
 	//
 	//}
-	fmt.Println(user)
-	resp := nur.Update(user)
-	fmt.Println(resp)
-	pusr, _ := nur.GetByUserID(p.UserID)
-	fmt.Println(pusr)
-	return si.NewPutProfileOK()
+	binduser(p.Params, user)
+	err = nur.Update(user)
+	if err != nil {
+		fmt.Println(err)
+	}
+	respuser, err := nur.GetByUserID(p.UserID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	updateuser := respuser.Build()
+	return si.NewPutProfileOK().WithPayload(&updateuser)
+}
+
+func binduser(user si.PutProfileBody, ent *entities.User) {
+	ent.AnnualIncome = user.AnnualIncome
+	ent.BodyBuild = user.BodyBuild
+	ent.Child = user.Child
+	ent.CostOfDate = user.CostOfDate
+	ent.Drinking = user.Drinking
+	ent.Education = user.Education
+	ent.Height = user.Height
+	ent.Holiday = user.Holiday
+	ent.HomeState = user.HomeState
+	ent.Housework = user.Housework
+	ent.HowToMeet = user.HowToMeet
+	ent.ImageURI = user.ImageURI
+	ent.Introduction = user.Introduction
+	ent.Job = user.Job
+	ent.MaritalStatus = user.MaritalStatus
+	ent.Nickname = user.Nickname
+	ent.NthChild = user.NthChild
+	ent.ResidenceState = user.ResidenceState
+	ent.Smoking = user.Smoking
+	ent.Tweet = user.Tweet
+	ent.WantChild = user.WantChild
+	ent.WhenMarry = user.WhenMarry
+
 }
