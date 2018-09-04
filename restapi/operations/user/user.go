@@ -6,6 +6,7 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/eure/si2018-server-side/restapi/operations/util"
 	"fmt"
 	"reflect"
 )
@@ -18,11 +19,13 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	/* TODO token validation */
 	
 	ru := repositories.NewUserRepository()
-	rt := repositories.NewUserTokenRepository()
+	//rt := repositories.NewUserTokenRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	ut, err := rt.GetByToken(token)
+	/*ut, err := rt.GetByToken(token)
 	id := ut.UserID
+	*/
+	id, err := util.GetIDByToken(token)
 	user, err := ru.GetByUserID(id)
 	likes, err := rl.FindLikeAll(id)
 

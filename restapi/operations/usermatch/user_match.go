@@ -2,6 +2,7 @@ package usermatch
 
 import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/eure/si2018-server-side/restapi/operations/util"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/go-openapi/runtime/middleware"
@@ -11,9 +12,13 @@ import (
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	limit := int(p.Limit)
 	offset := int(p.Offset)
-	//token := p.token
-	//id := int64(GetIdByToken())
-	id := int64(1)
+	token := p.Token
+	id, err := util.GetIDByToken(token)
+	//id := int64(1)
+	if err != nil {
+		fmt.Print("Get id err: ")
+		fmt.Println(err)
+	}
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
@@ -32,7 +37,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			ids = append(ids, mat.UserID)
 		}
 	}
-	fmt.Println(matches)
 
 	users, err := ru.FindByIDs(ids)
 	if err != nil {

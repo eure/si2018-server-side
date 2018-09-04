@@ -2,6 +2,7 @@ package message
 
 import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/eure/si2018-server-side/restapi/operations/util"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/runtime/middleware"
@@ -12,10 +13,14 @@ import (
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	message := p.Params.Message
-	//token := p.Params.Token
+	token := p.Params.Token
 	pid := p.UserID
-	//uid := getidbytoken
-	uid := int64(1222)
+	uid, err := util.GetIDByToken(token)
+	//uid := int64(1222)
+	if err != nil {
+		fmt.Print("Get id err: ")
+		fmt.Println(err)
+	}
 
 	rl := repositories.NewUserLikeRepository()
 	like, err := rl.GetLikeBySenderIDReceiverID(uid, pid)
@@ -47,13 +52,17 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
-	//token := p.Token
+	token := p.Token
 	pid := p.UserID
 	latest := p.Latest
 	oldest := p.Oldest
 	limit := *p.Limit
-	//uid := getidbytoken()
-	uid := int64(1222)
+	uid, err := util.GetIDByToken(token)
+	//uid := int64(1222)
+	if err != nil {
+		fmt.Print("Get id err: ")
+		fmt.Println(err)
+	}
 
 	/* TODO validate matching state? */
 

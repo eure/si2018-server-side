@@ -4,6 +4,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/eure/si2018-server-side/restapi/operations/util"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
 	"fmt"
@@ -15,16 +16,19 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	//limit := int(p.Limit)
 	limit := 20
 	offset := int(p.Offset)
-	//token := p.Token
+	token := p.Token
 	/* TODO token validation */
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	/* TODO get id by token */
-	//id := GetIdByToken() //int64
-	id := int64(2)
+	id, err := util.GetIDByToken(token)
+	//id := int64(2)
+	if err != nil {
+		fmt.Print("Get id err: ")
+		fmt.Println(err)
+	}
 
 	matches, err := rm.FindAllByUserID(id)
 	if err != nil {

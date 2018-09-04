@@ -6,6 +6,7 @@ import (
 	_ "image/png"
 
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	//"github.com/eure/si2018-server-side/restapi/operations/util"
 	"github.com/go-openapi/runtime/middleware"
 )
 
