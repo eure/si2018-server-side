@@ -6,18 +6,39 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/models"
-	"fmt"
 	"encoding/json"
 	"strings"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	// TODO: 400エラー
-	// TODO: 401エラー
+	// Tokenの形式がおかしい -> 401
+	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
+	// Tokenのユーザが存在しない -> 400 Bad Request
+	tokenR := repositories.NewUserTokenRepository()
+	tokenEnt, err := tokenR.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if tokenEnt == nil{
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
 
-	// TokenからUserIdを取得する
-	tokenR         := repositories.NewUserTokenRepository()
-	tokenEnt, err  := tokenR.GetByToken(p.Token)
+	// Tokenから自分の情報を取得
+	tokenEnt, err  = tokenR.GetByToken(p.Token)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -25,13 +46,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-	//fmt.Println(tokenEnt.UserID)
 
-	// 自分, いいねした人,
+	// 除外するユーザのIDを作成する
 	var omitIds []int64
 	omitIds = append(omitIds, tokenEnt.UserID)
 
-	// マッチしているユーザを取得する
+	// マッチしているユーザIDを取得する
 	machR              := repositories.NewUserMatchRepository()
 	matchUserIds, err  := machR.FindAllByUserID(tokenEnt.UserID)
 	if err != nil {
@@ -60,7 +80,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	// 自分の性別情報の取得
-	// omitIds以外のユーザ情報を取得する
 	userR       := repositories.NewUserRepository()
 	myEnt, err  := userR.GetByUserID(tokenEnt.UserID)
 	if err != nil {
@@ -70,6 +89,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+	// omitIds以外のユーザ情報を取得する
 	findUsers, err := userR.FindWithCondition(int(p.Limit), int(p.Offset), myEnt.GetOppositeGender(), omitIds)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -78,15 +98,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-	// これはentitiesの配列
-	//fmt.Println(findUsers)
-	//responseData := entities.Users(findUsers).Build()
+
 	var responseData []*models.User
 	for _, userEnt := range findUsers {
 		userModel    := userEnt.Build()
 		responseData  = append(responseData, &userModel)
 	}
-	fmt.Println(responseData)
 
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
