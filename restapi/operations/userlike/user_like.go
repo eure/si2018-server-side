@@ -9,7 +9,6 @@ import (
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	return si.NewGetLikesOK()
 	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Token)
 
 	if err != nil {
@@ -20,6 +19,13 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return getLikesUnauthorizedResponse()
 	}
 
+	// int64になっているのでcastする必要がある
+	limit := int(p.Limit)
+	offset := int(p.Offset)
+	userID := userTokenEnt.UserID
+
+	userLikeRepository := repositories.NewUserLikeRepository()
+	likesEnt, err := userLikeRepository.FindGotLikeWithLimitOffset(userID, limit, offset, nil)
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
