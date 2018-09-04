@@ -7,19 +7,21 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/restapi/operations/util"
-	"fmt"
-	"reflect"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	limit := p.Limit
 	offset := p.Offset
 	token := p.Token
-	/* TODO range validation */
+	/* TODO bad request? */
+	
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
 	}
 	
 	ru := repositories.NewUserRepository()
@@ -31,8 +33,11 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	users_ent, err := ru.FindWithCondition(int(limit), int(offset), user.GetOppositeGender(), likes);
 	if err != nil {
-		fmt.Println(err)
-		return si.NewGetUsersInternalServerError()
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
 	var users entities.Users
@@ -43,19 +48,33 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	id := p.UserID
 	token := p.Token
+	/* TODO bad request? */
 	
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
 	r := repositories.NewUserRepository()
 
 	user, err := r.GetByUserID(id)
 	if err != nil {
-		fmt.Println(err)
-		return si.NewGetUsersInternalServerError()
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if user == nil {
+		return si.NewGetProfileByUserIDNotFound().WithPayload(
+			&si.GetProfileByUserIDNotFoundBody{
+				Code:    "404",
+				Message: "User Not Found",
+			})
 	}
 	
 	res := user.Build()
@@ -70,12 +89,25 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
+
+	tid, _ := util.GetIDByToken(token)
+	if id != tid {
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code:    "403",
+				Message: "Forbidden",
+			})
 	}
 
 	r := repositories.NewUserRepository()
-	user, _ := r.GetByUserID(id)
+	up, _ := r.GetByUserID(id)
+	user := *up
 
 	//fmt.Printf("user:%+v\n", user)
 	//fmt.Printf("param:%+v\n", p.Params)
@@ -104,106 +136,17 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	user.WhenMarry = ps.WhenMarry
 
 	//fmt.Printf("newu:%+v\n", user)
-	err = r.Update(user)
-	fmt.Println(err) /* TODO err */
-	//fmt.Println("UPDATE DONE")
-	//fmt.Printf("user:%+v\n", user)
+	err = r.Update(&user)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
-	/*v := reflect.ValueOf(params)
-	fmt.Println(v)
+	after, _ := r.GetByUserID(id)
+	res := after.Build()
 
-    values := make([]interface{}, v.NumField())
-
-    for i := 0; i < v.NumField(); i++ {
-		values[i] = v.Field(i).Interface()
-		
-	}*/
-	
-	/*if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.BodyBuild != "" {
-		user.BodyBuild = params.BodyBuild
-	}
-	if params.Child != "" {
-		user.Child = params.Child
-	}
-	if params.CostOfDate != "" {
-		user.CostOfDate = params.CostOfDate
-	}
-	if params.Drinking != "" {
-		user.Drinking = params.Drinking
-	}
-	if params.Education != "" {
-		user.Education = params.Education
-	}
-	if params.Height != "" {
-		user.Height = params.Height
-	}
-	if params.Holiday != "" {
-		user.Holiday = params.Holiday
-	}
-	if params.HomeState != "" {
-		user.HomeState = params.HomeState
-	}
-	if params.Housework != "" {
-		user.Housework = params.Housework
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}
-	if params.AnnualIncome != "" {
-		user.AnnualIncome = params.AnnualIncome
-	}*/
-
-
-
-	return si.NewPutProfileOK()
+	return si.NewPutProfileOK().WithPayload(&res)
 }
-
-func StructToMap(data interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
-	elem := reflect.ValueOf(data).Elem()
-	size := elem.NumField()
-  
-	for i := 0; i < size; i++ {
-	  field := elem.Type().Field(i).Name
-	  value := elem.Field(i).Interface()
-	  result[field] = value
-	}
-  
-	return result
-  }
