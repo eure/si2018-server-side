@@ -15,12 +15,6 @@ import (
 //- ページネーションを実装してください
 //- TokenのValidation処理を実装してください
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	// 自分にいいねをした人のidをとってくる
-	// 自分のtokenからユーザーのエンティティのインスタンスを作成
-	// マッチングしている人のidを取得
-	// FindGotLikeWithLimitOffsetでいいねをした人をとってくる
-	// エンティティのlikeUserをlikeUserResponseにキャストする
-
 	repUserLike := repositories.NewUserLikeRepository()
 	repUserToken := repositories.NewUserTokenRepository() // tokenからユーザーのIDを取得するため
 	repUserMatch := repositories.NewUserMatchRepository() // ユーザーとマッチングしているユーザーを取得するため
