@@ -17,6 +17,18 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if userTokenEnt == nil {
 		return getMatchesUnauthorizedResponse()
 	}
+
+	// int64になっているのでcastする必要がある
+	limit := int(p.Limit)
+	offset := int(p.Offset)
+	userID := userTokenEnt.UserID
+
+	userMatchRepository := repositories.NewUserMatchRepository()
+	userMatches, err := userMatchRepository.FindByUserIDWithLimitOffset(userID, limit, offset)
+
+	if err != nil {
+		return getMatchesInternalServerErrorRespose()
+	}
 }
 
 func getMatchesInternalServerErrorRespose() middleware.Responder {
