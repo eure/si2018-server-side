@@ -14,33 +14,33 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
-				Code:    "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
-	tokenR := repositories.NewUserTokenRepository()
+	// Tokenのユーザが存在しない -> 401
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetMatchesBadRequest().WithPayload(
-			&si.GetMatchesBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewGetMatchesUnauthorized().WithPayload(
+			&si.GetMatchesUnauthorizedBody{
+				Code   : "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
 	// tokenからUserIDを取得
 	// マッチしているユーザの取得(IDしか取れない？)※ UserID, PartnerID, CreatedAt, UpdatedAt
 	// なのでこの後でPartnerIDを使用してマッチングしているユーザの情報を取得する必要があると考えた
-	matchR          := repositories.NewUserMatchRepository()
-	matchUsers, err := matchR.FindByUserIDWithLimitOffset(tokenEnt.UserID, int(p.Limit), int(p.Offset))
+	matchR            := repositories.NewUserMatchRepository()
+	matchEntList, err := matchR.FindByUserIDWithLimitOffset(tokenEnt.UserID, int(p.Limit), int(p.Offset))
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
@@ -50,12 +50,12 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	// マッチしているuserIdsからPartnerユーザ情報の取得
-	var matchUserIds []int64
-	for _, u := range matchUsers {
-		matchUserIds = append(matchUserIds, u.PartnerID)
+	var matchIds []int64
+	for _, u := range matchEntList {
+		matchIds = append(matchIds, u.PartnerID)
 	}
-	userR := repositories.NewUserRepository()
-	responseEnt, err := userR.FindByIDs(matchUserIds)
+	userR            := repositories.NewUserRepository()
+	userEntList, err := userR.FindByIDs(matchIds)
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
@@ -64,9 +64,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	// TODO: 修正の余地あり?
 	var array entities.MatchUserResponses
-	for _, u := range responseEnt {
-		var tmp = entities.MatchUserResponse{}
+	for _, u := range userEntList {
+		var tmp entities.MatchUserResponse
 		tmp.ApplyUser(u)
 		array = append(array, tmp)
 	}
