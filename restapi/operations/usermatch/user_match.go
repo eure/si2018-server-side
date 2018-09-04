@@ -10,8 +10,8 @@ import (
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	r := repositories.NewUserMatchRepository()
 
-	ruserR := repositories.NewUserRepository()
-	user , _ := ruserR.GetByToken(p.Token)
+	userR := repositories.NewUserRepository()
+	user , _ := userR.GetByToken(p.Token)
 	userid := user.ID
 
 	ent, _ := r.FindByUserIDWithLimitOffset(userid,int(p.Limit),int(p.Offset))
@@ -21,7 +21,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	var appliedusers entities.MatchUserResponses
 	for _,m := range ent {
 		var applied = entities.MatchUserResponse{}
-		matcheduser , _ := ruserR.GetByUserID(m.UserID)
+		matcheduser , _ := userR.GetByUserID(m.PartnerID)
 		applied.ApplyUser(*matcheduser)
 		appliedusers = append (appliedusers, applied)
 	}
