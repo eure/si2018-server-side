@@ -7,14 +7,36 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 )
 
+func contains(s []int64, e int64) bool {
+	for _, v := range s {
+		if e == v {
+			return true
+		}
+	}
+	return false
+}
+
+// token -> userIDへ送信
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	ur := repositories.NewUserRepository()
+	mr := repositories.NewUserMessageRepository()
+	mchr := repositories.NewUserMatchRepository()
+	lr := repositories.NewUserLikeRepository()
+
+	usr, _ := ur.GetByToken(p.Params.Token)
+
+
+	matches, _ := ur.FindByIDs(matchIDs)
+	if !contains(matches, p.UserID)
+	p.UserID
 	return si.NewPostMessageOK()
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	mr := repositories.NewUserMessageRepository()
-	// ur := repositories.NewUserRepository()
+	ur := repositories.NewUserRepository(ª
 	matchr := repositories.NewUserMatchRepository()
+
 	partnerIDs, _ := matchr.FindAllByUserID(p.UserID)
 	var msgses entities.UserMessages
 	for _, pID := range partnerIDs {
@@ -34,4 +56,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	sMsgs := msgses.Build()
 
 	return si.NewGetMessagesOK().WithPayload(sMsgs)
+
+
+
 }

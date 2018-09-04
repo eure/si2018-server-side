@@ -7,10 +7,10 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 )
 
+//getUser
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	ur := repositories.NewUserRepository()
 	lr := repositories.NewUserLikeRepository()
-
 	ent, _ := ur.GetByToken(p.Token)
 	likes, _ := lr.FindLikeAll(ent.ID)
 
@@ -64,5 +64,28 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 // update
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	return si.NewPutProfileOK()
+	ur := repositories.NewUserRepository()
+	usr, _ := ur.GetByUserID(p.UserID)
+	usr.ApplyParams(p.Params)
+	
+	err := ur.Update(usr)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+			Code: "500",
+			Message: "Internal Server Error",
+			})
+	}
+	usr, getErr := ur.GetByUserID(p.UserID)
+	if getErr != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+			Code: "500",
+			Message: "Internal Server Error",
+			})
+	}
+
+	sUsr := usr.Build()
+
+	return si.NewPutProfileOK().WithPayload(&sUsr)
 }
