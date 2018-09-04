@@ -91,15 +91,33 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
-	// TODO: Partnerかどうかのチェックは必要？
-	// TODO: それとも、メッセージの取得なのだから既にマッチしていること前提？
-	messageR := repositories.NewUserMessageRepository()
-	var responseEnts entities.UserMessages
-	messages, _ := messageR.GetMessages(tokenEnt.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
-	for _, message := range messages {
-		responseEnts = append(responseEnts, message)
+	// TODO: Partnerかどうかのチェック
+	// Partnerでなければエラー
+	matchR := repositories.NewUserMatchRepository()
+	tmp, err := matchR.Get(tokenEnt.UserID, p.UserID)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if tmp == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
 	}
 
-	responseData := responseEnts.Build()
+
+	messageR := repositories.NewUserMessageRepository()
+	var responseEnt entities.UserMessages
+	messages, _ := messageR.GetMessages(tokenEnt.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+	for _, message := range messages {
+		responseEnt = append(responseEnt, message)
+	}
+
+	responseData := responseEnt.Build()
 	return si.NewGetMessagesOK().WithPayload(responseData)
 }
