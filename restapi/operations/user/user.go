@@ -81,7 +81,43 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	return si.NewPutProfileOK()
+  userTokenRepository := repositories.NewUserTokenRepository()
+  userTokenEnt, err := userTokenRepository.GetByToken(p.Params.Token)
+
+  if err != nil {
+    return putProfileInternalServerErrorResponse()
+  }
+
+  if userTokenEnt == nil {
+    return putProfileUnauthorizedResponse()
+  }
+
+	userID := p.UserID
+
+  if userTokenEnt.UserID != userID {
+    return putProfileForbiddenResponse()
+  }
+
+	userEnt, err := repositories.NewUserRepository().GetByUserID(userID)
+
+	if err != nil || userEnt == nil {
+    return putProfileInternalServerErrorResponse()
+	}
+
+  updateUserEnt := repositories.NewUserRepository().ParamsToUserEnt(userEnt, p.Params)
+
+  err = repositories.NewUserRepository().Update(updateUserEnt)
+  if err != nil {
+    return putProfileInternalServerErrorResponse()
+  }
+
+	updatedUserEnt, err := repositories.NewUserRepository().GetByUserID(userID)
+  if err != nil {
+    return putProfileInternalServerErrorResponse()
+  }
+
+  user := updatedUserEnt.Build()
+	return si.NewPutProfileOK().WithPayload(&user)
 }
 
 func getUsersInteralServerErrorResponse(message string) middleware.Responder {
