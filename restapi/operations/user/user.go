@@ -121,8 +121,8 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
@@ -141,16 +141,16 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	// internal server error
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
 	}
 	// not found
 	if findUserEnt == nil {
-		return si.NewGetTokenByUserIDNotFound().WithPayload(
-			&si.GetTokenByUserIDNotFoundBody{
+		return si.NewGetProfileByUserIDNotFound().WithPayload(
+			&si.GetProfileByUserIDNotFoundBody{
 				Code: "404",
 				Message: "User Not Found",
 			})
