@@ -36,18 +36,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
+	// t := repositories.NewUserTokenRepository()
 	r := repositories.NewUserRepository()
 
-	//token vaildate
-	// v := vaildate.ValidateToken(p.UserID, p.Token)
-	//
-	// if v != true {
-	// 	return si.NewGetProfileByUserIDTokenIsInvalid().WithPayload(
-	// 		&si.GetProfileByUserIDTokenIsInvalid{
-	// 			Code:  "401",
-	// 			Message: "Token Is Invalid",
-	// 		})
-	// }
+	// token, _ = t.GetByToken(p.Token)
 
 	ent, err := r.GetByUserID(p.UserID)
 
