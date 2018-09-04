@@ -32,3 +32,10 @@ func (uu *UserMatches) Build() []*models.UserMatch {
 	}
 	return sUsers
 }
+
+func (match *UserMatch) GetPartnerID(userID int64) int64 {
+	if match.UserID == userID {
+		return match.PartnerID
+	}
+	return match.UserID
+}
