@@ -9,32 +9,32 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	repoUser := repositories.NewUserRepository()
-	repoUserToken := repositories.NewUserTokenRepository()
-	repoUserLike := repositories.NewUserLikeRepository()
+	repUser := repositories.NewUserRepository()
+	repUserToken := repositories.NewUserTokenRepository()
+	repUserLike := repositories.NewUserLikeRepository()
 
 	// ログインユーザーと反対の性別を取得する
-	entUserToken, _ := repoUserToken.GetByToken(p.Token)
-	entUser, _ := repoUser.GetByUserID(entUserToken.UserID)
+	entUserToken, _ := repUserToken.GetByToken(p.Token)
+	entUser, _ := repUser.GetByUserID(entUserToken.UserID)
 	opposite_gender := entUser.GetOppositeGender()
 
 	// idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど) いいねやマッチした人、ブロックした人のidを取ってくる
 	//いいねした/された人のidを持ってくる
-	except_ids, _ := repoUserLike.FindLikeAll(entUserToken.UserID)
+	except_ids, _ := repUserLike.FindLikeAll(entUserToken.UserID)
 
-	userEnts, _ := repoUser.FindWithCondition(int(p.Limit), int(p.Offset), opposite_gender, except_ids)
+	entsUser, _ := repUser.FindWithCondition(int(p.Limit), int(p.Offset), opposite_gender, except_ids)
 
-	usersEnt := entities.Users(userEnts)
+	entUsers := entities.Users(entsUser)
 
-	users := usersEnt.Build()
+	users := entUsers.Build()
 
 	return si.NewGetUsersOK().WithPayload(users)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	r := repositories.NewUserRepository()
+	repUser := repositories.NewUserRepository()
 
-	userEnt, err := r.GetByUserID(p.UserID)
+	entUser, err := repUser.GetByUserID(p.UserID)
 
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
@@ -43,7 +43,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if userEnt == nil {
+	if entUser == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
@@ -51,19 +51,19 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	user := userEnt.Build()
+	user := entUser.Build()
 
 	return si.NewGetProfileByUserIDOK().WithPayload(&user)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	r := repositories.NewUserRepository()
+	repUser := repositories.NewUserRepository()
 
-	userEnt := entities.User{ID: p.UserID}
+	entUser := entities.User{ID: p.UserID}
 
-	BindParams(p.Params, &userEnt)
+	BindParams(p.Params, &entUser)
 
-	err := r.Update(&userEnt)
+	err := repUser.Update(&entUser)
 
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
@@ -73,21 +73,21 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
-	user := userEnt.Build()
+	user := entUser.Build()
 
 	return si.NewPutProfileOK().WithPayload(&user)
 }
 
 // private
-func BindParams(p si.PutProfileBody, userEnt *entities.User ){
+func BindParams(p si.PutProfileBody, entUser *entities.User ){
 	// paramsをjsonに出力
 	params, _ := p.MarshalBinary()
 	// userEntにjson変換したparamを入れる
-	json.Unmarshal(params, &userEnt)
+	json.Unmarshal(params, &entUser)
 
-	userEnt.HowToMeet = p.HowToMeet
-	userEnt.AnnualIncome = p.AnnualIncome
-	userEnt.CostOfDate = p.CostOfDate
-	userEnt.NthChild = p.NthChild
-	userEnt.ResidenceState = p.ResidenceState
+	entUser.HowToMeet = p.HowToMeet
+	entUser.AnnualIncome = p.AnnualIncome
+	entUser.CostOfDate = p.CostOfDate
+	entUser.NthChild = p.NthChild
+	entUser.ResidenceState = p.ResidenceState
 }
