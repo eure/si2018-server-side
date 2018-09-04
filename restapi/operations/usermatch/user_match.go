@@ -13,18 +13,18 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	limit := int(p.Limit)
 	offset := int(p.Offset)
 	token := p.Token
+	/* TODO bad response */
 
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewGetMatchesUnauthorized().WithPayload(
+			&si.GetMatchesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
-	id, err := util.GetIDByToken(token)
-	if err != nil {
-		fmt.Print("Get id err: ")
-		fmt.Println(err)
-	}
+	id, _ := util.GetIDByToken(token)
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
@@ -33,6 +33,11 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if err != nil {
 		fmt.Print("Find matches err: ")
 		fmt.Println(err)
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
 	ids := make([]int64, 0) /* TODO can use map's key as ids slice? */
@@ -48,6 +53,11 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if err != nil {
 		fmt.Print("Find users by ids err: ")
 		fmt.Println(err)
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
 	um := make(map[int64]entities.User)
