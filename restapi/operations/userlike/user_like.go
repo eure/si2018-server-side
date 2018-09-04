@@ -10,6 +10,16 @@ import (
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
 	return si.NewGetLikesOK()
+	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Token)
+
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	if userTokenEnt == nil {
+		return getLikesUnauthorizedResponse()
+	}
+
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
