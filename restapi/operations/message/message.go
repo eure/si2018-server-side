@@ -14,7 +14,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	// UserIDと，PartnerIDがほしい
-	// matchした相手を特定したのち，上記二つの情報をGetMeesagesに投げると良い
+	// matchした相手を特定したのち，上記二つの情報プラスαをGetMeesagesに投げると良い
 
 	// おなじみ TokenからUserIDを引っ張ってくる関数
 	userR := repositories.NewUserRepository()
@@ -28,14 +28,14 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	r := repositories.NewUserMessageRepository()
 
-	var matcheduser entities.UserMessage
-	var messages []entities.UserMessages
+	var messages entities.UserMessages
 	for _,m := range matchedusers {
-		matcheduser = r.GetMessages(userid,m)
-		messages = append (messages , matcheduser)
+		messages1partner , _ := r.GetMessages(userid,m,int(*p.Limit),p.Latest,p.Oldest)
+		for _,message := range messages1partner {
+			messages = append(messages, message)
+		}
 	}
 
 	sEnt := messages.Build()
-
-	return si.NewGetMessagesOK()
+	return si.NewGetMessagesOK().WithPayload(sEnt)
 }
