@@ -15,19 +15,25 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	1. tokenのvalidation
 	2. tokenからuseridを取得
 	3. useridからいいねを送受信した人を取得
-	4. その人たちを除いた異性のリストを取得
-	ページネーションする際、取得したリストにある最後のupdated_atの値を参考にすると簡単
+	4. useridから異性がどちらであるかを判断
+	5. いいねを送受信した人以外で異性の人のリストを取得する
 	*/
 
-	//tokenのvalidationをこの下に書く
 
-	// ここまでvalidation
+	// Tokenがあるかどうか
+	if p.Token == "" {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "No Token",
+			})
+	}
 
 	// tokenからuserIDを取得
-	/*
-	r1 := repositories.NewUserTokenRepository()
-	ent1, err1 := r1.GetByToken(p.Token)
-	if err1 != nil {
+
+	rToken := repositories.NewUserTokenRepository()
+	entToken, errToken := rToken.GetByToken(p.Token)
+	if errToken != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
@@ -35,7 +41,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	if ent1 == nil {
+	if entToken == nil {
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
 				Code:    "401",
@@ -43,12 +49,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	sEnt1 := ent1.Build()
+	sEntToken := entToken.Build()
 
-	// useridからすでにいいねを送信した/受け取ったひとのリストを取得
-	r2 := repositories.NewUserLikeRepository()
-	ids, err2 := r2.FindLikeAll(sEnt1.UserID)
-	if err2 != nil{
+	// useridからすでにいいねを送受信した人のリストを取得
+	rLike := repositories.NewUserLikeRepository()
+	ids, errLike := rLike .FindLikeAll(sEntToken.UserID)
+	if errLike != nil{
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
@@ -56,16 +62,54 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	r3 := repositories.NewUserRepository()
-	if p.Limit > 100 {
-		p.Limit =
+	// genderを設定するためだけに、useridからプロフィルを取得する……
+	rUser := repositories.NewUserRepository()
+	entUser, errUser := rUser.GetByUserID(sEntToken.UserID)
+	if errUser != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
-	r3.FindWithCondition()
+	if entUser == nil { // entUserがnilになることはないはずだが、一応書いておく
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	gender := entUser.GetOppositeGender()
+
+	// p.Limit, Offsetがなぜかint64なので、intに変換しないといけない。
+	limit := int(p.Limit)
+	if limit > 20 {
+		limit = 20 // 上限を20までにしました
+	}
+	offset := int(p.Offset)
+	// 異性のリストの取得
+	usersFind, errFind := rUser.FindWithCondition(limit, offset, gender, ids)
+	if errFind != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 
-	*/
-	return si.NewGetUsersOK()
+	var users entities.Users
+
+
+	for _, user := range usersFind{
+		users = append(users, user)
+	}
+
+	sUsers := users.Build()
+
+	return si.NewGetUsersOK().WithPayload(sUsers)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
