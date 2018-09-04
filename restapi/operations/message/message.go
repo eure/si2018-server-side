@@ -1,6 +1,8 @@
 package message
 
 import (
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -29,6 +31,13 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	messageRepository := repositories.NewUserMessageRepository()
+
+	errs := messageRepository.Validate(userMessageEnt)
+	if errs != nil {
+		str := fmt.Sprintf("%v", errs)
+		return postMessageBadREquestResponse(str)
+	}
+
 	err = messageRepository.Create(userMessageEnt)
 	if err != nil {
 		return postMessageInternalServerErrorResponse()
@@ -86,6 +95,14 @@ func postMessageOKResponse(message string) middleware.Responder {
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
 			Code:    "200",
+			Message: message,
+		})
+}
+
+func postMessageBadREquestResponse(message string) middleware.Responder {
+	return si.NewPostMessageBadRequest().WithPayload(
+		&si.PostMessageBadRequestBody{
+			Code:    "400",
 			Message: message,
 		})
 }
