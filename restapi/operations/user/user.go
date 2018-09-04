@@ -19,7 +19,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed",
+				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
 			})
 	}
 	if t == nil {
@@ -34,7 +34,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed",
+				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
 			})
 	}
 	if u == nil {
@@ -50,7 +50,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: FindLikeAll failed",
+				Message: "Internal Server Error: FindLikeAll failed: " + err.Error(),
 			})
 	}
 	if like == nil {
@@ -68,7 +68,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: FindAllByUserID failed",
+				Message: "Internal Server Error: FindAllByUserID failed: " + err.Error(),
 			})
 	}
 	if mached == nil {
@@ -90,7 +90,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: Find With Condition failed",
+				Message: "Internal Server Error: FindWithCondition failed: " + err.Error(),
 			})
 	}
 	if ent == nil {
@@ -114,7 +114,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed",
+				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
 			})
 	}
 	if token == nil {
@@ -130,7 +130,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
 			&si.GetTokenByUserIDInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed",
+				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
 			})
 	}
 	if t == nil {
@@ -152,14 +152,15 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error: Get By UserID failed",
+				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
 			})
 	}
 	if u == nil {
-		return si.NewGetUsersBadRequest().WithPayload(&si.GetUsersBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request: GetByUserID",
-		})
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request: GetByUserID",
+			})
 	}
 	sEnt := u.Build()
 
@@ -167,5 +168,112 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	return si.NewPutProfileOK()
+	r := repositories.NewUserRepository()
+	rt := repositories.NewUserTokenRepository()
+	token, err := rt.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
+			})
+	}
+	if token == nil {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request: GetByUserID failed",
+			})
+	}
+
+	t, err := rt.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
+			})
+	}
+	if t == nil {
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
+			})
+	}
+	if t.UserID != p.UserID {
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code:    "403",
+				Message: "Forbidden. (他の人のプロフィールは更新できません.): Token does not match",
+			})
+	}
+	u, err := r.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: Get By UserID failed: " + err.Error(),
+			})
+	}
+	if u == nil {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request: GetByUserID failed",
+			})
+	}
+	params := p.Params
+	if u.MaritalStatus != "独身(未婚)" && params.MaritalStatus == "独身(未婚)" {
+		// 未婚でない人が未婚になることはありえないはず
+		// システム上、結婚歴で嘘をつくことを認めるかは議論の余地あり
+		// とりあえず今回は見逃す
+	}
+	u.AnnualIncome = params.AnnualIncome
+	u.BodyBuild = params.BodyBuild
+	u.Child = params.Child
+	u.CostOfDate = params.CostOfDate
+	u.Drinking = params.Drinking
+	u.Education = params.Education
+	u.Height = params.Height
+	u.Holiday = params.Holiday
+	u.HomeState = params.HomeState
+	u.Housework = params.Housework
+	u.HowToMeet = params.HowToMeet
+	u.ImageURI = params.ImageURI
+	u.Introduction = params.Introduction
+	u.Job = params.Job
+	u.MaritalStatus = params.MaritalStatus
+	u.Nickname = params.Nickname
+	u.NthChild = params.NthChild
+	u.ResidenceState = params.ResidenceState
+	u.Smoking = params.Smoking
+	u.Tweet = params.Tweet
+	u.WantChild = params.WantChild
+	u.WhenMarry = params.WhenMarry
+	err = r.Update(u)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: Update failed: " + err.Error(),
+			})
+	}
+	u, err = r.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: Get By UserID failed: " + err.Error(),
+			})
+	}
+	if u == nil {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request: GetByUserID failed",
+			})
+	}
+	sEnt := u.Build()
+	return si.NewPutProfileOK().WithPayload(&sEnt)
 }

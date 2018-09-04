@@ -16,7 +16,7 @@ func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
 			&si.GetTokenByUserIDInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error",
+				Message: "Internal Server Error: " + err.Error(),
 			})
 	}
 	if ent == nil {
