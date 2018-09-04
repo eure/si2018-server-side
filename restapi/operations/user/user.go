@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"github.com/eure/si2018-server-side/models"
 	"fmt"
+	"encoding/json"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -124,47 +125,34 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	userR := repositories.NewUserRepository()
+	userEnt, err := userR.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	params, _ := p.Params.MarshalBinary()
+	json.Unmarshal(params, &userEnt)
+	err = userR.Update(userEnt)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	responseEnt, err := userR.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	responseData := responseEnt.Build()
 
-	// 一部データは変更できないものもある...
-	// entitiesのUser型でUpdateに投げる必要がある...
-
-
-
-
-	//type User struct {
-	//	ID             int64           `json:"id"`
-	//	Gender         string          `json:"gender"`
-	//	Birthday       strfmt.Date     `json:"birthday"`
-	//	Nickname       string          `json:"nickname"`
-	//	Tweet          string          `json:"tweet"`
-	//	Introduction   string          `json:"introduction"`
-	//	ResidenceState string          `json:"residence_state"`
-	//	HomeState      string          `json:"home_state"`
-	//	Education      string          `json:"education"`
-	//	Job            string          `json:"job"`
-	//	AnnualIncome   string          `json:"annual_income"`
-	//	Height         string          `json:"height"`
-	//	BodyBuild      string          `json:"body_build"`
-	//	MaritalStatus  string          `json:"marital_status"`
-	//	Child          string          `json:"child"`
-	//	WhenMarry      string          `json:"when_marry"`
-	//	WantChild      string          `json:"want_child"`
-	//	Smoking        string          `json:"smoking"`
-	//	Drinking       string          `json:"drinking"`
-	//	Holiday        string          `json:"holiday"`
-	//	HowToMeet      string          `json:"how_to_meet"`
-	//	CostOfDate     string          `json:"cost_of_date"`
-	//	NthChild       string          `json:"nth_child"`
-	//	Housework      string          `json:"housework"`
-	//	CreatedAt      strfmt.DateTime `json:"created_at"`
-	//	UpdatedAt      strfmt.DateTime `json:"updated_at"`
-	//
-	//	ImageURI string `json:"-"`
-	//}
-	//r := repositories.NewUserRepository()
-	//tmp := entities.User{}
-	//err := r.Update()
-
-
-	return si.NewPutProfileOK()
+	return si.NewPutProfileOK().WithPayload(&responseData)
 }
