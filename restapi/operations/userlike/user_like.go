@@ -99,6 +99,49 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
+	if ul == nil { 
+		ul, err := rl.GetLikeBySenderIDReceiverID(rid, sid)
+		if ul == nil { // If the first like
+			l := entities.UserLike{}
+		    l.UserID = sid
+		    l.PartnerID = rid
+		    l.CreatedAt = strfmt.DateTime(time.Now())
+		    l.UpdatedAt = strfmt.DateTime(time.Now())
+		    err := rl.Create(l)
+		    if err != nil {
+		    	fmt.Print("Create first like err: ")
+		    	fmt.Println(err)
+		    }
+		} else { // If match
+			l := entities.UserLike{}
+		    l.UserID = sid
+		    l.PartnerID = rid
+		    l.CreatedAt = strfmt.DateTime(time.Now())
+		    l.UpdatedAt = strfmt.DateTime(time.Now())
+		    err := rl.Create(l)
+		    if err != nil {
+		    	fmt.Print("Create matching like err: ")
+		    	fmt.Println(err)
+		    }
+    
+		    m := entities.UserMatch{}
+		    m.UserID = rid
+		    m.PartnerID = sid
+		    m.CreatedAt = strfmt.DateTime(time.Now())
+		    m.UpdatedAt = strfmt.DateTime(time.Now())
+    
+		    rm := repositories.NewUserMatchRepository()
+		    err = rm.Create(m)
+		    if err != nil {
+		    	fmt.Print("Create match err: ")
+		    
+			}
+		}
+	} else {// If duplicate
+		
+	}
+		
+	/*ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
 	if ul == nil { // If the first like
 		l := entities.UserLike{}
 		l.UserID = sid
