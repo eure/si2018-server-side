@@ -1,10 +1,10 @@
 package user
 
 import (
-	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/go-openapi/runtime/middleware"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -59,6 +59,77 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	t := repositories.NewUserTokenRepository()
+	u := repositories.NewUserRepository()
 
-	return si.NewPutProfileOK()
+	token, _ := t.GetByToken(p.Params.Token)
+	us, _ := u.GetByUserID(p.UserID)
+	ProfileUpdate(p.Params, us)
+	if p.UserID == token.UserID {
+		err := u.Update(us)
+		if err != nil {
+			return si.NewPutProfileInternalServerError().WithPayload(
+				&si.PutProfileInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+	} else {
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code:    "403",
+				Message: "Forbidden",
+			})
+	}
+
+	user, _ := u.GetByUserID(p.UserID)
+	sEnt := user.Build()
+	return si.NewPutProfileOK().WithPayload(&sEnt)
+}
+
+func ProfileUpdate(p si.PutProfileBody, u *entities.User) {
+	// annual income
+	u.AnnualIncome = p.AnnualIncome
+	// body build
+	u.BodyBuild = p.BodyBuild
+	// child
+	u.Child = p.Child
+	// cost of date
+	u.CostOfDate = p.CostOfDate
+	// drinking
+	u.Drinking = p.Drinking
+	// education
+	u.Education = p.Education
+	// height
+	u.Height = p.Height
+	// holiday
+	u.Holiday = p.Holiday
+	// home state
+	u.HomeState = p.HomeState
+	// housework
+	u.Housework = p.Housework
+	// how to meet
+	u.HowToMeet = p.HowToMeet
+	// image uri
+	u.ImageURI = p.ImageURI
+	// introduction
+	u.Introduction = p.Introduction
+	// job
+	u.Job = p.Job
+	// marital status
+	u.MaritalStatus = p.MaritalStatus
+	// nickname
+	u.Nickname = p.Nickname
+	// nth child
+	u.NthChild = p.NthChild
+	// residence state
+	u.ResidenceState = p.ResidenceState
+	// smoking
+	u.Smoking = p.Smoking
+	// tweet
+	u.Tweet = p.Tweet
+	// want child
+	u.WantChild = p.WantChild
+	// when marry
+	u.WhenMarry = p.WhenMarry
 }
