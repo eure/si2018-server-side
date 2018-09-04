@@ -81,42 +81,42 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-  userTokenRepository := repositories.NewUserTokenRepository()
-  userTokenEnt, err := userTokenRepository.GetByToken(p.Params.Token)
+	userTokenRepository := repositories.NewUserTokenRepository()
+	userTokenEnt, err := userTokenRepository.GetByToken(p.Params.Token)
 
-  if err != nil {
-    return putProfileInternalServerErrorResponse()
-  }
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
+	}
 
-  if userTokenEnt == nil {
-    return putProfileUnauthorizedResponse()
-  }
+	if userTokenEnt == nil {
+		return putProfileUnauthorizedResponse()
+	}
 
 	userID := p.UserID
 
-  if userTokenEnt.UserID != userID {
-    return putProfileForbiddenResponse()
-  }
+	if userTokenEnt.UserID != userID {
+		return putProfileForbiddenResponse()
+	}
 
 	userEnt, err := repositories.NewUserRepository().GetByUserID(userID)
 
 	if err != nil || userEnt == nil {
-    return putProfileInternalServerErrorResponse()
+		return putProfileInternalServerErrorResponse()
 	}
 
-  updateUserEnt := repositories.NewUserRepository().ParamsToUserEnt(userEnt, p.Params)
+	updateUserEnt := repositories.NewUserRepository().ParamsToUserEnt(userEnt, p.Params)
 
-  err = repositories.NewUserRepository().Update(updateUserEnt)
-  if err != nil {
-    return putProfileInternalServerErrorResponse()
-  }
+	err = repositories.NewUserRepository().Update(updateUserEnt)
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
+	}
 
 	updatedUserEnt, err := repositories.NewUserRepository().GetByUserID(userID)
-  if err != nil {
-    return putProfileInternalServerErrorResponse()
-  }
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
+	}
 
-  user := updatedUserEnt.Build()
+	user := updatedUserEnt.Build()
 	return si.NewPutProfileOK().WithPayload(&user)
 }
 
@@ -170,17 +170,17 @@ func putProfileInternalServerErrorResponse() middleware.Responder {
 }
 
 func putProfileUnauthorizedResponse() middleware.Responder {
-  return si.NewPutProfileUnauthorized().WithPayload(
-    &si.PutProfileUnauthorizedBody{
-      Code:    "401",
-      Message:  "Your Token Is Invalid",
-    })
+	return si.NewPutProfileUnauthorized().WithPayload(
+		&si.PutProfileUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
 }
 
 func putProfileForbiddenResponse() middleware.Responder {
-  return si.NewPutProfileForbidden().WithPayload(
-    &si.PutProfileForbiddenBody{
-      Code: "403",
-      Message: "Forbidden",
-    })
+	return si.NewPutProfileForbidden().WithPayload(
+		&si.PutProfileForbiddenBody{
+			Code:    "403",
+			Message: "Forbidden",
+		})
 }
