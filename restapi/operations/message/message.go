@@ -15,46 +15,45 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	if !(strings.HasPrefix(p.Params.Token, "USERTOKEN"))  {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
-				Code:    "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
-	tokenR := repositories.NewUserTokenRepository()
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
-				Code: "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 
-	// TODO: 送信先がPartnerではない時
-	matchR := repositories.NewUserMatchRepository()
+	// DONE: 送信先がPartnerではない時
+	matchR         := repositories.NewUserMatchRepository()
 	matchData, err := matchR.Get(tokenEnt.UserID, p.UserID)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if matchData == nil {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
-				Code: "400",
+				Code   : "400",
 				Message: "Bad Request",
 			})
 	}
-
 
 	messageR := repositories.NewUserMessageRepository()
 	// 新しいメッセージの作成
@@ -76,7 +75,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
-			Code: "200",
+			Code   : "200",
 			Message: "OK",
 		})
 }
@@ -86,36 +85,36 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
-				Code:    "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
-	tokenR := repositories.NewUserTokenRepository()
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
-				Code: "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 
-	// TODO: Partnerかどうかのチェック
+	// DONE: Partnerかどうかのチェック
 	// Partnerでなければエラー
-	matchR := repositories.NewUserMatchRepository()
+	matchR         := repositories.NewUserMatchRepository()
 	matchData, err := matchR.Get(tokenEnt.UserID, p.UserID)
 	if err != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}

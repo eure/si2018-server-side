@@ -16,30 +16,30 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
-				Code:    "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
-	tokenR := repositories.NewUserTokenRepository()
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
-				Code: "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 
 	// マッチしている人のidを取得
-	matchR := repositories.NewUserMatchRepository()
+	matchR        := repositories.NewUserMatchRepository()
 	matchIds, err := matchR.FindAllByUserID(tokenEnt.UserID)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
@@ -49,10 +49,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	// 結局はlikeのユーザ
-	likeR := repositories.NewUserLikeRepository()
 	// マッチ済みID(matchIds)を除くユーザ情報を取得
-	likeEnt, err := likeR.FindGotLikeWithLimitOffset(tokenEnt.UserID, int(p.Limit), int(p.Offset), matchIds)
+	likeR            := repositories.NewUserLikeRepository()
+	likeEntList, err := likeR.FindGotLikeWithLimitOffset(tokenEnt.UserID, int(p.Limit), int(p.Offset), matchIds)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -63,12 +62,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// likeのidからユーザ情報取得
 	var likedIds []int64
-	for _, u := range likeEnt {
+	for _, u    := range likeEntList {
 		likedIds = append(likedIds, u.UserID)
 	}
 	// likeしてくれているユーザIDsから各ユーザ情報を取得
 	userR := repositories.NewUserRepository()
-	responseModels, err := userR.FindByIDs(likedIds)
+	userEntList, err := userR.FindByIDs(likedIds)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -76,9 +75,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+	// TODO: 修正の余地あり?
 	var array entities.LikeUserResponses
-	for _, u := range responseModels {
-		var tmp = entities.LikeUserResponse{}
+	for _, u := range userEntList {
+		var tmp entities.LikeUserResponse
 		tmp.ApplyUser(u)
 		array = append(array, tmp)
 	}
@@ -92,35 +92,35 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if !(strings.HasPrefix(p.Params.Token, "USERTOKEN"))  {
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
-				Code:    "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
-	tokenR := repositories.NewUserTokenRepository()
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
-				Code: "401",
+				Code   : "401",
 				Message: "Token Is Invalid",
 			})
 	}
 
-	// TODO: 相手が異性かどうか
+	// DONE: 相手が異性かどうか
 	userR := repositories.NewUserRepository()
 	toUserEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
@@ -128,7 +128,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
@@ -136,18 +136,18 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if toUserEnt.GetOppositeGender() == myUserEnt.GetOppositeGender(){
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
-				Code: "400",
+				Code   : "400",
 				Message: "Bad Request",
 			})
 	}
 
-	// TODO: 既にいいねしていたら？
-	likeR := repositories.NewUserLikeRepository()
+	// DONE: 既にいいねしていたら？
+	likeR      := repositories.NewUserLikeRepository()
 	check, err := likeR.GetLikeBySenderIDReceiverID(myUserEnt.ID, toUserEnt.ID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
@@ -155,12 +155,12 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if check != nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
-				Code: "400",
+				Code   : "400",
 				Message: "Bad Request",
 			})
 	}
 
-	// TODO: いいねを作成
+	// DONE: いいねを作成
 	tmp := entities.UserLike{
 		UserID:    tokenEnt.UserID,
 		PartnerID: p.UserID,
@@ -177,13 +177,13 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 	// Created Like
 
-	// TODO: いいね同士でマッチング
+	// DONE: いいね同士でマッチング
 	// 相手から既にいいねをもらっている
 	check, err = likeR.GetLikeBySenderIDReceiverID(toUserEnt.ID, myUserEnt.ID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
-				Code: "500",
+				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
@@ -199,7 +199,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		if err != nil {
 			return si.NewPostLikeInternalServerError().WithPayload(
 				&si.PostLikeInternalServerErrorBody{
-					Code: "500",
+					Code   : "500",
 					Message: "Internal Server Error",
 				})
 		}
@@ -208,7 +208,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	return si.NewPostLikeOK().WithPayload(
 		&si.PostLikeOKBody{
-			Code: "200",
+			Code   : "200",
 			Message: "OK",
 		})
 }
