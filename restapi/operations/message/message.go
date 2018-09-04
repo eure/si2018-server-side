@@ -37,7 +37,24 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	// TODO: 送信先がPartnerではない時 -> 403エラー？ -> けど無いから 400エラー？
+	// TODO: 送信先がPartnerではない時
+	matchR := repositories.NewUserMatchRepository()
+	matchData, err := matchR.Get(tokenEnt.UserID, p.UserID)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if matchData == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
 
 	messageR := repositories.NewUserMessageRepository()
 	// 新しいメッセージの作成
@@ -94,7 +111,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	// TODO: Partnerかどうかのチェック
 	// Partnerでなければエラー
 	matchR := repositories.NewUserMatchRepository()
-	tmp, err := matchR.Get(tokenEnt.UserID, p.UserID)
+	matchData, err := matchR.Get(tokenEnt.UserID, p.UserID)
 	if err != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
@@ -102,7 +119,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if tmp == nil {
+	if matchData == nil {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code: "400",
