@@ -2,24 +2,41 @@ package user
 
 import (
 	"encoding/json"
-	"github.com/go-openapi/runtime/middleware"
-
+	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/go-openapi/runtime/middleware"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	// r := repositories.NewUserRepository()
-	//
-	// usersEnt, err := r.FindWithCondition(p.Limit, p.Offset, p.Token)
-	//
-	// // FindWithCondition(limit, offset int, gender string, ids []int64)
-	//
-	// for i, userEnt := range usersEnt {
-	// 	users := userEnt.Build()
-	// }
-	//
-	// return si.NewGetUsersOK().WithPayload(&users)
+	repoUser := repositories.NewUserRepository()
+	repoUserToken := repositories.NewUserTokenRepository()
+	repoUserLike := repositories.NewUserLikeRepository()
+
+	// ログインユーザーと反対の性別を取得する
+	entUserToken, _ := repoUserToken.GetByToken(p.Token)
+	entUser, _ := repoUser.GetByUserID(entUserToken.UserID)
+	opposite_gender := entUser.GetOppositeGender()
+
+	// idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど) いいねやマッチした人、ブロックした人のidを取ってくる
+	//いいねした/された人のidを持ってくる
+	except_ids, _ := repoUserLike.FindLikeAll(entUserToken.UserID)
+
+	// テスト
+	limit := 20
+	offset := 0
+
+	usersEnt, _ := repoUser.FindWithCondition(limit, offset, opposite_gender, except_ids)
+
+	var users []models.User
+
+	for i, user := range usersEnt {
+		users[i] = user.Build()
+	}
+
+	//idの取得
+
 	return si.NewGetUsersOK()
 }
 
@@ -51,14 +68,11 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 
-	userEnt, _:= r.GetByUserID(p.UserID)
+	userEnt := entities.User{ID: p.UserID}
 
-	// paramsをjsonに変換
-	params, _ := p.Params.MarshalBinary()
-	// userEntにjsonに変換したparamを入れる
-	json.Unmarshal(params, &userEnt)
+	BindParams(p.Params, &userEnt)
 
-	err := r.Update(userEnt)
+	err := r.Update(&userEnt)
 
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
@@ -68,5 +82,22 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
-	return si.NewPutProfileOK()
+	user := userEnt.Build()
+
+	return si.NewPutProfileOK().WithPayload(&user)
+}
+
+// private
+
+func BindParams(p si.PutProfileBody, userEnt *entities.User ){
+	// paramsをjsonに出力
+	params, _ := p.MarshalBinary()
+	// userEntにjson変換したparamを入れる
+	json.Unmarshal(params, &userEnt)
+
+	userEnt.HowToMeet = p.HowToMeet
+	userEnt.AnnualIncome = p.AnnualIncome
+	userEnt.CostOfDate = p.CostOfDate
+	userEnt.NthChild = p.NthChild
+	userEnt.ResidenceState = p.ResidenceState
 }
