@@ -188,13 +188,13 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 	if check != nil {
+		matchR := repositories.NewUserMatchRepository()
 		tmp := entities.UserMatch{
 			UserID:myUserEnt.ID,
 			PartnerID:toUserEnt.ID,
 			CreatedAt:strfmt.DateTime(time.Now()),
 			UpdatedAt:strfmt.DateTime(time.Now()),
 		}
-		matchR := repositories.NewUserMatchRepository()
 		err := matchR.Create(tmp)
 		if err != nil {
 			return si.NewPostLikeInternalServerError().WithPayload(
