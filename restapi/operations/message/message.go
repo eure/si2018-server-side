@@ -16,10 +16,14 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	message := repositories.NewUserMessageRepository()
 	match := repositories.NewUserMatchRepository()
 
+	// ユーザーID取得用
 	ut, _ := t.GetByToken(p.Token)
+	// matchingしているユーザーの取得
 	all, _ := match.FindAllByUserID(ut.UserID)
 
+	// 明示的に宣言
   var m entities.UserMessages
+	// マッチしているユーザーかをきちんと確認する
 	if CheckLikeUserID(all, p.UserID){
 		m, _ = message.GetMessages(ut.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
 		sEnt := m.Build()
