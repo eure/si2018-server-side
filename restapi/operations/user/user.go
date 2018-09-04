@@ -45,7 +45,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "User Token Not Found",
 			})
 	}
-	ent, err := nur.FindWithCondition(int(p.Limit), int(p.Offset), userdesc.Gender, userlike)
+	ent, err := nur.FindWithCondition(int(p.Limit), int(p.Offset), userdesc.GetOppositeGender(), userlike)
 	if err != nil {
 		fmt.Println(err)
 		si.NewGetUsersInternalServerError()
