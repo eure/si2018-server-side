@@ -75,3 +75,27 @@ func getUsersUnauthorizedResponse(message string) middleware.Responder {
 			Message: "Your Token Is Invalid",
 		})
 }
+
+func getUserProfileByUserIdInternalServerErrorReposense(message string) middleware.Responder {
+	return si.NewGetProfileByUserIDNotFound().WithPayload(
+		&si.GetProfileByUserIDNotFoundBody{
+			Code:    "404",
+			Message: message,
+		})
+}
+
+func getUserProfileByUserIdNotFoundResponse(message string) middleware.Responder {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func getUserProfileByUserIdUnauthorizeresponse(message string) middleware.Responder {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
