@@ -41,7 +41,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		fmt.Print("Find likes err: ")
 		fmt.Println(err)
 	}
-	fmt.Println(likes)
 
 	ids := make([]int64, 0) /* TODO can use map's key as ids slice? */
 	for _, l := range likes {
@@ -74,10 +73,14 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	//token := p.Params.Token
+	token := p.Params.Token
 	rid := p.UserID
-	//sid := GetIdByToken(token)
-	sid := int64(1)
+	sid, err := util.GetIDByToken(token)
+	//sid := int64(1)
+	if err != nil {
+		fmt.Print("Get id err: ")
+		fmt.Println(err)
+	}
 
 	ru := repositories.NewUserRepository()
 	rl := repositories.NewUserLikeRepository()
@@ -146,8 +149,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    
 			}
 		}
-	} else {// If duplicate
-		
+	} else { // If duplicate
 	}
 		
 	/*ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
