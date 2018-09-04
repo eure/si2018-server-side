@@ -55,3 +55,27 @@ func getMessageUnauthorizedResponse() middleware.Responder {
 			Message: "Your Token Is Invalid",
 		})
 }
+
+func postMessageOKResponse(message string) middleware.Responder {
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			Code:    "200",
+			Message: message,
+		})
+}
+
+func postMessageUnauthorizedResponse() middleware.Responder {
+	return si.NewPostMessageUnauthorized().WithPayload(
+		&si.PostMessageUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func postMessageInternalServerErrorResponse() middleware.Responder {
+	return si.NewPostMessageInternalServerError().WithPayload(
+		&si.PostMessageInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
