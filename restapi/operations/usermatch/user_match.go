@@ -1,6 +1,8 @@
 package usermatch
 
 import (
+	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 )
