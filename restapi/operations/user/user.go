@@ -11,7 +11,60 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
+	/*
+	1. tokenのvalidation
+	2. tokenからuseridを取得
+	3. useridからいいねを送受信した人を取得
+	4. その人たちを除いた異性のリストを取得
+	ページネーションする際、取得したリストにある最後のupdated_atの値を参考にすると簡単
+	*/
 
+	//tokenのvalidationをこの下に書く
+
+	// ここまでvalidation
+
+	// tokenからuserIDを取得
+	/*
+	r1 := repositories.NewUserTokenRepository()
+	ent1, err1 := r1.GetByToken(p.Token)
+	if err1 != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	if ent1 == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized Token",
+			})
+	}
+
+	sEnt1 := ent1.Build()
+
+	// useridからすでにいいねを送信した/受け取ったひとのリストを取得
+	r2 := repositories.NewUserLikeRepository()
+	ids, err2 := r2.FindLikeAll(sEnt1.UserID)
+	if err2 != nil{
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	r3 := repositories.NewUserRepository()
+	if p.Limit > 100 {
+		p.Limit =
+	}
+
+	r3.FindWithCondition()
+
+
+	*/
 	return si.NewGetUsersOK()
 }
 
