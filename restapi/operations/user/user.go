@@ -59,7 +59,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	userTokenEnt, err := r.GetByToken(p.Token)
 
 	if err != nil {
-		return getUserProfileByUserIdInternalServerErrorResponse("Internal Server Error")
+		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
 	}
 	if userTokenEnt == nil {
 		return getUsersUnauthorizedResponse("Your Token Is Invalid")
@@ -69,11 +69,11 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	userEnt, err := repositories.NewUserRepository().GetByUserID(userID)
 	if err != nil {
-		return getUserProfileByUserIdInternalServerErrorResponse("Internal Server Error")
+		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
 	}
 
 	if userEnt == nil {
-		return getUserProfileByUserIdNotFoundResponse("User Not Found")
+		return getUserProfileByUserIDNotFoundResponse("User Not Found")
 	}
 
 	user := userEnt.Build()
@@ -100,7 +100,7 @@ func getUsersUnauthorizedResponse(message string) middleware.Responder {
 		})
 }
 
-func getUserProfileByUserIdInternalServerErrorResponse(message string) middleware.Responder {
+func getUserProfileByUserIDInternalServerErrorResponse(message string) middleware.Responder {
 	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 		&si.GetProfileByUserIDInternalServerErrorBody{
 			Code:    "500",
@@ -108,7 +108,7 @@ func getUserProfileByUserIdInternalServerErrorResponse(message string) middlewar
 		})
 }
 
-func getUserProfileByUserIdNotFoundResponse(message string) middleware.Responder {
+func getUserProfileByUserIDNotFoundResponse(message string) middleware.Responder {
 	return si.NewGetProfileByUserIDNotFound().WithPayload(
 		&si.GetProfileByUserIDNotFoundBody{
 			Code:    "404",
@@ -116,7 +116,7 @@ func getUserProfileByUserIdNotFoundResponse(message string) middleware.Responder
 		})
 }
 
-func getUserProfileByUserIdUnauthorizeResponse(message string) middleware.Responder {
+func getUserProfileByUserIDUnauthorizeResponse(message string) middleware.Responder {
 	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
 		&si.GetProfileByUserIDUnauthorizedBody{
 			Code:    "401",
