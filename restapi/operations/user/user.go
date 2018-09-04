@@ -121,15 +121,15 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
-		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-			&si.GetProfileByUserIDUnauthorizedBody{
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-			&si.GetProfileByUserIDUnauthorizedBody{
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
 				Code: "400",
 				Message: "Bad Request",
 			})
@@ -161,12 +161,46 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	// Tokenの形式がおかしい -> 401
+	if !(strings.HasPrefix(p.Params.Token, "USERTOKEN"))  {
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
+	// Tokenのユーザが存在しない -> 400 Bad Request
+	tokenR := repositories.NewUserTokenRepository()
+	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if tokenEnt == nil{
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+	// 編集予定のIDと自分のIDが違う
+	if p.UserID != tokenEnt.UserID {
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code: "403",
+				Message: "Forbidden",
+			})
+	}
+
 	// 現在の自分の情報取得
 	userR := repositories.NewUserRepository()
 	userEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
@@ -176,8 +210,8 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	json.Unmarshal(params, &userEnt)
 	err = userR.Update(userEnt)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
@@ -185,8 +219,8 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// 更新後のデータを取得
 	responseEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
 			})
