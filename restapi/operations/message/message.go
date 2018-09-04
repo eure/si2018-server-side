@@ -1,9 +1,9 @@
 package message
 
 import (
-	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/repositories"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 )
 
@@ -22,13 +22,13 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	all, _ := match.FindAllByUserID(ut.UserID)
 
 	// 明示的に宣言
-  var m entities.UserMessages
+	var m entities.UserMessages
 	// マッチしているユーザーかをきちんと確認する
-	if CheckLikeUserID(all, p.UserID){
+	if CheckMatchUserID(all, p.UserID) {
 		m, _ = message.GetMessages(ut.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
 		sEnt := m.Build()
 		return si.NewGetMessagesOK().WithPayload(sEnt)
-	}else{
+	} else {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",
@@ -38,9 +38,9 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 }
 
 //マッチングをしているか確認に使う関数
-func CheckLikeUserID(likeID []int64, userID int64) bool{
-	for _, m := range likeID{
-		if m == userID{
+func CheckMatchUserID(matchID []int64, userID int64) bool {
+	for _, m := range matchID {
+		if m == userID {
 			return true
 		}
 	}
