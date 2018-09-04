@@ -6,6 +6,8 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+	"time"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -110,5 +112,56 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	return si.NewPostLikeOK()
+
+	// レポジトリを初期化する
+	tokenR := repositories.NewUserTokenRepository()
+	userLikeR := repositories.NewUserLikeRepository()
+
+	// トークンを検索する
+	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
+
+	// 401エラー
+	if tokenEnt == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message:  "Your token is invalid.",
+			})
+	}
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// いいねを送信する
+	userLike := entities.UserLike{
+		UserID: tokenEnt.UserID,
+		PartnerID: p.UserID,
+		CreatedAt: strfmt.DateTime(time.Now()),
+		UpdatedAt: strfmt.DateTime(time.Now()),
+	}
+
+	err = userLikeR.Create(userLike)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// 結果を返す
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code: "200",
+			Message: "OK",
+		})
+
 }
