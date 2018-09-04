@@ -6,6 +6,8 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+	"time"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -67,5 +69,37 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	return si.NewPostLikeOK()
+	// TODO: 既にいいねしていたら？
+	// 自分のユーザIDを取得する
+	tokenR := repositories.NewUserTokenRepository()
+	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	likeR := repositories.NewUserLikeRepository()
+	tmp := entities.UserLike{
+		UserID:    tokenEnt.UserID,
+		PartnerID: p.UserID,
+		CreatedAt: strfmt.DateTime(time.Now()),
+		UpdatedAt: strfmt.DateTime(time.Now()),
+	}
+	err = likeR.Create(tmp)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code: "200",
+			Message: "OK",
+		})
 }
