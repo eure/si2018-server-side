@@ -99,8 +99,17 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
+	if err != nil {
+		fmt.Print("Get like by ids (first) err: ")
+		fmt.Println(err)
+	}
 	if ul == nil { 
 		ul, err := rl.GetLikeBySenderIDReceiverID(rid, sid)
+		if err != nil {
+			fmt.Print("Get like by ids (second) err: ")
+			fmt.Println(err)
+		}
+
 		if ul == nil { // If the first like
 			l := entities.UserLike{}
 		    l.UserID = sid

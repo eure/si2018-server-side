@@ -14,5 +14,14 @@ func GetIDByToken(token string) (int64, error) {
 
 	return ut.UserID, nil
 }
+/*
+func ValidateToken(token string) error {
+	// 文字列として正しいか
+	// userが存在するか
+}
+
+func isTokenStrValid(token string) bool {
+}
 
 
+*/
