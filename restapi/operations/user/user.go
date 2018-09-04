@@ -19,13 +19,9 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	//男か女か情報が必要なのでユーザーの情報を取得する
 	user, _ := u.GetByUserID(ut.UserID)
 
-	//ユーザーが男だった時に検索するユーザーを女とする
-	var g string
-	if user.Gender == "M" {
-		g = "F"
-	}else{
-		g = "M"
-	}
+	//ユーザーが女だった時に検索するユーザーを男とする
+	g := user.GetOppositeGender()
+
 	//明示的に型宣言
 	var f entities.Users
 	//探す処理
@@ -63,5 +59,6 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+
 	return si.NewPutProfileOK()
 }
