@@ -54,6 +54,17 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	return si.NewGetProfileByUserIDOK()
+	//FIXME Token認証は共通化したい
+	r := repositories.NewUserTokenRepository()
+
+	userTokenEnt, err := r.GetByToken(p.Token)
+
+	if err != nil {
+		return getUsersInteralServerErrorResponse("Internal Server Error")
+	}
+	if userTokenEnt == nil {
+		return getUsersUnauthorizedResponse("Your Token Is Invalid")
+	}
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
