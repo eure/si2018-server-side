@@ -3,7 +3,10 @@ package repositories
 import (
 	"github.com/go-xorm/builder"
 
+	"time"
+
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
 )
 
 type UserMatchRepository struct{}
@@ -13,7 +16,11 @@ func NewUserMatchRepository() UserMatchRepository {
 }
 
 func (r *UserMatchRepository) Create(ent entities.UserMatch) error {
+	now := strfmt.DateTime(time.Now())
+
 	s := engine.NewSession()
+	ent.CreatedAt = now
+	ent.UpdatedAt = now
 	if _, err := s.Insert(&ent); err != nil {
 		return err
 	}
@@ -35,15 +42,24 @@ func (r *UserMatchRepository) Get(userID, partnerID int64) (*entities.UserMatch,
 }
 
 // マッチング済みのお相手一覧をlimit/offsetで取得する.
-func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, offset int) ([]entities.UserMatch, error) {
+func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, offset int) ([]entities.UserMatch, []int64, error) {
 	var matches []entities.UserMatch
+	var ids []int64
 
 	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Limit(limit, offset).Desc("created_at").Find(&matches)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return matches, nil
+	for _, l := range matches {
+		if l.UserID == userID {
+			ids = append(ids, l.PartnerID)
+			continue
+		}
+		ids = append(ids, l.UserID)
+	}
+
+	return matches, ids, nil
 }
 
 // 自分が既にマッチングしている全てのお相手のUserIDを返す.

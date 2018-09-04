@@ -1,6 +1,11 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"time"
+
+	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+)
 
 type UserLikeRepository struct{}
 
@@ -9,7 +14,11 @@ func NewUserLikeRepository() UserLikeRepository {
 }
 
 func (r *UserLikeRepository) Create(ent entities.UserLike) error {
+	now := strfmt.DateTime(time.Now())
+
 	s := engine.NewSession()
+	ent.CreatedAt = now
+	ent.UpdatedAt = now
 	if _, err := s.Insert(&ent); err != nil {
 		return err
 	}
