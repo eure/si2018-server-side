@@ -120,6 +120,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	return si.NewPutProfileOK().WithPayload(&user)
 }
 
+// ここからResponderを返す関数群
 func getUsersInteralServerErrorResponse(message string) middleware.Responder {
 	return si.NewGetUsersInternalServerError().WithPayload(
 		&si.GetUsersInternalServerErrorBody{
