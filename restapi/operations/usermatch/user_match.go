@@ -18,7 +18,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -29,10 +29,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetMatchesBadRequest().WithPayload(
-			&si.GetMatchesBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewGetMatchesUnauthorized().WithPayload(
+			&si.GetMatchesUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 

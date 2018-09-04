@@ -19,7 +19,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -117,7 +117,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -128,10 +128,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetProfileByUserIDBadRequest().WithPayload(
-			&si.GetProfileByUserIDBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -169,7 +169,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -180,10 +180,10 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewPutProfileBadRequest().WithPayload(
-			&si.PutProfileBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 	// 編集予定のIDと自分のIDが違う

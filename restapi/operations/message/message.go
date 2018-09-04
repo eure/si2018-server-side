@@ -19,7 +19,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -30,10 +30,10 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -90,7 +90,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -101,10 +101,10 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewGetMessagesUnauthorized().WithPayload(
+			&si.GetMessagesUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 

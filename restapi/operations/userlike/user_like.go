@@ -20,7 +20,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -31,10 +31,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -96,7 +96,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// Tokenのユーザが存在しない -> 400 Bad Request
+	// Tokenのユーザが存在しない -> 401
 	tokenR := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -107,10 +107,10 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 	if tokenEnt == nil{
-		return si.NewPostLikeBadRequest().WithPayload(
-			&si.PostLikeBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
