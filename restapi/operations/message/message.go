@@ -15,8 +15,14 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
+
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
+
 	uid, err := util.GetIDByToken(token)
-	//uid := int64(1222)
 	if err != nil {
 		fmt.Print("Get id err: ")
 		fmt.Println(err)
@@ -57,8 +63,15 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	latest := p.Latest
 	oldest := p.Oldest
 	limit := *p.Limit
+
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
+
 	uid, err := util.GetIDByToken(token)
-	//uid := int64(1222)
+	
 	if err != nil {
 		fmt.Print("Get id err: ")
 		fmt.Println(err)

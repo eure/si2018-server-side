@@ -16,15 +16,15 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	offset := p.Offset
 	token := p.Token
 	/* TODO range validation */
-	/* TODO token validation */
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
 	
 	ru := repositories.NewUserRepository()
-	//rt := repositories.NewUserTokenRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	/*ut, err := rt.GetByToken(token)
-	id := ut.UserID
-	*/
 	id, err := util.GetIDByToken(token)
 	user, err := ru.GetByUserID(id)
 	likes, err := rl.FindLikeAll(id)
@@ -42,15 +42,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	id := p.UserID
-	//token := p.Token
-	/* TODO token validation */
-
-	if id < 1 { /* TODO */
-		return si.NewGetProfileByUserIDBadRequest().WithPayload(
-			&si.GetProfileByUserIDBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
+	token := p.Token
+	
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
 	}
 
 	r := repositories.NewUserRepository()
@@ -69,8 +66,14 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	id := p.UserID
 	ps := p.Params
-	//token := ps.Token
-	/* TODO token validation */
+	token := ps.Token
+	
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
+
 	r := repositories.NewUserRepository()
 	user, _ := r.GetByUserID(id)
 
@@ -101,7 +104,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	user.WhenMarry = ps.WhenMarry
 
 	//fmt.Printf("newu:%+v\n", user)
-	err := r.Update(user)
+	err = r.Update(user)
 	fmt.Println(err) /* TODO err */
 	//fmt.Println("UPDATE DONE")
 	//fmt.Printf("user:%+v\n", user)

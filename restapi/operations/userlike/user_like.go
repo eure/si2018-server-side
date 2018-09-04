@@ -17,7 +17,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	limit := 20
 	offset := int(p.Offset)
 	token := p.Token
-	/* TODO token validation */
+	
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
@@ -75,8 +80,14 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	token := p.Params.Token
 	rid := p.UserID
+
+	err := util.ValidateToken(token)
+	if err != nil {
+		fmt.Println("Invalid token err:")
+		fmt.Println(err)
+	}
+
 	sid, err := util.GetIDByToken(token)
-	//sid := int64(1)
 	if err != nil {
 		fmt.Print("Get id err: ")
 		fmt.Println(err)
