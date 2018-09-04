@@ -21,63 +21,61 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// FindGotLikeWithLimitOffsetでいいねをした人をとってくる
 	// エンティティのlikeUserをlikeUserResponseにキャストする
 
-	////repUserLike := repositories.NewUserLikeRepository()
-	//repUserToken :=  repositories.NewUserTokenRepository() //tokenからログインユーザーを取得するため
-	//repUserMatch := repositories.NewUserMatchRepository() // すでにマッチした人のidを取得するため
-	////repUser := repositories.NewUserRepository() // 自分をいいねしたユーザーを取得するため
-	//
-	//// トークンからログインユーザー取得
-	//entUserToken, _ := repUserToken.GetByToken(p.Token)
-	//
-	//// 自分とマッチングしているユーザーのIDを取得
-	//matchUserIDs, _ := repUserMatch.FindAllByUserID(entUserToken.UserID)
-	//
-	//for i, id := range matchUserIDs {
-	//	fmt.Print(id)
-	//	fmt.Print(i)
-	//}
+	repUserLike := repositories.NewUserLikeRepository()
+	repUserToken := repositories.NewUserTokenRepository() // tokenからユーザーのIDを取得するため
+	repUserMatch := repositories.NewUserMatchRepository() // ユーザーとマッチングしているユーザーを取得するため
+	repUser := repositories.NewUserRepository() // idからユーザーを取得するため
 
-	//
-	////マッチングしている人を除いて、自分にいいねをした人を取得
-	//entsUserLike, _ := repUserLike.FindGotLikeWithLimitOffset(entUser.UserID, int(p.Limit), int(p.Offset), matchIDs)
-	//entUserLikes := entities.UserLikes(entsUserLike) // Userlikeの配列をUserlikesにキャスト
+	entLoginUserToken, _ := repUserToken.GetByToken(p.Token) // トークンからユーザーのIDを取得
+	matchUserIDs, _ := repUserMatch.FindAllByUserID(entLoginUserToken.UserID) // そのユーザーとマッチングしているユーザーのIDを取得
 
-	//// 自分をLikeしたユーザーのIDを格納するための配列
-	//userLikeMeIDs := make([]int64, 0, len(entUserLikes))
-	//
-	//// 自分をLikeしたユーザーのIDを格納
-	//for _, entUserLike := range entUserLikes {
-	//	userLikeMeIDs = append(userLikeMeIDs, entUserLike.PartnerID)
-	//
-	//}
-	//
-	//println(userLikeMeIDs)
-	//
-	//// idをもとにユーザーの配列を取得
-	//entUsersLikeMe, _ := repUser.FindByIDs(userLikeMeIDs)
-	//
-	////Responseの配列を作成
-	//entUserLikeReses := make(entities.LikeUserResponses, 0, len(entUserLikes))
-	//
-	////ユーザの配列からresponseを作成
-	//for i, entUserLikeMe := range entUsersLikeMe {
-	//	entUserLikeReses[i].ApplyUser(entUserLikeMe)
-	//	entUserLikeReses[i].LikedAt = entUserLikes[i].UpdatedAt
-	//}
-	//
-	//userLikeReses := entUserLikeReses.Build()
+	// マッチングしている人を除く、ユーザーをいいねした人のIDを取得
+	entsUserLike_LikedMe, err := repUserLike.FindGotLikeWithLimitOffset(entLoginUserToken.UserID, int(p.Limit), int(p.Offset), matchUserIDs)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if entsUserLike_LikedMe == nil {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Nobody liked you.",
+			})
+	}
 
-	//return si.NewGetLikesOK().WithPayload(userLikeReses)
-	return si.NewGetLikesOK()
+	// ユーザーをいいねした人のIDの配列を取得
+	var likedUserIDs []int64
+	for _, entUserLike_LikedMe := range entsUserLike_LikedMe {
+		likedUserIDs = append(likedUserIDs, entUserLike_LikedMe.UserID)
+	}
+
+	// idの配列からユーザーを取得
+	entsLikedUser , _:= repUser.FindByIDs(likedUserIDs)
+
+	// return用のmodelを作るためのLikeUserResponsesのエンティティ
+	var entsLikeUserRese entities.LikeUserResponses
+
+	for _, entLikedUser := range entsLikedUser {
+		var entLikeUserRese = entities.LikeUserResponse{}
+		entLikeUserRese.ApplyUser(entLikedUser)
+		entsLikeUserRese = append(entsLikeUserRese, entLikeUserRese)
+	}
+
+	likeUserRese := entsLikeUserRese.Build()
+
+	return si.NewGetLikesOK().WithPayload(likeUserRese)
 }
 
 
 //- POST {hostname}/api/1.0/likes/{userID}
-////- 相手にいいね！を送信してください
-////- TokenのValidation処理を実装してください
-////- ※ お互いいいね！を送るとmatchingになります
-////- ※ 同性へはいいね！ができません
-////- ※ 同じ人へは2回いいね！ができません
+//- 相手にいいね！を送信してください
+//- TokenのValidation処理を実装してください
+//- ※ お互いいいね！を送るとmatchingになります
+//- ※ 同性へはいいね！ができません
+//- ※ 同じ人へは2回いいね！ができません
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	var entUserLike entities.UserLike
 
