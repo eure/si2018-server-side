@@ -8,7 +8,15 @@ import (
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	return si.NewGetMatchesOK()
+	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Token)
+
+	if err != nil {
+		return getMatchesInternalServerErrorRespose()
+	}
+
+	if userTokenEnt == nil {
+		return getMatchesUnauthorizedResponse()
+	}
 }
 
 func getMatchesInternalServerErrorRespose() middleware.Responder {
