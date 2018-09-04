@@ -32,8 +32,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	if tokenEnt == nil{
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
-				Code: "400",
-				Message: "Bad Request",
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
