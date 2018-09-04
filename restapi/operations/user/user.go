@@ -53,17 +53,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Internal Server Error: FindLikeAll failed: " + err.Error(),
 			})
 	}
-	if like == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: FindLikeAll failed",
-			})
-	}
 	for _, id := range like {
 		idmap[id] = true
 	}
-	mached, err := rm.FindAllByUserID(u.ID)
+	matched, err := rm.FindAllByUserID(u.ID)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -71,14 +64,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Internal Server Error: FindAllByUserID failed: " + err.Error(),
 			})
 	}
-	if mached == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: FindAllByUserID failed",
-			})
-	}
-	for _, id := range mached {
+	for _, id := range matched {
 		idmap[id] = true
 	}
 	ids := make([]int64, 0)
