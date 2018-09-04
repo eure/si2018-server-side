@@ -17,36 +17,46 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	limit := 20
 	offset := int(p.Offset)
 	token := p.Token
-	
+	/* TODO bad request */
+
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	id, err := util.GetIDByToken(token)
-	//id := int64(2)
-	if err != nil {
-		fmt.Print("Get id err: ")
-		fmt.Println(err)
-	}
+	id, _ := util.GetIDByToken(token) // ValidateToken()で先に呼ばれているのでerrは潰す
 
 	matches, err := rm.FindAllByUserID(id)
 	if err != nil {
-		fmt.Print("Find matches err: ")
+		fmt.Print("Find matches err: ") /* TODO use log */
 		fmt.Println(err)
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
 	likes, err := rl.FindGotLikeWithLimitOffset(id, limit, offset, matches)
 	if err != nil {
 		fmt.Print("Find likes err: ")
 		fmt.Println(err)
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
+	// レスポンス作成ループ内でDB問い合わせを繰り返さないためにidsとumを準備
 	ids := make([]int64, 0) /* TODO can use map's key as ids slice? */
 	for _, l := range likes {
 		ids = append(ids, l.UserID)
@@ -56,6 +66,11 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	if err != nil {
 		fmt.Print("Find users by ids err: ")
 		fmt.Println(err)
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	um := make(map[int64]entities.User)
 	for _, u := range users {
@@ -80,25 +95,29 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	token := p.Params.Token
 	rid := p.UserID
+	/* TODO bad request */
 
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
-	sid, err := util.GetIDByToken(token)
-	if err != nil {
-		fmt.Print("Get id err: ")
-		fmt.Println(err)
-	}
+	sid, _ := util.GetIDByToken(token)
 
 	ru := repositories.NewUserRepository()
 	rl := repositories.NewUserLikeRepository()
 
 	// Not same id?
 	if rid == sid {
-		/* TODO */
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request (Can't send to yourself)",
+			})
 	}
 
 	// Same gender?
@@ -106,22 +125,40 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		fmt.Print("FindByIDs err: ")
 		fmt.Println(err)
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	if users[0].Gender == users[1].Gender {
-		fmt.Println("Same gender err")
-		
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request (Same gender)",
+			})
 	}
 
 	ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
 	if err != nil {
 		fmt.Print("Get like by ids (first) err: ")
 		fmt.Println(err)
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	if ul == nil { 
 		ul, err := rl.GetLikeBySenderIDReceiverID(rid, sid)
 		if err != nil {
 			fmt.Print("Get like by ids (second) err: ")
 			fmt.Println(err)
+			return si.NewPostLikeInternalServerError().WithPayload(
+				&si.PostLikeInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
 		}
 
 		if ul == nil { // If the first like
@@ -133,7 +170,12 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    err := rl.Create(l)
 		    if err != nil {
 		    	fmt.Print("Create first like err: ")
-		    	fmt.Println(err)
+				fmt.Println(err)
+				return si.NewPostLikeInternalServerError().WithPayload(
+					&si.PostLikeInternalServerErrorBody{
+						Code:    "500",
+						Message: "Internal Server Error",
+					})
 		    }
 		} else { // If match
 			l := entities.UserLike{}
@@ -144,7 +186,12 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    err := rl.Create(l)
 		    if err != nil {
 		    	fmt.Print("Create matching like err: ")
-		    	fmt.Println(err)
+				fmt.Println(err)
+				return si.NewPostLikeInternalServerError().WithPayload(
+					&si.PostLikeInternalServerErrorBody{
+						Code:    "500",
+						Message: "Internal Server Error",
+					})
 		    }
     
 		    m := entities.UserMatch{}
@@ -156,51 +203,23 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    rm := repositories.NewUserMatchRepository()
 		    err = rm.Create(m)
 		    if err != nil {
-		    	fmt.Print("Create match err: ")
-		    
+				fmt.Print("Create match err: ")
+				fmt.Println(err)
+				return si.NewPostLikeInternalServerError().WithPayload(
+					&si.PostLikeInternalServerErrorBody{
+						Code:    "500",
+						Message: "Internal Server Error",
+					})
 			}
 		}
 	} else { // If duplicate
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request (Duplicate like)",
+			})
 	}
-		
-	/*ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
-	if ul == nil { // If the first like
-		l := entities.UserLike{}
-		l.UserID = sid
-		l.PartnerID = rid
-		l.CreatedAt = strfmt.DateTime(time.Now())
-		l.UpdatedAt = strfmt.DateTime(time.Now())
-		err := rl.Create(l)
-		if err != nil {
-			fmt.Print("Create first like err: ")
-			fmt.Println(err)
-		} 
-	} else if ul.UserID == sid { // If duplicate
-	} else if ul.PartnerID == sid { // If match
-		l := entities.UserLike{}
-		l.UserID = sid
-		l.PartnerID = rid
-		l.CreatedAt = strfmt.DateTime(time.Now())
-		l.UpdatedAt = strfmt.DateTime(time.Now())
-		err := rl.Create(l)
-		if err != nil {
-			fmt.Print("Create matching like err: ")
-			fmt.Println(err)
-		}
-
-		m := entities.UserMatch{}
-		m.UserID = rid
-		m.PartnerID = sid
-		m.CreatedAt = strfmt.DateTime(time.Now())
-		m.UpdatedAt = strfmt.DateTime(time.Now())
-
-		rm := repositories.NewUserMatchRepository()
-		err = rm.Create(m)
-		if err != nil {
-			fmt.Print("Create match err: ")
-			fmt.Println(err)
-		}
-	} /* TODO check already matching? */
+	/* TODO check already matching? */
 
 	return si.NewPostLikeOK()
 }
