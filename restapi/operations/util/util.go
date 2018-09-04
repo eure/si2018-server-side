@@ -9,9 +9,9 @@ import (
 )
 
 func GetIDByToken(token string) (int64, error) {
-	rt := repositories.NewUserTokenRepository()
+	r := repositories.NewUserTokenRepository()
 
-	ut, err := rt.GetByToken(token)
+	ut, err := r.GetByToken(token)
 	if err != nil {
 		return int64(-1), err
 	}
@@ -25,6 +25,9 @@ func ValidateToken(token string) error {
 		return errors.New("Invalid token string ('USERTOKEN{id}' is required)")
 	}
 	// userが存在するか
+	if !userExists(token) {
+		return errors.New("Invalid token (user not exists)")
+	}
 	return nil
 }
 
@@ -40,7 +43,26 @@ func isTokenStrValid(token string) bool {
 
 	return true
 }
-/*
+
 func userExists(token string) bool {
+	r := repositories.NewUserRepository()
+	id, err := GetIDByToken(token) /* TODO panic */
+	if err != nil {
+		fmt.Println("Get id by token err:")
+		fmt.Println(err)
+		return false
+	}
+
+	u, err := r.GetByUserID(id)
+	if err != nil {
+		fmt.Println("Get user by id err:")
+		fmt.Println(err)
+		return false
+	}
+
+	if u == nil {
+		return false
+	} else {
+		return true
+	}
 }
-*/
