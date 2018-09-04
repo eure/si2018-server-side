@@ -15,28 +15,37 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
+	/* TODO bad request */
 
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
-	uid, err := util.GetIDByToken(token)
-	if err != nil {
-		fmt.Print("Get id err: ")
-		fmt.Println(err)
-	}
+	uid, _ := util.GetIDByToken(token)
 
 	rl := repositories.NewUserLikeRepository()
 	like, err := rl.GetLikeBySenderIDReceiverID(uid, pid)
 	if err != nil {
 		fmt.Print("Get likes err: ")
 		fmt.Println(err)
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	if like == nil {
-		fmt.Print("Not matching yet")
-		
+		fmt.Println("Not matching yet")
+		return si.NewPostMessageBadRequest().WithPayload( /* TODO 403? */
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request (Not matching yet)",
+			})
 	}
 
 	ent := entities.UserMessage{}
@@ -51,10 +60,14 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	if err != nil {
 		fmt.Print("Create message err: ")
 		fmt.Println(err)
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	
-	/* matching check */
-	return si.NewPostMessageOK() /* TODO hokanotoissho  {code message}*/
+	return si.NewPostMessageOK()
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
@@ -63,28 +76,32 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	latest := p.Latest
 	oldest := p.Oldest
 	limit := *p.Limit
+	/* TODO bad request */
 
 	err := util.ValidateToken(token)
 	if err != nil {
-		fmt.Println("Invalid token err:")
-		fmt.Println(err)
+		return si.NewGetMessagesUnauthorized().WithPayload(
+			&si.GetMessagesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
 	}
 
-	uid, err := util.GetIDByToken(token)
+	uid, _ := util.GetIDByToken(token)
 	
-	if err != nil {
-		fmt.Print("Get id err: ")
-		fmt.Println(err)
-	}
-
 	/* TODO validate matching state? */
 
 	r := repositories.NewUserMessageRepository()
 
-	messages, err := r.GetMessages(uid, pid, int(limit), latest, oldest)
+	messages, err := r.GetMessages(uid, pid, int(limit), latest, oldest) /* TODO order */
 	if err != nil {
 		fmt.Print("Get messages err: ")
 		fmt.Println(err)
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 
 	var reses entities.UserMessages
