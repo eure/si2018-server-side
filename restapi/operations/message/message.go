@@ -37,7 +37,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
 			Code: "200",
@@ -46,5 +45,24 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
-	return si.NewGetMessagesOK()
+	messageR := repositories.NewUserMessageRepository()
+
+	tokenR := repositories.NewUserTokenRepository()
+	tokenEnt, err := tokenR.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	var responseEnt entities.UserMessages
+	messages, _ := messageR.GetMessages(tokenEnt.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+	for _, message := range messages {
+		responseEnt = append(responseEnt, message)
+		}
+
+	responseData := responseEnt.Build()
+	return si.NewGetMessagesOK().WithPayload(responseData)
 }

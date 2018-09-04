@@ -93,6 +93,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
+	//// TODO: p.UserIDはよその人のID
+
 	// TODO: 400エラー
 	if !(strings.HasPrefix(p.Token, "USERTOKEN")) || !(strings.HasSuffix(p.Token, strconv.FormatInt(p.UserID, 10))) {
 		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
