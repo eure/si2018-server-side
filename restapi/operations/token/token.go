@@ -2,16 +2,14 @@ package token
 
 import (
 	middleware "github.com/go-openapi/runtime/middleware"
-
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 	r := repositories.NewUserTokenRepository()
-
 	ent, err := r.GetByUserID(p.UserID)
-
+	/*->repositories/user_token_repository.go*/
 	if err != nil {
 		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
 			&si.GetTokenByUserIDInternalServerErrorBody{
