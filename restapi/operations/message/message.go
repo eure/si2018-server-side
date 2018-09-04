@@ -8,7 +8,33 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
-	return si.NewPostMessageOK()
+	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Params.Token)
+
+	if err != nil {
+		return getMessagesInternalServerErrorResponse()
+	}
+
+	if userTokenEnt == nil {
+		return getMessageUnauthorizedResponse()
+	}
+
+	userID := userTokenEnt.UserID
+	partnerID := p.UserID
+	message := p.Params.Message
+
+	userMessageEnt := entities.UserMessage{
+		UserID:    userID,
+		PartnerID: partnerID,
+		Message:   message,
+	}
+
+	messageRepository := repositories.NewUserMessageRepository()
+	err = messageRepository.Create(userMessageEnt)
+	if err != nil {
+		return postMessageInternalServerErrorResponse()
+	}
+
+	return postMessageOKResponse(message)
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
