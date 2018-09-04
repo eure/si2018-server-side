@@ -1,6 +1,8 @@
 package message
 
 import (
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -8,7 +10,40 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
-	return si.NewPostMessageOK()
+	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Params.Token)
+
+	if err != nil {
+		return getMessagesInternalServerErrorResponse()
+	}
+
+	if userTokenEnt == nil {
+		return getMessageUnauthorizedResponse()
+	}
+
+	userID := userTokenEnt.UserID
+	partnerID := p.UserID
+	message := p.Params.Message
+
+	userMessageEnt := entities.UserMessage{
+		UserID:    userID,
+		PartnerID: partnerID,
+		Message:   message,
+	}
+
+	messageRepository := repositories.NewUserMessageRepository()
+
+	errs := messageRepository.Validate(userMessageEnt)
+	if errs != nil {
+		str := fmt.Sprintf("%v", errs)
+		return postMessageBadREquestResponse(str)
+	}
+
+	err = messageRepository.Create(userMessageEnt)
+	if err != nil {
+		return postMessageInternalServerErrorResponse()
+	}
+
+	return postMessageOKResponse(message)
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
@@ -53,5 +88,37 @@ func getMessageUnauthorizedResponse() middleware.Responder {
 		&si.GetMessagesUnauthorizedBody{
 			Code:    "401",
 			Message: "Your Token Is Invalid",
+		})
+}
+
+func postMessageOKResponse(message string) middleware.Responder {
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			Code:    "200",
+			Message: message,
+		})
+}
+
+func postMessageBadREquestResponse(message string) middleware.Responder {
+	return si.NewPostMessageBadRequest().WithPayload(
+		&si.PostMessageBadRequestBody{
+			Code:    "400",
+			Message: message,
+		})
+}
+
+func postMessageUnauthorizedResponse() middleware.Responder {
+	return si.NewPostMessageUnauthorized().WithPayload(
+		&si.PostMessageUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func postMessageInternalServerErrorResponse() middleware.Responder {
+	return si.NewPostMessageInternalServerError().WithPayload(
+		&si.PostMessageInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
 		})
 }
