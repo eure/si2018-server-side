@@ -124,5 +124,26 @@ func getUserProfileByUserIDUnauthorizeResponse(message string) middleware.Respon
 		})
 }
 
+func putProfileInternalServerErrorResponse() middleware.Responder {
+	return si.NewPutProfileInternalServerError().WithPayload(
+		&si.PutProfileInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
 		})
+}
+
+func putProfileUnauthorizedResponse() middleware.Responder {
+  return si.NewPutProfileUnauthorized().WithPayload(
+    &si.PutProfileUnauthorizedBody{
+      Code:    "401",
+      Message:  "Your Token Is Invalid",
+    })
+}
+
+func putProfileForbiddenResponse() middleware.Responder {
+  return si.NewPutProfileForbidden().WithPayload(
+    &si.PutProfileForbiddenBody{
+      Code: "403",
+      Message: "Forbidden",
+    })
 }
