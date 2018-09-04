@@ -29,6 +29,27 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if err != nil {
 		return getMatchesInternalServerErrorRespose()
 	}
+
+	var matchUserResponsesEnt entities.MatchUserResponses
+
+	for _, userMatchEnt := range userMatches {
+		matchUserResponse := entities.MatchUserResponse{MatchedAt: userMatchEnt.CreatedAt}
+
+		//FIXME ループ内でクエリ発行は最低の行為のような気がする
+		user, err := repositories.NewUserRepository().GetByUserID(userMatchEnt.UserID)
+		if err != nil {
+			return getMatchesInternalServerErrorRespose()
+
+		}
+
+		matchUserResponse.ApplyUser(*user)
+
+		matchUserResponsesEnt = append(matchUserResponsesEnt, matchUserResponse)
+	}
+
+	mathUserResponses := matchUserResponsesEnt.Build()
+
+	return si.NewGetMatchesOK().WithPayload(mathUserResponses)
 }
 
 func getMatchesInternalServerErrorRespose() middleware.Responder {
