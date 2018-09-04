@@ -62,10 +62,17 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	u := repositories.NewUserRepository()
 
+	// ユーザーID取得用
 	token, _ := t.GetByToken(p.Params.Token)
+	// ユーザーの情報の取得
 	us, _ := u.GetByUserID(p.UserID)
+	// ユーザーの情報を受け取ったparamsに書き換える
 	ProfileUpdate(p.Params, us)
+
+	// tokenのUserIDと受け取ったUserIDが一致しているか確認
+	// 一致していなかったら403を返す
 	if p.UserID == token.UserID {
+		// 書き換えた情報でデータベースを更新
 		err := u.Update(us)
 		if err != nil {
 			return si.NewPutProfileInternalServerError().WithPayload(
@@ -82,6 +89,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
+	// 更新後のユーザー情報の取得
 	user, _ := u.GetByUserID(p.UserID)
 	sEnt := user.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
