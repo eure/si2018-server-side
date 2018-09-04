@@ -5,7 +5,6 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/go-openapi/runtime/middleware"
-	//"github.com/go-openapi/strfmt"
 	"fmt"
 )
 
@@ -14,7 +13,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	offset := int(p.Offset)
 	//token := p.token
 	//id := int64(GetIdByToken())
-	id := int64(1112)
+	id := int64(1)
 
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
@@ -25,16 +24,12 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		fmt.Println(err)
 	}
 
-	//m := make(map[int64]strfmt.DateTime)
-
 	ids := make([]int64, 0) /* TODO can use map's key as ids slice? */
 	for _, mat := range matches {
 		if mat.UserID == id {
 			ids = append(ids, mat.PartnerID)
-			//m[mat.PartnerID] = mat.UpdatedAt
 		} else if mat.PartnerID == id {
 			ids = append(ids, mat.UserID)
-			//m[mat.UserID] = mat.UpdatedAt
 		}
 	}
 	fmt.Println(matches)
@@ -51,13 +46,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	res := make([]entities.MatchUserResponse, 0)
-	/*for _, u := range users{
-		r := entities.MatchUserResponse{}
-		r.MatchedAt =  m[u.ID]
-		
-		r.ApplyUser(u)
-		res = append(res, r) 
-	}*/
+	
 	for _, mat := range matches{
 		r := entities.MatchUserResponse{}
 		r.MatchedAt =  mat.CreatedAt
@@ -68,8 +57,9 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		} else if mat.PartnerID == id {
 			u = um[mat.UserID]
 		} 
+
 		r.ApplyUser(u)
-		res = append(res, r) /* TODO order */
+		res = append(res, r)
 	}
 
 	var reses entities.MatchUserResponses
