@@ -3,6 +3,7 @@ package entities
 import (
 	"github.com/eure/si2018-server-side/models"
 	"github.com/go-openapi/strfmt"
+	"time"
 )
 
 type UserMessage struct {
@@ -11,6 +12,16 @@ type UserMessage struct {
 	Message   string          `xorm:"message"`
 	CreatedAt strfmt.DateTime `xorm:"created_at"`
 	UpdatedAt strfmt.DateTime `xorm:"updated_at"`
+}
+
+func NewUserMessage(userID int64, partnerID int64, msg string) UserMessage {
+	return UserMessage{
+		UserID: userID,
+		PartnerID: partnerID,
+		Message: msg,
+		CreatedAt: strfmt.DateTime(time.Now()),
+		UpdatedAt: strfmt.DateTime(time.Now()),
+	}
 }
 
 func (u UserMessage) Build() models.UserMessage {

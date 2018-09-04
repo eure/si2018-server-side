@@ -1,7 +1,9 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
-
+import (
+	"github.com/eure/si2018-server-side/entities"
+	"fmt"
+)
 type UserLikeRepository struct{}
 
 func NewUserLikeRepository() UserLikeRepository {
@@ -21,7 +23,6 @@ func (r *UserLikeRepository) Create(ent entities.UserLike) error {
 func (r *UserLikeRepository) FindLikeAll(userID int64) ([]int64, error) {
 	var likes []entities.UserLike
 	var ids []int64
-
 	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Find(&likes)
 	if err != nil {
 		return ids, err
@@ -38,11 +39,31 @@ func (r *UserLikeRepository) FindLikeAll(userID int64) ([]int64, error) {
 	return ids, nil
 }
 
+// いらんかった
+// 自分からlikeされたUserIDのリストを返す
+// func (r *UserLikeRepository) FindLikedAll(userID int64) ([]int64, error) {
+// 	var likes []entities.UserLike
+// 	var ids []int64
+
+// 	err := engine.Where("partner_id = ?", userID).Find(&likes)
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+	
+// 	for _, l := range likes {
+// 		ids = append(ids, l.UserID)
+// 	}
+
+// 	return ids, nil
+// }
+
 // いいねを1件取得する.
 // userIDはいいねを送った人, partnerIDはいいねを受け取った人.
 func (r *UserLikeRepository) GetLikeBySenderIDReceiverID(userID, partnerID int64) (*entities.UserLike, error) {
 	var ent entities.UserLike
 
+	fmt.Println(userID)
 	has, err := engine.Where("user_id = ?", userID).And("partner_id = ?", partnerID).Get(&ent)
 	if err != nil {
 		return nil, err
