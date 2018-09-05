@@ -192,7 +192,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	
+
 	// 更新後のデータを取得
 	responseEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {

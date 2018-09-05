@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"github.com/go-openapi/strfmt"
 	"github.com/eure/si2018-server-side/entities"
+	"fmt"
+	"encoding/hex"
+	"strings"
 )
 
 const baseUri = "http://localhhost:8888/"
@@ -35,9 +38,22 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
+	//fmt.Println(hex.EncodeToString(p.Params.Image))
 	// DONE: Base64から画像ファイルを作成
 	// TODO: ファイル名をランダムな文字列にしたい
-	fileName := strconv.Itoa(int(tokenEnt.UserID))+".jpg"
+	fileString := hex.EncodeToString(p.Params.Image)
+	fmt.Println(strings.HasPrefix(fileString, "ffd8"))
+	var fileName string
+	if strings.HasPrefix(fileString, "ffd8") {
+		fileName = strconv.Itoa(int(tokenEnt.UserID))+".jpg"
+		fmt.Println("jpg")
+	}else if strings.HasPrefix(fileString, "89504e47"){
+		fileName = strconv.Itoa(int(tokenEnt.UserID))+".png"
+		fmt.Println("png")
+	}else if strings.HasPrefix(fileString, "47494638"){
+		fileName = strconv.Itoa(int(tokenEnt.UserID))+".gif"
+		fmt.Println("gif")
+	}
 	filePath := "assets/"+fileName
 	file, err := os.Create(filePath)
 	if err != nil {
