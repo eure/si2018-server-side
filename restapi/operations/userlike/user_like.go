@@ -175,7 +175,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error",
+				Message: "Internal Server Errorg",
 			})
 	}
 
