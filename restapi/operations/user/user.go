@@ -9,16 +9,49 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	r := repositories.NewUserRepository()
+	u := repositories.NewUserRepository()
+	l := repositories.NewUserLikeRepository()
+	t := repositories.NewUserTokenRepository()
 
-	user, _ := r.GetByToken(p.Token)
-
-	liked := repositories.NewUserLikeRepository()
-	users, _ := liked.FindLikeAll(user.ID)
-
+	// loginUserのUserToken entitiesを取得
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return outPutGetStatus(500)
+	}
+	if token == nil {
+		return outPutGetStatus(401)
+	}
+	
+	// tokenからloginUserのUser entitiesを取得
+	user , err := u.GetByUserID(token.UserID)
+	if err != nil {
+		return outPutGetStatus(500)
+	}
+	if user == nil {
+		return outPutGetStatus(400)
+	}
+	
+	// すでにいいね！しているユーザーのUserID int64を集める
+	likedUserIDs, err := l.FindLikeAll(token.UserID)
+	
+	if err != nil {
+		return outPutGetStatus(500)
+	}
+	if likedUserIDs == nil {
+		return outPutGetStatus(400)
+	}
+	
 	var ent entities.Users
-	ent, _ = r.FindWithCondition(int(p.Limit),int(p.Offset),user.GetOppositeGender(),users)
+	ent, err = u.FindWithCondition(int(p.Limit),int(p.Offset),user.GetOppositeGender(),likedUserIDs)
+	
+	if err != nil {
+		return outPutGetStatus(500)
+	}
 
+	if ent == nil {
+		return outPutGetStatus(400)
+	}
+	
 	sEnt := ent.Build()
 	return si.NewGetUsersOK().WithPayload(sEnt)
 }
@@ -29,18 +62,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	ent, err := r.GetByUserID(p.UserID)
 
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return outPutGetStatus(500)
 	}
 	if ent == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized",
-			})
+		return outPutGetStatus(401)
 	}
 
 	sEnt := ent.Build()
@@ -51,26 +76,31 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 	t := repositories.NewUserTokenRepository()
 
-	token , _ := t.GetByUserID(p.UserID)
-	user , _ := r.GetByUserID(p.UserID)
+	token , err := t.GetByUserID(p.UserID)
+	
+	if err != nil {
+		return outPutPutStatus(401)
+	}
+	
+	if token == nil {
+		return outPutPutStatus(400)
+	}
+	
+	loginUser , err := r.GetByUserID(token.UserID)
+	
+	if err != nil {
+		return outPutPutStatus(500)
+	}
 	if token.UserID == p.UserID {
-		ProfileUpdate(user,p.Params)
+		ProfileUpdate(loginUser,p.Params)
 
 		// 書き換えた情報でデータベースを更新
-		err := r.Update(user)
+		err := r.Update(loginUser)
 		if err != nil {
-			return si.NewPutProfileInternalServerError().WithPayload(
-				&si.PutProfileInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
+			return outPutPutStatus(500)
 		}
 	} else {
-		return si.NewPutProfileForbidden().WithPayload(
-			&si.PutProfileForbiddenBody{
-				Code:    "403",
-				Message: "Forbidden",
-			})
+		return outPutPutStatus(403)
 	}
 
 	ent, _ := r.GetByUserID(p.UserID)
@@ -124,4 +154,58 @@ func ProfileUpdate(u *entities.User, p si.PutProfileBody) {
 	u.WantChild = p.WantChild
 	// when marry
 	u.WhenMarry = p.WhenMarry
+}
+
+func outPutGetStatus (num int) middleware.Responder {
+	switch num {
+	case 500:
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	case 401:
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗)",
+			})
+	case 400:
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+	return nil
+}
+
+func outPutPutStatus (num int) middleware.Responder {
+	switch num {
+	case 500:
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	case 403:
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code:    "403",
+				Message: "Forbidden",
+			})
+	case 401:
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗)",
+			})
+	case 400:
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+	return nil
 }
