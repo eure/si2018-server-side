@@ -17,10 +17,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	ut, _ := t.GetByToken(p.Token)
+	token, _ := t.GetByToken(p.Token)
 
 	// match済みのユーザーを取得
-	match, err := m.FindAllByUserID(ut.UserID)
+	match, err := m.FindAllByUserID(token.UserID)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -35,8 +35,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
+
 	// 自分が既にマッチングしている全てのお相手のUserIDを返す
-	like, err := l.FindGetLikeWithLimitOffset(ut.UserID, int(p.Limit), int(p.Offset), match)
+	like, err := l.FindGetLikeWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset), match)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -89,10 +90,10 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	ut, _ := t.GetByToken(p.Params.Token)
+	token, _ := t.GetByToken(p.Params.Token)
 
 	// ユーザーがすでにいいねしている人を取得
-	all, err := l.FindLikeOnley(ut.UserID)
+	all, err := l.FindLikeOnley(token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -109,7 +110,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// 利用しているユーザーといいねしたいユーザー
-	user, err := u.GetByUserID(ut.UserID)
+	user, err := u.GetByUserID(token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -117,7 +118,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if all == nil {
+	if user == nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code:    "400",
@@ -132,7 +133,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if all == nil {
+	if likeUser == nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code:    "400",
@@ -146,13 +147,13 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		if CheckLikeUserID(all, p.UserID) {
 			// いいねの値の定義
 			like := entities.UserLike{
-				UserID:    ut.UserID,
+				UserID:    token.UserID,
 				PartnerID: p.UserID,
 				CreatedAt: strfmt.DateTime(time.Now()),
 				UpdatedAt: strfmt.DateTime(time.Now()),
 			}
 			// いいねをインサート
-			err := l.Create(like)
+			err = l.Create(like)
 			if err != nil {
 				return si.NewPostLikeInternalServerError().WithPayload(
 					&si.PostLikeInternalServerErrorBody{
@@ -175,7 +176,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 	// マッチングするかの確認
-	err := LikeMatch(p.UserID, ut.UserID)
+	err = LikeMatch(p.UserID, token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
