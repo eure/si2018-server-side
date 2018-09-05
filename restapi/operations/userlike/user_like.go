@@ -45,25 +45,22 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Internal Server Error: FindLikeAll failed: " + err.Error(),
 			})
 	}
-	sEnt := make([]*models.LikeUserResponse, 0)
+	ids := make([]int64, 0)
 	for _, l := range like {
-		partner, err := r.GetByUserID(l.UserID)
-		if err != nil {
-			return si.NewGetLikesInternalServerError().WithPayload(
-				&si.GetLikesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-				})
-		}
-		if partner == nil {
-			return si.NewGetLikesBadRequest().WithPayload(
-				&si.GetLikesBadRequestBody{
-					Code:    "400",
-					Message: "Bad Request: GetByUserID failed",
-				})
-		}
+		ids = append(ids, l.UserID)
+	}
+	users, err := r.FindByIDs(ids)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: FindByIDs failed: " + err.Error(),
+			})
+	}
+	sEnt := make([]*models.LikeUserResponse, 0)
+	for i, l := range like {
 		response := entities.LikeUserResponse{LikedAt: l.UpdatedAt}
-		response.ApplyUser(*partner)
+		response.ApplyUser(users[i])
 		swaggerLike := response.Build()
 		sEnt = append(sEnt, &swaggerLike)
 	}
@@ -72,5 +69,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
+	// rt := repositories.NewUserTokenRepository()
+	// r := repositories.NewUserRepository()
+	// rl := repositories.NewUserLikeRepository()
 	return si.NewPostLikeOK()
 }
