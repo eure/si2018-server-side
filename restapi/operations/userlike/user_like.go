@@ -91,11 +91,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 
 	fmt.Println("likes",likes)
-	var userLikes entities.UserLikes
-
-	for _, like := range likes{
-		userLikes = append(userLikes, like)
-	}
+	userLikes := entities.UserLikes(likes)
 
 	fmt.Println("userLikes",userLikes)
 	sUsers := userLikes.Build() // userID partnerID createdAt UpdatedAtのリスト
