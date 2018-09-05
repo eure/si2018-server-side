@@ -6,18 +6,9 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 
 	"github.com/eure/si2018-server-side/entities"
-	"strings"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
-		return si.NewGetMatchesUnauthorized().WithPayload(
-			&si.GetMatchesUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)

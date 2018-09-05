@@ -8,18 +8,9 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
 	"time"
-	"strings"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
-		return si.NewGetLikesUnauthorized().WithPayload(
-			&si.GetLikesUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -87,14 +78,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Params.Token, "USERTOKEN"))  {
-		return si.NewPostLikeUnauthorized().WithPayload(
-			&si.PostLikeUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)

@@ -7,18 +7,9 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/models"
 	"encoding/json"
-	"strings"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -40,7 +31,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	var omitIds []int64
 	omitIds = append(omitIds, tokenEnt.UserID)
 	// マッチしているユーザIDを取得する
-	matchR          := repositories.NewUserMatchRepository()
+	matchR         := repositories.NewUserMatchRepository()
 	matchIds, err  := matchR.FindAllByUserID(tokenEnt.UserID)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -96,14 +87,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
-		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-			&si.GetProfileByUserIDUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -148,14 +131,6 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Params.Token, "USERTOKEN"))  {
-		return si.NewPutProfileUnauthorized().WithPayload(
-			&si.PutProfileUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
-			})
-	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
