@@ -80,3 +80,4 @@ func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 
 	return users, nil
 }
+
