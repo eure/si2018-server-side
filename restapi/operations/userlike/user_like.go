@@ -1,6 +1,8 @@
 package userlike
 
 import (
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/go-openapi/runtime/middleware"
@@ -50,7 +52,39 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	return si.NewPostLikeOK()
+	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Params.Token)
+
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	if userTokenEnt == nil {
+		return getLikesUnauthorizedResponse()
+	}
+
+	userLike := entities.UserLike{
+		UserID:    userTokenEnt.UserID,
+		PartnerID: p.UserID,
+	}
+
+	userLikeRepository := repositories.NewUserLikeRepository()
+	errs := userLikeRepository.Validate(userLike)
+	if errs != nil {
+		str := fmt.Sprintf("%v", errs)
+		return postLikeBadRequestResponse(str)
+	}
+
+	err = userLikeRepository.Create(userLike)
+
+	if err != nil {
+		return postLikeInternalServerErrorResponse()
+	}
+
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code:    "200",
+			Message: "OK",
+		})
 }
 
 func getLikesInternalServerErrorResponse() middleware.Responder {
@@ -66,5 +100,29 @@ func getLikesUnauthorizedResponse() middleware.Responder {
 		&si.GetLikesUnauthorizedBody{
 			Code:    "401",
 			Message: "Token Is Invalid",
+		})
+}
+
+func postLikeInternalServerErrorResponse() middleware.Responder {
+	return si.NewPostLikeInternalServerError().WithPayload(
+		&si.PostLikeInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func postLikeUnauthorizedResponse() middleware.Responder {
+	return si.NewPostLikeUnauthorized().WithPayload(
+		&si.PostLikeUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func postLikeBadRequestResponse(message string) middleware.Responder {
+	return si.NewPostLikeBadRequest().WithPayload(
+		&si.PostLikeBadRequestBody{
+			Code:    "400",
+			Message: message,
 		})
 }
