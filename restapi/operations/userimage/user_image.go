@@ -39,7 +39,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// DONE: Base64から画像ファイルを作成
 	// TODO: ファイル名をランダムな文字列にしたい
 	fileName := strconv.Itoa(int(tokenEnt.UserID))+".jpg"
-	file, err := os.Create("assets/"+fileName)
+	filePath := "assets/"+fileName
+	file, err := os.Create(filePath)
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
@@ -52,7 +53,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// DONE: DBの更新
 	// image_uriを返す
-	uri := baseUri + fileName
+	uri := baseUri + filePath
 	imageR := repositories.NewUserImageRepository()
 	tmp := entities.UserImage{
 		UserID: tokenEnt.UserID,
