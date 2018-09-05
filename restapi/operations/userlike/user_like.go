@@ -77,7 +77,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	err = userLikeRepository.Create(userLike)
 
 	if err != nil {
-		fmt.Println(err)
 		return postLikeInternalServerErrorResponse()
 	}
 
