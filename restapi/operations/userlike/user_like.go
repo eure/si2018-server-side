@@ -137,6 +137,7 @@ func LikeMatch(likeUserID, userID int64) error {
 		}
 		// マッチングのインサート
 		err = m.Create(match)
+		return err
 	}
-	return err
+	return nil
 }
