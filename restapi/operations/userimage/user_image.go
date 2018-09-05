@@ -3,16 +3,14 @@ package userimage
 import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
 	"strconv"
-	"time"
-
-	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/go-openapi/runtime/middleware"
 )
 
 //- プロフィール写真の更新
@@ -58,8 +56,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// 更新用のUserImageを作成
 	var userImage entities.UserImage
+	userImage.UserID = loginUser.UserID
 	userImage.Path = imagePath
-	userImage.UpdatedAt = strfmt.DateTime(time.Now()) //型を合わせる
 
 	// UserImageを更新
 	err = repUserImage.Update(userImage)
