@@ -55,7 +55,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if CheckGenderUserID(likeUser, user) {
 		// すでにいいねしているかの確認
 		if CheckLikeUserID(all, p.UserID) {
-			// いいねの初期値の定義
+			// いいねの値の定義
 			like := entities.UserLike{
 				UserID:    ut.UserID,
 				PartnerID: p.UserID,
