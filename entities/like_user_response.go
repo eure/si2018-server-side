@@ -84,3 +84,14 @@ func (responses *LikeUserResponses) Build() []*models.LikeUserResponse {
 	}
 	return sResponses
 }
+
+func (responses *LikeUserResponses) ApplyUsers(users Users) LikeUserResponses {
+	var sResponses LikeUserResponses
+
+	for i, response := range *responses {
+		response.ApplyUser(users[i])
+		sResponses = append(sResponses, response)
+	}
+
+	return sResponses
+}
