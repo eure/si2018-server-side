@@ -23,8 +23,17 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	usertkn, err := nutr.GetByToken(p.Params.Token)
 	if err != nil {
-		fmt.Println("token err")
+		RespInternalErr()
 	}
+
+	if usertkn == nil {
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
+	fmt.Println("OJjoj")
 
 	// Define save directory
 	writeimage := p.Params.Image
@@ -33,7 +42,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	checkext := bytes.NewReader(writeimage)
 	_, extension, err := image.DecodeConfig(checkext)
 	if err != nil {
-		fmt.Println(err)
+		RespInternalErr()
 	}
 	// check image extension
 	switch extension {
@@ -41,10 +50,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		pathdir += ".png"
 	case "jpg":
 		pathdir += ".jpg"
+	default:
+		RespInternalErr()
 	}
 	file, err := os.Create(pathdir)
 	if err != nil {
-		fmt.Println(err)
+		RespInternalErr()
 	}
 	defer file.Close()
 	//write picture
@@ -58,15 +69,19 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	err = nuir.Update(userimage)
 	if err != nil {
-		fmt.Println(err)
+		RespInternalErr()
 	}
-	userimg, err := nuir.GetByUserID(usertkn.UserID)
-	if err != nil {
-		fmt.Println("not find your account")
-	}
-	fmt.Println(userimg)
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(pathdir),
+		})
+}
+
+// return 500 Internal Server Error
+func RespInternalErr() middleware.Responder {
+	return si.NewPostImagesInternalServerError().WithPayload(
+		&si.PostImagesInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
 		})
 }
