@@ -5,10 +5,64 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+	"time"
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
-	return si.NewPostMessageOK()
+
+	// レポジトリを初期化する
+	tokenR := repositories.NewUserTokenRepository()
+	userMessageR := repositories.NewUserMessageRepository()
+
+	// トークンを検索する
+	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
+
+	// 401エラー
+	if tokenEnt == nil {
+		si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code: "401",
+				Message: "Token is invalid",
+			})
+	}
+
+	// 500エラー
+	if err != nil {
+		si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// メッセージ作成用の構造体を作成
+	userMessageEnt := entities.UserMessage{
+		UserID: tokenEnt.UserID,
+		PartnerID: p.UserID,
+		Message: p.Params.Message,
+		CreatedAt: strfmt.DateTime(time.Now()),
+		UpdatedAt: strfmt.DateTime(time.Now()),
+	}
+
+	// メッセージを作成する
+	err = userMessageR.Create(userMessageEnt)
+
+	// 500エラー
+	if err != nil {
+		si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// 結果を返す
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			Code: "200",
+			Message: "OK",
+		})
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
