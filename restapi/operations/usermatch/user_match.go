@@ -30,26 +30,26 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		return getMatchesInternalServerErrorRespose()
 	}
 
-	var matchUserResponsesEnt entities.MatchUserResponses
+	var ids []int64
+	var matchUserResponses entities.MatchUserResponses
 
-	for _, userMatchEnt := range userMatches {
-		matchUserResponse := entities.MatchUserResponse{MatchedAt: userMatchEnt.CreatedAt}
+	for _, userMatch := range userMatches {
+		ids = append(ids, userMatch.PartnerID)
 
-		//FIXME ループ内でクエリ発行は最低の行為のような気がする
-		user, err := repositories.NewUserRepository().GetByUserID(userMatchEnt.UserID)
-		if err != nil {
-			return getMatchesInternalServerErrorRespose()
-
-		}
-
-		matchUserResponse.ApplyUser(*user)
-
-		matchUserResponsesEnt = append(matchUserResponsesEnt, matchUserResponse)
+		userMatchResponse := entities.MatchUserResponse{MatchedAt: userMatch.CreatedAt}
+		matchUserResponses = append(matchUserResponses, userMatchResponse)
 	}
 
-	mathUserResponses := matchUserResponsesEnt.Build()
+	var users entities.Users
+	users, err = repositories.NewUserRepository().FindByIDs(ids)
+	if err != nil {
+		return getMatchesInternalServerErrorRespose()
+	}
 
-	return si.NewGetMatchesOK().WithPayload(mathUserResponses)
+	matchUserResponses = matchUserResponses.ApplyUsers(users)
+	matchUser := matchUserResponses.Build()
+
+	return si.NewGetMatchesOK().WithPayload(matchUser)
 }
 
 func getMatchesInternalServerErrorRespose() middleware.Responder {

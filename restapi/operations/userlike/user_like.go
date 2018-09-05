@@ -28,21 +28,22 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	likesEnt, err := userLikeRepository.FindGotLikeWithLimitOffset(userID, limit, offset, nil)
 
 	var likeUserResponsesEnt entities.LikeUserResponses
+	var ids []int64
 
-	for _, likeUserEnt := range likesEnt {
-		likeResponse := entities.LikeUserResponse{LikedAt: likeUserEnt.CreatedAt}
+	for _, likeEnt := range likesEnt {
+		ids = append(ids, likeEnt.UserID)
 
-		//FIXME ループ内でクエリ発行は最低の行為のような気がする
-		user, err := repositories.NewUserRepository().GetByUserID(likeUserEnt.UserID)
-		if err != nil {
-			return getLikesInternalServerErrorResponse()
-
-		}
-		likeResponse.ApplyUser(*user)
-
+		likeResponse := entities.LikeUserResponse{LikedAt: likeEnt.CreatedAt}
 		likeUserResponsesEnt = append(likeUserResponsesEnt, likeResponse)
 	}
 
+	var users entities.Users
+	users, err = repositories.NewUserRepository().FindByIDs(ids)
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	likeUserResponsesEnt = likeUserResponsesEnt.ApplyUsers(users)
 	likeResponses := likeUserResponsesEnt.Build()
 
 	return si.NewGetLikesOK().WithPayload(likeResponses)

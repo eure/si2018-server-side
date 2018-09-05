@@ -84,3 +84,14 @@ func (responses *MatchUserResponses) Build() []*models.MatchUserResponse {
 	}
 	return sResponses
 }
+
+func (responses *MatchUserResponses) ApplyUsers(users Users) MatchUserResponses {
+	var sResponses MatchUserResponses
+
+	for i, response := range *responses {
+		response.ApplyUser(users[i])
+		sResponses = append(sResponses, response)
+	}
+
+	return sResponses
+}
