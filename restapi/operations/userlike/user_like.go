@@ -2,6 +2,8 @@ package userlike
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
+	"time"
 
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/repositories"
@@ -37,7 +39,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error",
+				Message: "Internal Server Error(tokenからuserIDを取得)",
 			})
 	}
 
@@ -151,5 +153,140 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	return si.NewPostLikeOK()
+	/*
+	1.	Tokenのバリデーション
+	2.	tokenから送信者のuseridを取得
+	3.	送信者のuseridから送信者のプロフィルを持ってきて性別を確認
+	4.	p.useridから送信相手のプロフィルを持ってきて異性かどうか確認
+	5.	すでにいいねしているか確認
+	6.	いいねを送信
+	*/
+
+
+	// Tokenがあるかどうか
+	if p.Params.Token == "" {
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code:    "401",
+				Message: "No Token",
+			})
+	}
+
+	// tokenから送信者のuserIDを取得
+
+	rToken := repositories.NewUserTokenRepository()
+	entToken, errToken := rToken.GetByToken(p.Params.Token)
+	if errToken != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(tokenから送信者のuserIDを取得)",
+			})
+	}
+
+	if entToken == nil {
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized Token",
+			})
+	}
+
+	sEntToken := entToken.Build()
+
+
+	// 送信者のuseridから送信者のプロフィルを持ってきて性別を確認
+	// genderを確認するためだけに、useridからプロフィルを取得する……
+	rUser := repositories.NewUserRepository()
+	entUser, errUser := rUser.GetByUserID(sEntToken.UserID)
+	if errUser != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(送信者のuseridから送信者のプロフィルを持ってきて性別を確認)",
+			})
+	}
+
+	if entUser == nil { // entUserがnilになることはないはずだが、一応書いておく
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(entUserがnilになることはないはずだが、一応書いておく)",
+			})
+	}
+
+	gender := entUser.GetOppositeGender()
+
+	// 送信相手のuseridから送信相手のプロフィルを持ってきて性別を確認
+	// genderを確認するためだけに、useridからプロフィルを取得する……
+
+	// userを設定する
+	entUser2, errUser2 := rUser.GetByUserID(p.UserID)
+	if errUser2 != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(送信相手のuseridから送信相手のプロフィルを持ってきて性別を確認)",
+			})
+	}
+
+	if entUser2 == nil { // entUserがnilになることはないはずだが、一応書いておく
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(entUserがnilになることはないはずだが、一応書いておく)",
+			})
+	}
+
+	// 異性かどうかの確認
+	if entUser2.Gender != gender {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
+
+	// すでにいいねしているかどうか確認する
+	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
+	rLike := repositories.NewUserLikeRepository()
+	entLike, errLike := rLike.GetLikeBySenderIDReceiverID(sEntToken.UserID, p.UserID)
+	if errLike != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+		&si.PostLikeInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error(すでにいいねしているかどうか確認する)",
+		})
+	}
+	// すでにいいねしている場合
+	if entLike != nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
+	var userLike entities.UserLike
+	userLike.UserID = sEntToken.UserID
+	userLike.PartnerID = p.UserID
+	userLike.CreatedAt = strfmt.DateTime(time.Now())
+	userLike.UpdatedAt = userLike.CreatedAt
+	// いいねを送信する
+	errLikeCreate := rLike.Create(userLike)
+	if errLikeCreate != nil {
+		fmt.Println(errLikeCreate)
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error(いいねを送信する)",
+			})
+	}
+
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code:    "200",
+			Message: "OK",
+		})
 }
