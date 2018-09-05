@@ -90,8 +90,12 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("OK")
-	return si.NewPostLikeOK()
+	fmt.Println(err)
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code:    "200",
+			Message: "OK",
+		})
 }
 func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
 	like.UserID = userid
