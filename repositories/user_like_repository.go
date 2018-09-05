@@ -15,12 +15,49 @@ func NewUserLikeRepository() UserLikeRepository {
 }
 
 func (r *UserLikeRepository) Create(ent entities.UserLike) error {
+	now := strfmt.DateTime(time.Now())
+	ent.CreatedAt = now
+	ent.UpdatedAt = now
+
 	s := engine.NewSession()
-	if _, err := s.Insert(&ent); err != nil {
+
+	if err := s.Begin(); err != nil {
 		return err
 	}
 
-	return nil
+	if _, err := s.Insert(&ent); err != nil {
+		s.Rollback()
+		return err
+	}
+
+	var user entities.UserLike
+	has, err := engine.
+		Where("user_id = ?", ent.PartnerID).
+		And("partner_id = ?", ent.UserID).
+		Get(&user)
+
+	if err != nil {
+		s.Rollback()
+		return err
+	}
+
+	if has {
+		// マッチングさせる
+		now = strfmt.DateTime(time.Now())
+		userMatch := entities.UserMatch{
+			UserID:    ent.UserID,
+			PartnerID: ent.PartnerID,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+
+		if _, err := s.Insert(&userMatch); err != nil {
+			s.Rollback()
+			return err
+		}
+	}
+
+	return s.Commit()
 }
 
 // 自分が既にLikeしている/されている状態の全てのUserのIDを返す.
