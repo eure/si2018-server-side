@@ -30,14 +30,17 @@ func (r *UserTokenRepository) GetByUserID(userID int64) (*entities.UserToken, er
 	var ent = entities.UserToken{UserID: userID}
 
 	has, err := engine.Get(&ent)
+	// db error
 	if err != nil {
 		return nil, err
 	}
 
+	// something
 	if has {
 		return &ent, nil
 	}
 
+	// nothing
 	return nil, nil
 }
 

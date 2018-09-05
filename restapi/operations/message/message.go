@@ -10,24 +10,80 @@ import (
 
 // token -> userIDへ送信
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	tr := repositories.NewUserTokenRepository()
 	ur := repositories.NewUserRepository()
 	mr := repositories.NewUserMessageRepository()
 	mchr := repositories.NewUserMatchRepository()
-	// lr := repositories.NewUserLikeRepository()
 
-	usr, _ := ur.GetByToken(p.Params.Token)
+	// usr, _ := ur.GetByToken(p.Params.Token)
+	token, err := tr.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error (in get token)",
+			})
+	}
 
-	matchIDs, _ := mchr.FindAllByUserID(usr.ID)
+	if token == nil {
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code: "401",
+				Message: "Unauthorized",
+			})
+	}
+
+	usr, err := ur.GetByUserID(token.UserID)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error(in get user)",
+			})
+	}
+
+	if usr == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
+	matchIDs, err := mchr.FindAllByUserID(usr.ID)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	if matchIDs == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	} 
 
 	if !common.Contains(matchIDs, p.UserID) {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code: "400",
-				Message: "You are bocchi",
+				Message: "Bad Request (not match)",
 			})
 	}
 	msg := entities.NewUserMessage(usr.ID, p.UserID, p.Params.Message)
-	mr.Create(msg)
+	err = mr.Create(msg)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	
+	}
 
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
@@ -37,10 +93,44 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
+	tr := repositories.NewUserTokenRepository()
 	mr := repositories.NewUserMessageRepository()
 	matchr := repositories.NewUserMatchRepository()
 
-	partnerIDs, _ := matchr.FindAllByUserID(p.UserID)
+	token, err := tr.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code: "500",
+				Message: "ISE (in token)",
+			})
+	}
+
+	if token == nil {
+		return si.NewGetMessagesUnauthorized().WithPayload(
+			&si.GetMessagesUnauthorizedBody{
+				Code: "401",
+				Message: "Unauthorized",
+			})
+	}
+
+	partnerIDs, err := matchr.FindAllByUserID(p.UserID)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code: "500",
+				Message: "ISE (in partner ids)",
+			})
+	}
+	if partnerIDs == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request (parnerIDs is nil)",
+			})
+	}
+
+
 	var msgses entities.UserMessages
 	for _, pID := range partnerIDs {
 		messages, err := mr.GetMessages(p.UserID, pID, int(*p.Limit), p.Latest, p.Oldest)
