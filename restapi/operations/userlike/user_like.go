@@ -138,16 +138,16 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if like != nil {
 		return postLikeThrowBadRequest("like action duplicates")
 	}
+	reverse, err := rl.GetLikeBySenderIDReceiverID(partner.ID, user.ID)
+	if err != nil {
+		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
+	}
 	now := strfmt.DateTime(time.Now())
 	*like = entities.UserLike{
 		UserID:    user.ID,
 		PartnerID: partner.ID,
 		CreatedAt: now,
 		UpdatedAt: now}
-	reverse, err := rl.GetLikeBySenderIDReceiverID(partner.ID, user.ID)
-	if err != nil {
-		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
-	}
 	// like を書き込んだあと, match を書き込むときにエラーが発生すると致命的
 	// https://qiita.com/komattio/items/838ea5df68eb076e8099
 	// transaction を利用してまとめて書きこむ必要がある
