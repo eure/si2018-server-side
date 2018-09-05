@@ -93,7 +93,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	token, _ := t.GetByToken(p.Params.Token)
 
 	// ユーザーがすでにいいねしている人を取得
-	all, err := l.FindLikeOnley(token.UserID)
+	userIDs, err := l.FindLikeOnley(token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -101,7 +101,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if all == nil {
+	if userIDs == nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code:    "400",
@@ -144,7 +144,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// 性別の確認
 	if CheckGenderUserID(likeUser, user) {
 		// すでにいいねしているかの確認
-		if CheckLikeUserID(all, p.UserID) {
+		if CheckLikeUserID(userIDs, p.UserID) {
 			// いいねの値の定義
 			like := entities.UserLike{
 				UserID:    token.UserID,
