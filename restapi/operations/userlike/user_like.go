@@ -5,11 +5,10 @@ import (
 	"github.com/go-openapi/strfmt"
 	"time"
 
-	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/models"
-	"fmt"
+	"github.com/eure/si2018-server-side/repositories"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -69,7 +68,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 
 
-	fmt.Println("matchIDs",matchIDs)
+	//fmt.Println("matchIDs",matchIDs)
 	// マッチ済み以外のいいね受信リストを取得する
 	rLike := repositories.NewUserLikeRepository()
 	limit := int(p.Limit)
@@ -78,9 +77,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 	offset := int(p.Offset)
 
-	fmt.Println("sEntToken.UserID",sEntToken.UserID)
-	fmt.Println("limit",limit)
-	fmt.Println("offset",offset)
+	//fmt.Println("sEntToken.UserID",sEntToken.UserID)
+	//fmt.Println("limit",limit)
+	//fmt.Println("offset",offset)
 	likes, errLike := rLike.FindGotLikeWithLimitOffset(sEntToken.UserID, limit, offset, matchIDs)
 	if errLike != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
@@ -90,12 +89,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	fmt.Println("likes",likes)
+	//fmt.Println("likes",likes)
 	userLikes := entities.UserLikes(likes)
 
-	fmt.Println("userLikes",userLikes)
+	//fmt.Println("userLikes",userLikes)
 	sUsers := userLikes.Build() // userID partnerID createdAt UpdatedAtのリスト
-	fmt.Println("sUsers",sUsers)
+	//fmt.Println("sUsers",sUsers)
 
 	// sUsersが全て同じになってしまう。ポインタについては解決方法がわからない。
 
@@ -104,7 +103,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
 	var payloads []*models.LikeUserResponse
 	for _, sUser := range sUsers{
-		has, err := rUser.GetByUserID(sUser.PartnerID)
+		has, err := rUser.GetByUserID(sUser.UserID)
 		
 		if err != nil{
 			return si.NewGetLikesInternalServerError().WithPayload(
@@ -144,7 +143,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		payloads = append(payloads,&r)
 	}
 
-	fmt.Println("payloads",payloads)
+	//fmt.Println("payloads",payloads)
 	return si.NewGetLikesOK().WithPayload(payloads)
 }
 
@@ -176,7 +175,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(tokenから送信者のuserIDを取得)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -199,7 +198,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(送信者のuseridから送信者のプロフィルを持ってきて性別を確認)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -207,7 +206,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(entUserがnilになることはないはずだが、一応書いておく)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -222,7 +221,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(送信相手のuseridから送信相手のプロフィルを持ってきて性別を確認)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -230,7 +229,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(entUserがnilになることはないはずだが、一応書いておく)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -252,7 +251,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 		&si.PostLikeInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error(すでにいいねしているかどうか確認する)",
+			Message: "Internal Server Error",
 		})
 	}
 	// すでにいいねしている場合
@@ -272,11 +271,11 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// いいねを送信する
 	errLikeCreate := rLike.Create(userLike)
 	if errLikeCreate != nil {
-		fmt.Println(errLikeCreate)
+		//fmt.Println(errLikeCreate)
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(いいねを送信する)",
+				Message: "Internal Server Error",
 			})
 	}
 
