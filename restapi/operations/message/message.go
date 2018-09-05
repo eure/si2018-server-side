@@ -1,6 +1,10 @@
 package message
 
 import (
+	"time"
+
+	"github.com/go-openapi/strfmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -8,7 +12,55 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
-	return si.NewPostMessageOK()
+	rm := repositories.NewUserMessageRepository()
+	rmt := repositories.NewUserMatchRepository()
+	rt := repositories.NewUserTokenRepository()
+	// r := repositories.NewUserRepository()
+	t, err := rt.GetByToken(p.Params.Token)
+	// トークン認証
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
+			})
+	}
+	if t == nil {
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
+			})
+	}
+	// マッチしているかの確認
+	match, err := rmt.Get(p.UserID, t.UserID)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: Get failed: " + err.Error(),
+			})
+	}
+	if match == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request: Get failed",
+			})
+	}
+	now := strfmt.DateTime(time.Now())
+	mes := entities.UserMessage{
+		UserID:    t.UserID,
+		PartnerID: p.UserID,
+		Message:   p.Params.Message,
+		UpdatedAt: now,
+		CreatedAt: now}
+	rm.Create(mes)
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			Code:    "200",
+			Message: "OK",
+		})
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
