@@ -33,9 +33,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
+	// TODO： Imageのバリデーション
+
 	// tokenからuserTokenを取得
 	loginUser, _ := repUserToken.GetByToken(token)
 
+	//// 画像ファイルの保存
 	// 画像ファイルのパス設定
 	assetsPath := os.Getenv("ASSETS_PATH")
 	imagePath := assetsPath + "user" + strconv.Itoa(int(loginUser.UserID))
@@ -53,7 +56,9 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// 作成したファイルに画像ファイルを書き込む
 	file.Write(p.Params.Image)
+	////
 
+	//// UserImageの更新
 	// 更新用のUserImageを作成
 	var userImage entities.UserImage
 	userImage.UserID = loginUser.UserID
@@ -68,6 +73,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	////
 
 	// 更新したUserImageを取得
 	updatedUserImage, err := repUserImage.GetByUserID(loginUser.UserID)
