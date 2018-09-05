@@ -63,8 +63,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-
-	// TODO: 修正の余地あり?
 	var array entities.MatchUserResponses
 	for _, u := range userEntList {
 		var tmp entities.MatchUserResponse

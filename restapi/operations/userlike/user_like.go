@@ -75,7 +75,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-	// TODO: 修正の余地あり?
 	var array entities.LikeUserResponses
 	for _, u := range userEntList {
 		var tmp entities.LikeUserResponse
