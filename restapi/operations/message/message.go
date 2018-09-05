@@ -4,6 +4,7 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/repositories"
+	"github.com/eure/si2018-server-side/entities"
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
@@ -56,7 +57,11 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
+	var messageEntities entities.UserMessages
 
+	messageEntities = messageEnts
 
-	return si.NewGetMessagesOK()
+	messages := messageEntities.Build()
+
+	return si.NewGetMessagesOK().WithPayload(messages)
 }
