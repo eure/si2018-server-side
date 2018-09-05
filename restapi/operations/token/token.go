@@ -7,24 +7,31 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+func getTokenByUserIDThrowInternalServerError(fun string, err error) *si.GetTokenByUserIDInternalServerError {
+	return si.NewGetTokenByUserIDInternalServerError().WithPayload(
+		&si.GetTokenByUserIDInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
+
+func getTokenByUserIDThrowNotFound(mes string) *si.GetTokenByUserIDNotFound {
+	return si.NewGetTokenByUserIDNotFound().WithPayload(
+		&si.GetTokenByUserIDNotFoundBody{
+			Code:    "404",
+			Message: "User Token Not Found: " + mes,
+		})
+}
+
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 	r := repositories.NewUserTokenRepository()
 
 	ent, err := r.GetByUserID(p.UserID)
-
 	if err != nil {
-		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
-			&si.GetTokenByUserIDInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: " + err.Error(),
-			})
+		return getTokenByUserIDThrowInternalServerError("GetByUserID", err)
 	}
 	if ent == nil {
-		return si.NewGetTokenByUserIDNotFound().WithPayload(
-			&si.GetTokenByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+		return getTokenByUserIDThrowNotFound("GetByUserID failed")
 	}
 
 	sEnt := ent.Build()
