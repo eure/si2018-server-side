@@ -1,6 +1,12 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"errors"
+	"time"
+
+	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+)
 
 type UserLikeRepository struct{}
 
@@ -70,4 +76,62 @@ func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, off
 	}
 
 	return likes, nil
+}
+
+func (r *UserLikeRepository) Validate(userLike entities.UserLike) []error {
+	var res []error
+
+	if err := isHeterosexual(userLike); err != nil {
+		res = append(res, err)
+	}
+
+	if err := isLiked(userLike); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return res
+	}
+
+	return nil
+}
+
+func isLiked(userLike entities.UserLike) error {
+	var ent entities.UserLike
+
+	has, _ := engine.
+		Where("user_id = ?", userLike.UserID).
+		And("partner_id = ?", userLike.PartnerID).
+		Get(&ent)
+
+	if has {
+		return errors.New("すでにいいねしています")
+	}
+
+	return nil
+}
+
+func isHeterosexual(userLike entities.UserLike) error {
+	var sender = entities.User{ID: userLike.UserID}
+
+	has, _ := engine.Get(&sender)
+
+	if !has {
+		return errors.New("送信ユーザーが見つかりません")
+	}
+
+	var destination = entities.User{ID: userLike.PartnerID}
+
+	has, _ = engine.Get(&destination)
+
+	if !has {
+		return errors.New("送信先ユーザーが見つかりません")
+	}
+
+	// MEMO 同性へのいいねはできてもいいような気がするがどうだろう？
+	if sender.Gender == destination.Gender {
+		return errors.New("同性へのいいねはできません")
+	}
+
+	return nil
 }
