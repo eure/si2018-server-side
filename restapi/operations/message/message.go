@@ -10,6 +10,15 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	// パラメータのmessageが存在しない可能性があった
+	// 取り敢えず400エラーで対処する
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)

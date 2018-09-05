@@ -42,8 +42,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	filePath := "assets/"+fileName
 	file, err := os.Create(filePath)
 	if err != nil {
-		return si.NewGetMatchesInternalServerError().WithPayload(
-			&si.GetMatchesInternalServerErrorBody{
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
 				Code   : "500",
 				Message: "Internal Server Error",
 			})
