@@ -226,7 +226,9 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	u.HomeState = params.HomeState
 	u.Housework = params.Housework
 	u.HowToMeet = params.HowToMeet
-	u.ImageURI = params.ImageURI
+	// 画像の更新は post images で行う
+	// params から除外すべき
+	// u.ImageURI = params.ImageURI
 	u.Introduction = params.Introduction
 	u.Job = params.Job
 	u.MaritalStatus = params.MaritalStatus
