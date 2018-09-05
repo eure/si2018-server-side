@@ -13,7 +13,11 @@ func GetIDByToken(token string) (int64, error) {
 
 	ut, err := r.GetByToken(token)
 	if err != nil {
-		return int64(-1), err
+		return 0, err
+	}
+
+	if ut == nil {
+		return 0, errors.New("Invalid token (user not exists)") // 必ずValidation後に呼ばれるならここいらない
 	}
 
 	return ut.UserID, nil
@@ -45,24 +49,17 @@ func isTokenStrValid(token string) bool {
 }
 
 func userExists(token string) bool {
-	r := repositories.NewUserRepository()
-	id, err := GetIDByToken(token) /* TODO panic */
+	r := repositories.NewUserTokenRepository()
+	ut, err := r.GetByToken(token)
 	if err != nil {
 		fmt.Println("Get id by token err:")
 		fmt.Println(err)
 		return false
 	}
 
-	u, err := r.GetByUserID(id)
-	if err != nil {
-		fmt.Println("Get user by id err:")
-		fmt.Println(err)
+	if ut == nil {
 		return false
 	}
 
-	if u == nil {
-		return false
-	} else {
-		return true
-	}
+	return true
 }
