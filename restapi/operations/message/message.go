@@ -13,6 +13,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	// レポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
+	userMatchR := repositories.NewUserMatchRepository()
 	userMessageR := repositories.NewUserMessageRepository()
 
 	// トークンを検索する
@@ -20,7 +21,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	// 401エラー
 	if tokenEnt == nil {
-		si.NewPostMessageUnauthorized().WithPayload(
+		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
 				Code: "401",
 				Message: "Token is invalid",
@@ -29,7 +30,49 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		si.NewPostMessageInternalServerError().WithPayload(
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// マッチしているかを確認する
+	userMatchEnt, err := userMatchR.Get(tokenEnt.UserID, p.UserID)
+
+	// 400エラー
+	if userMatchEnt == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. Can't find a match.",
+			})
+	}
+
+	// 500エラー
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// マッチしているかを確認する。userId, partnerIdの逆のものを確かめる。
+	userMatchEnt, err = userMatchR.Get(p.UserID, tokenEnt.UserID)
+
+	// 400エラー
+	if userMatchEnt == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. Can't find a match.",
+			})
+	}
+
+	// 500エラー
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
@@ -50,7 +93,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		si.NewPostMessageInternalServerError().WithPayload(
+		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
@@ -76,7 +119,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	// 401エラー
 	if tokenEnt == nil {
-		si.NewGetMessagesUnauthorized().WithPayload(
+		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
 				Code: "401",
 				Message: "Token is invalid",
@@ -85,7 +128,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		si.NewGetMessagesInternalServerError().WithPayload(
+		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
@@ -105,7 +148,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		si.NewGetMessagesInternalServerError().WithPayload(
+		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
