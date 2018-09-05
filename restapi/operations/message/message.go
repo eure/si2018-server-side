@@ -93,7 +93,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	r := repositories.NewUserMessageRepository()
 
-	messages, err := r.GetMessages(uid, pid, int(limit), latest, oldest) /* TODO order */
+	messages, err := r.GetMessages(uid, pid, int(limit), latest, oldest)
 	if err != nil {
 		fmt.Print("Get messages err: ")
 		fmt.Println(err)
