@@ -6,7 +6,7 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/models"
-	"encoding/json"
+	"github.com/eure/si2018-server-side/entities"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -156,10 +156,35 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Forbidden",
 			})
 	}
+	// 編集するユーザ情報を作成
+	newUserEnt := entities.User{
+		ID:             p.UserID,
+		Nickname:       p.Params.Nickname,
+		ImageURI:       p.Params.ImageURI,
+		Tweet:          p.Params.Tweet,
+		Introduction:   p.Params.Introduction,
+		ResidenceState: p.Params.ResidenceState,
+		HomeState:      p.Params.HomeState,
+		Education:      p.Params.Education,
+		Job:            p.Params.Job,
+		AnnualIncome:   p.Params.AnnualIncome,
+		Height:         p.Params.Height,
+		BodyBuild:      p.Params.BodyBuild,
+		MaritalStatus:  p.Params.MaritalStatus,
+		Child:          p.Params.Child,
+		WhenMarry:      p.Params.WhenMarry,
+		WantChild:      p.Params.WantChild,
+		Smoking:        p.Params.Smoking,
+		Drinking:       p.Params.Drinking,
+		Holiday:        p.Params.Holiday,
+		HowToMeet:      p.Params.HowToMeet,
+		CostOfDate:     p.Params.CostOfDate,
+		NthChild:       p.Params.NthChild,
+		Housework:      p.Params.Housework,
+	}
 
-	// 現在の自分の情報取得
 	userR      := repositories.NewUserRepository()
-	myEnt, err := userR.GetByUserID(p.UserID)
+	err = userR.Update(&newUserEnt)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -167,17 +192,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	// 更新処理
-	params, _ := p.Params.MarshalBinary()
-	json.Unmarshal(params, &myEnt)
-	err = userR.Update(myEnt)
-	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code   : "500",
-				Message: "Internal Server Error",
-			})
-	}
+	
 	// 更新後のデータを取得
 	responseEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
