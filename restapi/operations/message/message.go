@@ -46,6 +46,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		limit = int(*p.Limit)
 	}
 
+	// messageの取得
 	messageEnts, err := usermessageR.GetMessages(tokenEnt.UserID, p.UserID, limit, p.Latest, p.Oldest)
 
 	// 500エラー
@@ -61,7 +62,9 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	messageEntities = messageEnts
 
+	// モデルに変換
 	messages := messageEntities.Build()
 
+	// 結果を返す
 	return si.NewGetMessagesOK().WithPayload(messages)
 }
