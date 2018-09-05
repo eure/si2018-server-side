@@ -1,6 +1,9 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"errors"
+	"github.com/eure/si2018-server-side/entities"
+)
 
 type UserTokenRepository struct{}
 
@@ -54,4 +57,17 @@ func (r *UserTokenRepository) GetByToken(token string) (*entities.UserToken, err
 	}
 
 	return nil, nil
+}
+
+func (r *UserTokenRepository) ValidateToken(token string) (error) {
+	userToken, err := r.GetByToken(token)
+	if err != nil {
+		return err
+	}
+
+	if userToken == nil {
+		return errors.New("Token is nothing")
+	}
+
+	return nil
 }

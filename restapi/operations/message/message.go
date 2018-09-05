@@ -16,7 +16,7 @@ import (
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	repMessage := repositories.NewUserMessageRepository()
 	repUserToken := repositories.NewUserTokenRepository() // tokenからidを取得する
-	repUserMatch := repositories.NewUserMatchRepository()
+	repUserMatch := repositories.NewUserMatchRepository() //
 
 	var message entities.UserMessage
 

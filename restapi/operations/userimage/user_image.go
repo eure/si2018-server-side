@@ -1,6 +1,7 @@
 package userimage
 
 import (
+	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/go-openapi/strfmt"
 	_ "image/gif"
@@ -14,37 +15,54 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-
-
 //- プロフィール写真の更新
 //- POST {hostname}/api/1.0/images
 //- TokenのValidation処理を実装してください
 //- プロフィール写真を更新してください
 func PostImage(p si.PostImagesParams) middleware.Responder {
-	// idからUserImageを持ってくる
-	// バイナリーで送られてきた写真をローカルに保存
-	// ファイル名も持ってこれるの?
-	// UserImggeに写真のパスを入れる
-	// バイナリからファイルの形式をとる
 	repUserImage := repositories.NewUserImageRepository()
 	repUserToken := repositories.NewUserTokenRepository()
 
-	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
+	token := p.Params.Token
 
+	// tokenのバリデーション
+	err := repUserToken.ValidateToken(token)
+	if err != nil {
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
+			})
+	}
+
+	// tokenからuserTokenを取得
+	loginUser, _ := repUserToken.GetByToken(token)
+
+	// 画像ファイルのパス設定
 	assetsPath := os.Getenv("ASSETS_PATH")
 	imagePath := assetsPath + "user" + strconv.Itoa(int(loginUser.UserID))
 
-	file, _ := os.Create(imagePath)
+	// パスからファイルを作成
+	file, err := os.Create(imagePath)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
 	defer file.Close()
 
+	// 作成したファイルに画像ファイルを書き込む
 	file.Write(p.Params.Image)
 
-	userImage, _ := repUserImage.GetByUserID(loginUser.UserID)
-
+	// 更新用のUserImageを作成
+	var userImage entities.UserImage
 	userImage.Path = imagePath
-	userImage.UpdatedAt = strfmt.DateTime(time.Now())
+	userImage.UpdatedAt = strfmt.DateTime(time.Now()) //型を合わせる
 
-	err := repUserImage.Update(*userImage)
+	// UserImageを更新
+	err = repUserImage.Update(userImage)
 	if err != nil {
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
@@ -52,9 +70,20 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	//
+
+	// 更新したUserImageを取得
+	updatedUserImage, err := repUserImage.GetByUserID(loginUser.UserID)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// 更新したUserImageのpathを返す
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI(imagePath),
+			ImageURI: strfmt.URI(updatedUserImage.Path),
 		})
 }
