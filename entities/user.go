@@ -2,6 +2,7 @@ package entities
 
 import (
 	"github.com/eure/si2018-server-side/models"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/strfmt"
 )
 
@@ -85,4 +86,31 @@ func (users *Users) Build() []*models.User {
 		sUsers = append(sUsers, &swaggerUser)
 	}
 	return sUsers
+}
+
+//　PutProfileBodyからentities.Userへ変数をマッピングしたかったため MappingParams を追加しました
+//	どこに追加すればいいのか悩んだのですがここが良い様な気がしたのでここに置きます。
+func (u *User) MappingParams(params si.PutProfileBody) {
+	u.AnnualIncome = params.AnnualIncome
+	u.BodyBuild = params.BodyBuild
+	u.Child = params.Child
+	u.CostOfDate = params.CostOfDate
+	u.Drinking = params.Drinking
+	u.Education = params.Education
+	u.Height = params.Height
+	u.Holiday = params.Holiday
+	u.HomeState = params.HomeState
+	u.Housework = params.Housework
+	u.HowToMeet = params.HowToMeet
+	u.ImageURI = params.ImageURI
+	u.Introduction = params.Introduction
+	u.Job = params.Job
+	u.MaritalStatus = params.MaritalStatus
+	u.Nickname = params.Nickname
+	u.NthChild = params.NthChild
+	u.ResidenceState = params.ResidenceState
+	u.Smoking = params.Smoking
+	u.Tweet = params.Tweet
+	u.WantChild = params.WantChild
+	u.WhenMarry = params.WhenMarry
 }

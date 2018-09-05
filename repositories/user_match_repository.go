@@ -42,13 +42,13 @@ func (r *UserMatchRepository) Get(userID, partnerID int64) (*entities.UserMatch,
 }
 
 // マッチング済みのお相手一覧をlimit/offsetで取得する.
-func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, offset int) ([]entities.UserMatch, []int64, error) {
+func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, offset int) ([]entities.UserMatch, error) {
 	var matches []entities.UserMatch
 	var ids []int64
 
 	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Limit(limit, offset).Desc("created_at").Find(&matches)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	for _, l := range matches {
@@ -59,7 +59,7 @@ func (r *UserMatchRepository) FindByUserIDWithLimitOffset(userID int64, limit, o
 		ids = append(ids, l.UserID)
 	}
 
-	return matches, ids, nil
+	return matches, nil
 }
 
 // 自分が既にマッチングしている全てのお相手のUserIDを返す.

@@ -1,97 +1,102 @@
 package usermatch
 
 import (
+	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
-
-	"fmt"
-
-	"github.com/eure/si2018-server-side/models"
-	"github.com/go-openapi/strfmt"
 )
 
+// マッチング一覧API
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
+	// 入力値のValidation処理をします。
+	limit := int(p.Limit)
+	if limit <= 0 {
+		return getMatchesBadRequestResponses()
+	}
+
+	offset := int(p.Offset)
+	if offset < 0 {
+		return getMatchesBadRequestResponses()
+	}
+
+	token := p.Token
+
 	tokenRepo := repositories.NewUserTokenRepository()
 	matchRepo := repositories.NewUserMatchRepository()
 	userRepo := repositories.NewUserRepository()
 
-	// tokenが有効であるか検証します。
-	tokenOwner, err := tokenRepo.GetByToken(p.Token)
+	// トークンが有効であるか検証します。
+	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
-		return si.NewGetMatchesInternalServerError().WithPayload(
-			&si.GetMatchesInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if tokenOwner == nil {
-		return si.NewGetMatchesUnauthorized().WithPayload(
-			&si.GetMatchesUnauthorizedBody{
-				Code:    "401",
-				Message: "Token Is Invalid",
-			})
+		return getMatchesInternalServerErrorResponse()
+	} else if tokenOwner == nil {
+		return getMatchesUnauthorizedResponse()
 	}
 
-	// トークンの持ち主がマッチングしているお相手の一覧を取得します。
-	matches, ids, err := matchRepo.FindByUserIDWithLimitOffset(tokenOwner.UserID, int(p.Limit), int(p.Offset))
+	id := tokenOwner.UserID
+
+	// ユーザーがマッチングしているお相手の一覧を取得します。
+	matches, err := matchRepo.FindByUserIDWithLimitOffset(id, limit, offset)
 	if err != nil {
-		return si.NewGetMatchesBadRequest().WithPayload(
-			&si.GetMatchesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
+		return getMatchesInternalServerErrorResponse()
 	}
 
-	var matchedAt []strfmt.DateTime
+	// ユーザーがマッチングしているお相手のIDの配列を取得します。
+	var ids []int64
 	for _, match := range matches {
-		matchedAt = append(matchedAt, match.CreatedAt)
+		ids = append(ids, match.PartnerID)
 	}
 
-	// models.MatchUserResponse と entities.User をマッピングします。
-	matchUsers, err := userRepo.FindByIDs(ids)
+	// idの配列からお相手のプロフィールを取得します。
+	users, err := userRepo.FindByIDs(ids)
 	if err != nil {
-		return si.NewGetMatchesInternalServerError().WithPayload(
-			&si.GetMatchesInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return getMatchesInternalServerErrorResponse()
 	}
 
-	var matchUserResponses []*models.MatchUserResponse
-	for i, matchUser := range matchUsers {
-		matchUserResponses = append(matchUserResponses, &models.MatchUserResponse{
-			MatchedAt:      matchedAt[i],
-			AnnualIncome:   matchUser.AnnualIncome,
-			Birthday:       matchUser.Birthday,
-			BodyBuild:      matchUser.BodyBuild,
-			Child:          matchUser.Child,
-			CostOfDate:     matchUser.CostOfDate,
-			Drinking:       matchUser.Drinking,
-			Education:      matchUser.Education,
-			Gender:         matchUser.Gender,
-			Height:         matchUser.Height,
-			Holiday:        matchUser.Holiday,
-			HomeState:      matchUser.HomeState,
-			Housework:      matchUser.Housework,
-			HowToMeet:      matchUser.HowToMeet,
-			ID:             matchUser.ID,
-			ImageURI:       matchUser.ImageURI,
-			Introduction:   matchUser.Introduction,
-			Job:            matchUser.Job,
-			MaritalStatus:  matchUser.MaritalStatus,
-			Nickname:       matchUser.Nickname,
-			NthChild:       matchUser.NthChild,
-			ResidenceState: matchUser.ResidenceState,
-			Smoking:        matchUser.Smoking,
-			Tweet:          matchUser.Tweet,
-			WantChild:      matchUser.WantChild,
-			WhenMarry:      matchUser.WhenMarry,
-			CreatedAt:      matchUser.CreatedAt,
-			UpdatedAt:      matchUser.UpdatedAt,
+	var ents entities.MatchUserResponses
+
+	// 取得したお相手のIDとマッチングしているお相手のIDを比較し、マッピングします。
+	for _, match := range matches {
+		ent := entities.MatchUserResponse{}
+		ent.MatchedAt = match.CreatedAt
+		for _, user := range users {
+			if match.PartnerID == user.ID {
+				ent.ApplyUser(user)
+			}
+		}
+
+		ents = append(ents, ent)
+	}
+
+	sEnt := ents.Build()
+	return si.NewGetMatchesOK().WithPayload(sEnt)
+}
+
+/*			以下　Validationに用いる関数			*/
+
+//	マッチング一覧API
+// 	GET {hostname}/api/1.0/matches
+func getMatchesInternalServerErrorResponse() middleware.Responder {
+	return si.NewGetMatchesInternalServerError().WithPayload(
+		&si.GetMatchesInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
 		})
-		fmt.Println(matchUser.ID, matchedAt[i])
-	}
+}
 
-	return si.NewGetMatchesOK().WithPayload(matchUserResponses)
+func getMatchesUnauthorizedResponse() middleware.Responder {
+	return si.NewGetMatchesUnauthorized().WithPayload(
+		&si.GetMatchesUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func getMatchesBadRequestResponses() middleware.Responder {
+	return si.NewGetMatchesBadRequest().WithPayload(
+		&si.GetMatchesBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
 }

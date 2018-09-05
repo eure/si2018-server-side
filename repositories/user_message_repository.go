@@ -6,6 +6,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-xorm/builder"
 
+	"time"
+
 	"github.com/eure/si2018-server-side/entities"
 )
 
@@ -16,7 +18,11 @@ func NewUserMessageRepository() UserMessageRepository {
 }
 
 func (r *UserMessageRepository) Create(ent entities.UserMessage) error {
+	now := strfmt.DateTime(time.Now())
+
 	s := engine.NewSession()
+	ent.CreatedAt = now
+	ent.UpdatedAt = now
 	if _, err := s.Insert(&ent); err != nil {
 		return err
 	}
@@ -40,6 +46,7 @@ func (r *UserMessageRepository) GetMessages(userID, partnerID int64, limit int, 
 		s.And("created_at > ?", oldest)
 	}
 	s.Limit(limit)
+	s.Desc("created_at")
 	err := s.Find(&messages)
 	if err != nil {
 		return messages, err

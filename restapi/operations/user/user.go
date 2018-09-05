@@ -3,8 +3,6 @@ package user
 import (
 	"github.com/go-openapi/runtime/middleware"
 
-	"fmt"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -12,98 +10,85 @@ import (
 
 // 探すAPI
 func GetUsers(p si.GetUsersParams) middleware.Responder {
+	// 入力値のValidation処理をします。
+	limit := int(p.Limit)
+	if limit <= 0 {
+		return getUsersBadRequestResponses()
+	}
+
+	offset := int(p.Offset)
+	if offset < 0 {
+		return getUsersBadRequestResponses()
+	}
+
+	token := p.Token
+
 	tokenRepo := repositories.NewUserTokenRepository()
 	userRepo := repositories.NewUserRepository()
 	likeRepo := repositories.NewUserLikeRepository()
 
-	// tokenが有効であるか検証します。
-	tokenOwner, err := tokenRepo.GetByToken(p.Token)
+	// トークンが有効であるか検証します。
+	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if tokenOwner == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Token Is Invalid",
-			})
+		return getUsersInternalServerErrorResponse()
+	} else if tokenOwner == nil {
+		return getUsersUnauthorizedResponse()
 	}
 
-	// トークンの持ち主のIdを元にユーザープロフィールを取得します
-	user, err := userRepo.GetByUserID(tokenOwner.UserID)
+	id := tokenOwner.UserID
+
+	// ユーザーのプロフィールを取得します。
+	user, err := userRepo.GetByUserID(id)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return getUsersInternalServerErrorResponse()
+	} else if user == nil {
+		return getUsersBadRequestResponses()
 	}
 
-	ids, err := likeRepo.FindLikeAll(tokenOwner.UserID)
+	// ユーザーが既にLikeしている or されている状態のUserIDを取得します。
+	ids, err := likeRepo.FindLikeAll(id)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return getUsersInternalServerErrorResponse()
 	}
 
-	ents, err := userRepo.FindWithCondition(int(p.Limit), int(p.Offset), user.GetOppositeGender(), ids)
+	// いいね！を送っていないユーザーを取得します。
+	users, err := userRepo.FindWithCondition(limit, offset, user.GetOppositeGender(), ids)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-
+		return getUsersInternalServerErrorResponse()
 	}
 
-	ent := entities.Users(ents)
+	ent := entities.Users(users)
 	sEnt := ent.Build()
 	return si.NewGetUsersOK().WithPayload(sEnt)
 }
 
 // ユーザー詳細API
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
+	// 入力値のValidation処理をします。
+	id := p.UserID
+	if id <= 0 {
+		return getProfileByUserIDBadRequestResponses()
+	}
+
+	token := p.Token
+
 	tokenRepo := repositories.NewUserTokenRepository()
 	userRepo := repositories.NewUserRepository()
 
-	// tokenが有効であるか検証します。
-	tokenOwner, err := tokenRepo.GetByToken(p.Token)
+	// トークンが有効であるか検証します。
+	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if tokenOwner == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Token Is Invalid",
-			})
+		return getProfileByUserIDInternalServerErrorResponse()
+	} else if tokenOwner == nil {
+		return getProfileByUserIDUnauthorizedResponse()
 	}
 
-	// pathのuserIdを使ってユーザープロフィールを取得します。
-	ent, err := userRepo.GetByUserID(p.UserID)
+	// ユーザーのプロフィールを取得します。
+	ent, err := userRepo.GetByUserID(id)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if ent == nil {
-		return si.NewGetTokenByUserIDNotFound().WithPayload(
-			&si.GetTokenByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Not Found",
-			})
+		return getProfileByUserIDInternalServerErrorResponse()
+	} else if ent == nil {
+		return getProfileByUserIDNotFoundResponse()
 	}
 
 	sEnt := ent.Build()
@@ -112,73 +97,147 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 // ユーザー情報更新API
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	// 入力値のValidation処理をします。
+	id := p.UserID
+	if id <= 0 {
+		return putProfileBadRequestResponse()
+	}
+
+	token := p.Params.Token
+
 	tokenRepo := repositories.NewUserTokenRepository()
 	userRepo := repositories.NewUserRepository()
 
-	// tokenが有効であるか検証します。
-	tokenOwner, err := tokenRepo.GetByToken(p.Params.Token)
+	// トークンが有効であるか検証します。
+	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if tokenOwner == nil {
-		return si.NewPutProfileUnauthorized().WithPayload(
-			&si.PutProfileUnauthorizedBody{
-				Code:    "401",
-				Message: "Token Is Invalid",
-			})
+		return putProfileInternalServerErrorResponse()
+	} else if tokenOwner == nil {
+		return putProfileUnauthorizedResponse()
 	}
 
-	// bodyの中の値でユーザー情報を更新します。
-	fmt.Println(p.Params)
-	updateUser := entities.User{
-		ID:             p.UserID,
-		AnnualIncome:   p.Params.AnnualIncome,
-		BodyBuild:      p.Params.BodyBuild,
-		Child:          p.Params.Child,
-		CostOfDate:     p.Params.CostOfDate,
-		Drinking:       p.Params.Drinking,
-		Education:      p.Params.Education,
-		Height:         p.Params.Height,
-		Holiday:        p.Params.Holiday,
-		HomeState:      p.Params.HomeState,
-		Housework:      p.Params.Housework,
-		HowToMeet:      p.Params.HowToMeet,
-		ImageURI:       p.Params.ImageURI,
-		Introduction:   p.Params.Introduction,
-		Job:            p.Params.Introduction,
-		MaritalStatus:  p.Params.MaritalStatus,
-		Nickname:       p.Params.Nickname,
-		NthChild:       p.Params.NthChild,
-		ResidenceState: p.Params.ResidenceState,
-		Smoking:        p.Params.Smoking,
-		Tweet:          p.Params.Tweet,
-		WantChild:      p.Params.WantChild,
-		WhenMarry:      p.Params.WhenMarry,
+	// 他人のデータを改ざんできないようにします。
+	if tokenOwner.UserID != id {
+		return putProfileForbiddenResponse()
 	}
 
-	res := userRepo.Update(&updateUser)
-	if res != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+	// ユーザーのプロフィールを取得します。
+	user, err := userRepo.GetByUserID(id)
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
 	}
 
-	// pathのuserIdを使って更新後のユーザープロフィールを取得します。
+	// 変数をマッピングします。
+	user.MappingParams(p.Params)
+
+	// ユーザーのプロフィールを更新します。
+	err = userRepo.Update(user)
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
+	}
+
+	// 更新後のユーザーのプロフィールを取得します。
 	ent, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return putProfileInternalServerErrorResponse()
 	}
 
 	sEnt := ent.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
+}
+
+/*			以下　Validationに用いる関数			*/
+
+//	探すAPI
+// 	GET {hostname}/api/1.0/users
+func getUsersInternalServerErrorResponse() middleware.Responder {
+	return si.NewGetUsersInternalServerError().WithPayload(
+		&si.GetUsersInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func getUsersUnauthorizedResponse() middleware.Responder {
+	return si.NewGetUsersUnauthorized().WithPayload(
+		&si.GetUsersUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func getUsersBadRequestResponses() middleware.Responder {
+	return si.NewGetUsersBadRequest().WithPayload(
+		&si.GetUsersBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+//	ユーザー詳細API
+//	GET {hostname}/api/1.0/users/{userID}
+func getProfileByUserIDInternalServerErrorResponse() middleware.Responder {
+	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+		&si.GetProfileByUserIDInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func getProfileByUserIDNotFoundResponse() middleware.Responder {
+	return si.NewGetProfileByUserIDNotFound().WithPayload(
+		&si.GetProfileByUserIDNotFoundBody{
+			Code:    "404",
+			Message: "User Not Found",
+		})
+}
+
+func getProfileByUserIDUnauthorizedResponse() middleware.Responder {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func getProfileByUserIDBadRequestResponses() middleware.Responder {
+	return si.NewGetProfileByUserIDBadRequest().WithPayload(
+		&si.GetProfileByUserIDBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+//	ユーザー情報更新API
+//	PUT {hostname}/api/1.0/users/{userID}
+func putProfileInternalServerErrorResponse() middleware.Responder {
+	return si.NewPutProfileInternalServerError().WithPayload(
+		&si.PutProfileInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func putProfileForbiddenResponse() middleware.Responder {
+	return si.NewPutProfileForbidden().WithPayload(
+		&si.PutProfileForbiddenBody{
+			Code:    "403",
+			Message: "Forbidden",
+		})
+}
+
+func putProfileUnauthorizedResponse() middleware.Responder {
+	return si.NewPutProfileUnauthorized().WithPayload(
+		&si.PutProfileUnauthorizedBody{
+			Code:    "401",
+			Message: "Your Token Is Invalid",
+		})
+}
+
+func putProfileBadRequestResponse() middleware.Responder {
+	return si.NewPutProfileBadRequest().WithPayload(
+		&si.PutProfileBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
 }
