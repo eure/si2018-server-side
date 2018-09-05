@@ -116,6 +116,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// レポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
 	userLikeR := repositories.NewUserLikeRepository()
+	userMatchR := repositories.NewUserMatchRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
@@ -138,7 +139,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-	// いいねを送信する
+	// いいねを送信する用の構造体を作成する
 	userLike := entities.UserLike{
 		UserID: tokenEnt.UserID,
 		PartnerID: p.UserID,
@@ -146,6 +147,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		UpdatedAt: strfmt.DateTime(time.Now()),
 	}
 
+	// いいねを送信する
 	err = userLikeR.Create(userLike)
 
 	// 500エラー
@@ -155,6 +157,38 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
+	}
+
+	// 相手からのいいねを調べる
+	partnerUserLike, err := userLikeR.GetLikeBySenderIDReceiverID(p.UserID, tokenEnt.UserID)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// 相手からのいいねがある場合、マッチを作成する
+	if partnerUserLike != nil {
+		userMatchEnt := entities.UserMatch{
+			UserID: p.UserID,
+			PartnerID: tokenEnt.UserID,
+			CreatedAt: strfmt.DateTime(time.Now()),
+			UpdatedAt: strfmt.DateTime(time.Now()),
+		}
+
+		err := userMatchR.Create(userMatchEnt)
+
+		if err != nil {
+			return si.NewGetUsersInternalServerError().WithPayload(
+				&si.GetUsersInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
 	}
 
 	// 結果を返す
