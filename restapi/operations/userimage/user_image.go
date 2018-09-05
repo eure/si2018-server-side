@@ -14,8 +14,6 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-
-
 //- プロフィール写真の更新
 //- POST {hostname}/api/1.0/images
 //- TokenのValidation処理を実装してください
@@ -52,9 +50,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	//
+
+	updatedUserImage, _ := repUserImage.GetByUserID(loginUser.UserID)
+
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI(imagePath),
+			ImageURI: strfmt.URI(updatedUserImage.Path),
 		})
 }
