@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"github.com/go-openapi/strfmt"
 	"github.com/eure/si2018-server-side/entities"
-	"time"
 )
 
 const baseUri = "http://localhhost:8888/"
@@ -58,8 +57,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	tmp := entities.UserImage{
 		UserID: tokenEnt.UserID,
 		Path: uri,
-		CreatedAt:strfmt.DateTime(time.Now()),
-		UpdatedAt:strfmt.DateTime(time.Now()),
 	}
 	err = imageR.Update(tmp)
 	if err != nil {
