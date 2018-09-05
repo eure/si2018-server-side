@@ -20,19 +20,23 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// assetsのenvを取得
 	assetsPath = os.Getenv("ASSETS_PATH")
 	assetsBaseURI = os.Getenv("ASSETS_BASE_URI")
+
 	// 変数に代入
 	img := p.Params.Image
-	token := p.Params.Token
 
 	t := repositories.NewUserTokenRepository()
 	i := repositories.NewUserImageRepository()
 
 	// ユーザーID取得用
-	ut, _ := t.GetByToken(token)
+	token, _ := t.GetByToken(p.Params.Token)
+
 	// pathの名前を定義
-	pathname := assetsBaseURI + token + ".png"
+	pathname := assetsBaseURI + p.Params.Token + ".png"
 	// fileの名前を定義
-	filename := assetsPath + token + ".png"
+	filename := assetsPath + p.Params.Token + ".png"
+
+	// エラー処理を書くべきか調べる
+	// ファイル作成
 	f, _ := os.Create(filename)
 	defer f.Close()
 	f.Write(img)
@@ -44,14 +48,28 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// 更新
 	err := i.Update(init)
 	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
 	// 更新した値からpathを取得するために
-	ent, _ := i.GetByUserID(ut.UserID)
+	ent, err := i.GetByUserID(token.UserID)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if ent == nil {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
