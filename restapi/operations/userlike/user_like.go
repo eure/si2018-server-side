@@ -18,10 +18,39 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// ユーザーID取得用
 	ut, _ := t.GetByToken(p.Token)
+
 	// match済みのユーザーを取得
-	match, _ := m.FindAllByUserID(ut.UserID)
+	match, err := m.FindAllByUserID(ut.UserID)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if match == nil {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 	// 自分が既にマッチングしている全てのお相手のUserIDを返す
-	like, _ := l.FindGetLikeWithLimitOffset(ut.UserID, int(p.Limit), int(p.Offset), match)
+	like, err := l.FindGetLikeWithLimitOffset(ut.UserID, int(p.Limit), int(p.Offset), match)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if like == nil {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// 明示的に型宣言
 	var lu entities.LikeUserResponses
@@ -30,7 +59,23 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	for _, likeUser := range like {
 		// 構造体の初期化
 		r := entities.LikeUserResponse{}
-		user, _ := u.GetByUserID(likeUser.UserID)
+		// Userの情報を取得
+		user, err := u.GetByUserID(likeUser.UserID)
+		if err != nil {
+			return si.NewGetLikesInternalServerError().WithPayload(
+				&si.GetLikesInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		if user == nil {
+			return si.NewGetLikesBadRequest().WithPayload(
+				&si.GetLikesBadRequestBody{
+					Code:    "400",
+					Message: "Bad Request",
+				})
+		}
+
 		r.ApplyUser(*user)
 		lu = append(lu, r)
 	}
@@ -45,11 +90,55 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// ユーザーID取得用
 	ut, _ := t.GetByToken(p.Params.Token)
+
 	// ユーザーがすでにいいねしている人を取得
-	all, _ := l.FindLikeOnley(ut.UserID)
+	all, err := l.FindLikeOnley(ut.UserID)
+	if err != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if all == nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// 利用しているユーザーといいねしたいユーザー
-	user, _ := u.GetByUserID(ut.UserID)
-	likeUser, _ := u.GetByUserID(p.UserID)
+	user, err := u.GetByUserID(ut.UserID)
+	if err != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if all == nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+	likeUser, err := u.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if all == nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// 性別の確認
 	if CheckGenderUserID(likeUser, user) {
