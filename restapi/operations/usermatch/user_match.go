@@ -35,26 +35,22 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message: "Internal Server Error: FindAllByUserID failed: " + err.Error(),
 			})
 	}
-	sEnt := make([]*models.MatchUserResponse, 0)
+	ids := make([]int64, 0)
 	for _, m := range matched {
-		id := m.GetPartnerID(t.UserID)
-		partner, err := r.GetByUserID(id)
-		if err != nil {
-			return si.NewGetMatchesInternalServerError().WithPayload(
-				&si.GetMatchesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-				})
-		}
-		if partner == nil {
-			return si.NewGetMatchesBadRequest().WithPayload(
-				&si.GetMatchesBadRequestBody{
-					Code:    "400",
-					Message: "Bad Request: GetByUserID failed",
-				})
-		}
+		ids = append(ids, m.GetPartnerID(t.UserID))
+	}
+	users, err := r.FindByIDs(ids)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error: FindByIDs failed: " + err.Error(),
+			})
+	}
+	sEnt := make([]*models.MatchUserResponse, 0)
+	for i, m := range matched {
 		response := entities.MatchUserResponse{MatchedAt: m.CreatedAt}
-		response.ApplyUser(*partner)
+		response.ApplyUser(users[i])
 		swaggerMatch := response.Build()
 		sEnt = append(sEnt, &swaggerMatch)
 	}
