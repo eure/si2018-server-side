@@ -16,15 +16,30 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	match := repositories.NewUserMatchRepository()
 
 	// ユーザーID取得用
-	ut, _ := t.GetByToken(p.Params.Token)
+	token, _ := t.GetByToken(p.Params.Token)
+
 	// 自分が既にマッチングしている全てのUserIDを取得
-	all, _ := match.FindAllByUserID(ut.UserID)
+	userIDs, err := match.FindAllByUserID(token.UserID)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if userIDs == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// マッチしているユーザーかをきちんと確認する
-	if CheckMatchUserID(all, p.UserID) {
+	if CheckMatchUserID(userIDs, p.UserID) {
 		// メッセージの値の定義
 		m := entities.UserMessage{
-			UserID:    ut.UserID,
+			UserID:    token.UserID,
 			PartnerID: p.UserID,
 			Message:   p.Params.Message,
 			CreatedAt: strfmt.DateTime(time.Now()),
@@ -60,15 +75,46 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	match := repositories.NewUserMatchRepository()
 
 	// ユーザーID取得用
-	ut, _ := t.GetByToken(p.Token)
+	token, _ := t.GetByToken(p.Token)
+
 	// matchingしているユーザーの取得
-	all, _ := match.FindAllByUserID(ut.UserID)
+	userIDs, err := match.FindAllByUserID(token.UserID)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if userIDs == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// 明示的に宣言
 	var m entities.UserMessages
 	// マッチしているユーザーかをきちんと確認する
-	if CheckMatchUserID(all, p.UserID) {
-		m, _ = message.GetMessages(ut.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+	if CheckMatchUserID(userIDs, p.UserID) {
+		// メッセージを取得する
+		m, err = message.GetMessages(token.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+		if err != nil {
+			return si.NewGetMessagesInternalServerError().WithPayload(
+				&si.GetMessagesInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		if userIDs == nil {
+			return si.NewGetMessagesBadRequest().WithPayload(
+				&si.GetMessagesBadRequestBody{
+					Code:    "400",
+					Message: "Bad Request",
+				})
+		}
+
 		sEnt := m.Build()
 		return si.NewGetMessagesOK().WithPayload(sEnt)
 	} else {
