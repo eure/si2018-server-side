@@ -8,41 +8,77 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/repositories"
-	"fmt"
 	"os"
+	"strconv"
+	"github.com/go-openapi/strfmt"
+	"github.com/eure/si2018-server-side/entities"
+	"time"
 )
 
+const baseUri = "http://localhhost:8888/"
+
 func PostImage(p si.PostImagesParams) middleware.Responder {
-	tokenR := repositories.NewUserTokenRepository()
+	// Tokenのユーザが存在しない -> 401
+	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code    : "500",
-				Message : "Internal Server Error",
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if tokenEnt == nil{
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
+				Code   : "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
-	// 元のimageのパスを取得する -> 必要ない気が..
+	// DONE: Base64から画像ファイルを作成
+	// TODO: ファイル名をランダムな文字列にしたい
+	fileName := strconv.Itoa(int(tokenEnt.UserID))+".jpg"
+	file, err := os.Create("assets/"+fileName)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	defer file.Close()
+	file.Write(p.Params.Image)
+
+	// DONE: DBの更新
+	// image_uriを返す
+	uri := baseUri + fileName
 	imageR := repositories.NewUserImageRepository()
+	tmp := entities.UserImage{
+		UserID: tokenEnt.UserID,
+		Path: uri,
+		CreatedAt:strfmt.DateTime(time.Now()),
+		UpdatedAt:strfmt.DateTime(time.Now()),
+	}
+	err = imageR.Update(tmp)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
 	imageEnt, err := imageR.GetByUserID(tokenEnt.UserID)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code    : "500",
-				Message : "Internal Server Error",
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
 			})
 	}
-	fmt.Println(imageEnt.Path)
-
-	file, _ := os.Open(imageEnt.Path)
-	fmt.Println(file)
-
-
-	// Base64データから画像ファイルを作成して、
-	// ランダムな名前で保存する -> ユーザIDを含めたPATHにして初回以降はこれを更新する形にする？
-	// パスの情報を更新する Update
-	// 正常に終了したら
-
-	return si.NewPostImagesOK()
+	// TODO: 正常に終了したら
+	return si.NewPostImagesOK().WithPayload(
+		&si.PostImagesOKBody{
+			ImageURI:strfmt.URI(imageEnt.Path),
+		})
 }
