@@ -100,12 +100,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 
-	var users entities.Users
-
-
-	for _, user := range usersFind{
-		users = append(users, user)
-	}
+	users := entities.Users(usersFind)
 
 	sUsers := users.Build()
 
