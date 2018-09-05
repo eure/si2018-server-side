@@ -13,11 +13,41 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	//トークンからユーザーidを取得する為に利用
-	ut, _ := t.GetByToken(p.Token)
+	token, _ := t.GetByToken(p.Token)
+
 	//いいねをすでに送っている人を取得
-	ids, _ := l.FindLikeAll(ut.UserID)
+	ids, err := l.FindLikeAll(token.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if ids == nil {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	//男か女か情報が必要なのでユーザーの情報を取得する
-	user, _ := u.GetByUserID(ut.UserID)
+	user, err := u.GetByUserID(token.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if user == nil {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	//ユーザーが女だった時に検索するユーザーを男とする
 	g := user.GetOppositeGender()
@@ -25,7 +55,21 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	//明示的に型宣言
 	var f entities.Users
 	//探す処理
-	f, _ = u.FindWithCondition(int(p.Limit), int(p.Offset), g, ids)
+	f, err = u.FindWithCondition(int(p.Limit), int(p.Offset), g, ids)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if f == nil {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	sEnt := f.Build()
 	return si.NewGetUsersOK().WithPayload(sEnt)
@@ -37,8 +81,9 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	// token, _ = t.GetByToken(p.Token)
 
+	// Bad Requestをどのタイミングで使うかわからないのであとで調査
+	// User情報を取得する
 	ent, err := r.GetByUserID(p.UserID)
-
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -50,7 +95,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
-				Message: "User Token Not Found",
+				Message: "User Not Found",
 			})
 	}
 
@@ -64,8 +109,24 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 
 	// ユーザーID取得用
 	token, _ := t.GetByToken(p.Params.Token)
+
 	// ユーザーの情報の取得
-	us, _ := u.GetByUserID(p.UserID)
+	us, err := u.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if us == nil {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// ユーザーの情報を受け取ったparamsに書き換える
 	ProfileUpdate(p.Params, us)
 
@@ -73,7 +134,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// 一致していなかったら403を返す
 	if p.UserID == token.UserID {
 		// 書き換えた情報でデータベースを更新
-		err := u.Update(us)
+		err = u.Update(us)
 		if err != nil {
 			return si.NewPutProfileInternalServerError().WithPayload(
 				&si.PutProfileInternalServerErrorBody{
@@ -90,7 +151,22 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	}
 
 	// 更新後のユーザー情報の取得
-	user, _ := u.GetByUserID(p.UserID)
+	user, err := u.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if user == nil {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	sEnt := user.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
 }
