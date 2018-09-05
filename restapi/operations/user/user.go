@@ -10,6 +10,14 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
+	// 負値処理
+	if p.Offset < 0 || p.Limit < 0 {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -131,6 +139,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	// TODO: p.Paramsの形式がおかしいときの処理?
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)

@@ -10,6 +10,7 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	// TODO: 1つ前と同じメッセージの送信不可？
 	// パラメータのmessageが存在しない可能性があった
 	// 取り敢えず400エラーで対処する
 	if p.Params.Message == "" {

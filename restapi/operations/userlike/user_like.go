@@ -11,6 +11,13 @@ import (
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
+	if p.Limit < 0 || p.Offset < 0 {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)

@@ -9,6 +9,13 @@ import (
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
+	if p.Limit < 0 || p.Offset < 0 {
+		return si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
 	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)

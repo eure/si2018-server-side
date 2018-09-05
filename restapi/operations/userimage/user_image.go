@@ -38,7 +38,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
-	//fmt.Println(hex.EncodeToString(p.Params.Image))
 	// DONE: Base64から画像ファイルを作成
 	// TODO: ファイル名をランダムな文字列にしたい
 	fileString := hex.EncodeToString(p.Params.Image)
