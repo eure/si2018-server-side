@@ -39,7 +39,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-
 	message.UserID = loginUser.UserID
 	message.PartnerID = p.UserID
 	message.Message = p.Params.Message
@@ -68,5 +67,24 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 //- TokenのValidation処理を実装してください
 //- ページネーションを実装してください
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
-	return si.NewGetMessagesOK()
+	repUserMessage := repositories.NewUserMessageRepository()
+	repUserToken := repositories.NewUserTokenRepository()
+
+	loginUser, _:= repUserToken.GetByToken(p.Token)
+	
+	userMessages, _:= repUserMessage.GetMessages(loginUser.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+
+	if userMessages == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Message is nothing",
+			})
+	}
+
+	messages := entities.UserMessages(userMessages)
+
+	messagesModel := messages.Build()
+
+	return si.NewGetMessagesOK().WithPayload(messagesModel)
 }
