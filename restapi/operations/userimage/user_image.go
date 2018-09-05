@@ -14,12 +14,21 @@ import (
 	"strconv"
 )
 
+
+
+
+
+
+
+
+
+
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	/*
 	1.	tokenのバリデーション
 	2.	tokenから使用者のuseridを取得
 	3.	画像を送信する
-	4.	画像を削除する
+	（4.	画像を削除する）
 	// userIDは送信者, partnerIDは受信者
 	*/
 
@@ -60,8 +69,38 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	assets_path := os.Getenv("ASSETS_PATH")
 
 	// ファイルを書き込み用にオープン
+
+	// 拡張子判別
+	// base64をデコードしてbyte
+	// byteにしてからio.readerの形にする
+	// image.Decodeconfigでformat判別
+	/*
+	f, _ := os.Open("path/to/image")
+
+	defer f.Close()
+
+	*/
+
 	filename := strconv.FormatInt(sEntToken.UserID, 10)+".jpg"
 	file, err := os.OpenFile(assets_path+filename, os.O_WRONLY|os.O_CREATE, 0666)
+
+	/*
+	byteData, errDecode := base64.StdEncoding.DecodeString(p.Params.Image)
+	_, format, err := image.DecodeConfig(strings.NewReader())
+	*/
+	// pngファイルの場合はformatがpng
+	// jpegファイルの場合はformatがjpg
+	// gifファイルの場合はformatがgif
+	/*
+	if err != nil {
+		// 画像フォーマットではない場合はエラーが発生する
+		fmt.Println(err)
+		return
+	}
+
+	*/
+
+
 	if err != nil {
 		fmt.Println(err)
 		return si.NewPostMessageInternalServerError().WithPayload(
