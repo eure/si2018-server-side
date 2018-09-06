@@ -38,7 +38,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Error(tokenからuserIDを取得)",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -72,11 +72,14 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// マッチ済み以外のいいね受信リストを取得する
 	rLike := repositories.NewUserLikeRepository()
 	limit := int(p.Limit)
-	if limit > 20 {
-		limit = 20
-	}
 	offset := int(p.Offset)
-
+	if limit < 0 || offset < 0{
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				"400",
+				"Bad Request",
+			})
+	}
 	//fmt.Println("sEntToken.UserID",sEntToken.UserID)
 	//fmt.Println("limit",limit)
 	//fmt.Println("offset",offset)
@@ -96,49 +99,55 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	sUsers := userLikes.Build() // userID partnerID createdAt UpdatedAtのリスト
 	//fmt.Println("sUsers",sUsers)
 
-	// sUsersが全て同じになってしまう。ポインタについては解決方法がわからない。
-
 	rUser := repositories.NewUserRepository()
 
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
-	var payloads []*models.LikeUserResponse
+
+	var IDs []int64
 	for _, sUser := range sUsers{
-		has, err := rUser.GetByUserID(sUser.UserID)
-		
-		if err != nil{
-			return si.NewGetLikesInternalServerError().WithPayload(
-				&si.GetLikesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
-		}
+		IDs = append(IDs,sUser.UserID)
+	}
+
+	partners, errFind := rUser.FindByIDs(IDs)
+	if errFind != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	entPartners := entities.Users(partners)
+	sEntPartners := entPartners.Build() // プロフィールのリスト
+
+	var payloads []*models.LikeUserResponse
+	for _, sEntPartner := range sEntPartners{
 		//entities.User -> models.LikeUserResponse
 		r := models.LikeUserResponse{}
-		r.ID = has.ID
-		r.Nickname = has.Nickname
-		r.Tweet = has.Tweet
-		r.Introduction = has.Introduction
-		r.ResidenceState = has.ResidenceState
-		r.HomeState = has.HomeState
-		r.Education = has.Education
-		r.Job = has.Job
-		r.AnnualIncome = has.AnnualIncome
-		r.Height = has.Height
-		r.BodyBuild = has.BodyBuild
-		r.MaritalStatus = has.MaritalStatus
-		r.Child = has.Child
-		r.WhenMarry = has.WhenMarry
-		r.WantChild = has.WantChild
-		r.Smoking = has.Smoking
-		r.Drinking = has.Drinking
-		r.Holiday = has.Holiday
-		r.HowToMeet = has.HowToMeet
-		r.CostOfDate = has.CostOfDate
-		r.NthChild = has.NthChild
-		r.Housework = has.Housework
-		r.ImageURI = has.ImageURI
-		r.CreatedAt = has.CreatedAt
-		r.UpdatedAt = has.UpdatedAt
+		r.ID = sEntPartner.ID
+		r.Nickname = sEntPartner.Nickname
+		r.Tweet = sEntPartner.Tweet
+		r.Introduction = sEntPartner.Introduction
+		r.ResidenceState = sEntPartner.ResidenceState
+		r.HomeState = sEntPartner.HomeState
+		r.Education = sEntPartner.Education
+		r.Job = sEntPartner.Job
+		r.AnnualIncome = sEntPartner.AnnualIncome
+		r.Height = sEntPartner.Height
+		r.BodyBuild = sEntPartner.BodyBuild
+		r.MaritalStatus = sEntPartner.MaritalStatus
+		r.Child = sEntPartner.Child
+		r.WhenMarry = sEntPartner.WhenMarry
+		r.WantChild = sEntPartner.WantChild
+		r.Smoking = sEntPartner.Smoking
+		r.Drinking = sEntPartner.Drinking
+		r.Holiday = sEntPartner.Holiday
+		r.HowToMeet = sEntPartner.HowToMeet
+		r.CostOfDate = sEntPartner.CostOfDate
+		r.NthChild = sEntPartner.NthChild
+		r.Housework = sEntPartner.Housework
+		r.ImageURI = sEntPartner.ImageURI
+		r.CreatedAt = sEntPartner.CreatedAt
+		r.UpdatedAt = sEntPartner.UpdatedAt
 		/* r.LikedAt = (探しても見つからない)*/
 		payloads = append(payloads,&r)
 	}
@@ -225,11 +234,11 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-	if entUser2 == nil { // entUserがnilになることはないはずだが、一応書いておく
-		return si.NewPostLikeInternalServerError().WithPayload(
-			&si.PostLikeInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
+	if entUser2 == nil { // 存在しない送信相手を指定した場合
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
 			})
 	}
 

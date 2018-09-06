@@ -84,11 +84,16 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	gender := entUser.GetOppositeGender()
 
 	// p.Limit, Offsetがなぜかint64なので、intに変換しないといけない。
+	// limitが0だと全件取得。
 	limit := int(p.Limit)
-	if limit > 20 {
-		limit = 20 // 上限を20までにしました
-	}
 	offset := int(p.Offset)
+	if limit < 0 || offset < 0{
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				"400",
+				"Bad Request",
+			})
+	}
 	// 異性のリストの取得
 	usersFind, errFind := rUser.FindWithCondition(limit, offset, gender, ids)
 	if errFind != nil {
@@ -99,11 +104,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-
 	users := entities.Users(usersFind)
-
 	sUsers := users.Build()
-
 	return si.NewGetUsersOK().WithPayload(sUsers)
 }
 

@@ -45,9 +45,19 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	sEntToken := entToken.Build()
+
 	//useridからマッチングしたユーザーの一覧を取得
 	rMatch := repositories.NewUserMatchRepository()
-	entMatch, errMatch := rMatch.FindByUserIDWithLimitOffset(sEntToken.UserID, int(p.Limit),int(p.Offset))
+	limit := int(p.Limit)
+	offset := int(p.Offset)
+	if limit < 0 || offset < 0 {
+		return si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				"400",
+				"Bad Request",
+			})
+	}
+	entMatch, errMatch := rMatch.FindByUserIDWithLimitOffset(sEntToken.UserID, limit, offset)
 	if errMatch != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
@@ -59,51 +69,60 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	matches := entities.UserMatches(entMatch)
 	sMatches := matches.Build()
 
-	// sUsersが全て同じになってしまう。ポインタについては解決方法がわからない。
-
 	rUser := repositories.NewUserRepository()
 
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
-	var payloads []*models.MatchUserResponse
-	for _, sMatch := range sMatches{
-		has, err := rUser.GetByUserID(sMatch.PartnerID)
 
-		if err != nil{
-			return si.NewGetMatchesInternalServerError().WithPayload(
-				&si.GetMatchesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
-		}
+	var IDs []int64
+	for _, sMatch := range sMatches{
+		IDs = append(IDs, sMatch.PartnerID)
+	}
+
+	partners, errFind := rUser.FindByIDs(IDs)
+
+	if errFind != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	entPartners := entities.Users(partners)
+	sEntPartners := entPartners.Build() // プロフィールのリスト
+
+	var payloads []*models.MatchUserResponse
+	for _, sEntPartner := range sEntPartners{
 		//entities.User -> models.LikeUserResponse
 		r := models.MatchUserResponse{}
-		r.ID = has.ID
-		r.Nickname = has.Nickname
-		r.Tweet = has.Tweet
-		r.Introduction = has.Introduction
-		r.ResidenceState = has.ResidenceState
-		r.HomeState = has.HomeState
-		r.Education = has.Education
-		r.Job = has.Job
-		r.AnnualIncome = has.AnnualIncome
-		r.Height = has.Height
-		r.BodyBuild = has.BodyBuild
-		r.MaritalStatus = has.MaritalStatus
-		r.Child = has.Child
-		r.WhenMarry = has.WhenMarry
-		r.WantChild = has.WantChild
-		r.Smoking = has.Smoking
-		r.Drinking = has.Drinking
-		r.Holiday = has.Holiday
-		r.HowToMeet = has.HowToMeet
-		r.CostOfDate = has.CostOfDate
-		r.NthChild = has.NthChild
-		r.Housework = has.Housework
-		r.ImageURI = has.ImageURI
-		r.CreatedAt = has.CreatedAt
-		r.UpdatedAt = has.UpdatedAt
+		r.ID = sEntPartner.ID
+		r.Nickname = sEntPartner.Nickname
+		r.Tweet = sEntPartner.Tweet
+		r.Introduction = sEntPartner.Introduction
+		r.ResidenceState = sEntPartner.ResidenceState
+		r.HomeState = sEntPartner.HomeState
+		r.Education = sEntPartner.Education
+		r.Job = sEntPartner.Job
+		r.AnnualIncome = sEntPartner.AnnualIncome
+		r.Height = sEntPartner.Height
+		r.BodyBuild = sEntPartner.BodyBuild
+		r.MaritalStatus = sEntPartner.MaritalStatus
+		r.Child = sEntPartner.Child
+		r.WhenMarry = sEntPartner.WhenMarry
+		r.WantChild = sEntPartner.WantChild
+		r.Smoking = sEntPartner.Smoking
+		r.Drinking = sEntPartner.Drinking
+		r.Holiday = sEntPartner.Holiday
+		r.HowToMeet = sEntPartner.HowToMeet
+		r.CostOfDate = sEntPartner.CostOfDate
+		r.NthChild = sEntPartner.NthChild
+		r.Housework = sEntPartner.Housework
+		r.ImageURI = sEntPartner.ImageURI
+		r.CreatedAt = sEntPartner.CreatedAt
+		r.UpdatedAt = sEntPartner.UpdatedAt
 		/* r.LikedAt = (探しても見つからない)*/
 		payloads = append(payloads,&r)
 	}
+
 	return si.NewGetMatchesOK().WithPayload(payloads)
 }
