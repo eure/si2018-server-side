@@ -97,6 +97,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	token := ps.Token
 	/* TODO user not found?  not same id and token?*/
 	
+	// Validation
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewPutProfileUnauthorized().WithPayload(
@@ -106,6 +107,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
+	// Same id in token and param?
 	tid, _ := util.GetIDByToken(token)
 	if id != tid {
 		return si.NewPutProfileForbidden().WithPayload(
@@ -118,9 +120,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 	up, _ := r.GetByUserID(id)
 	user := *up
-
-	//fmt.Printf("user:%+v\n", user)
-	//fmt.Printf("param:%+v\n", p.Params)
 
 	user.AnnualIncome = ps.AnnualIncome
 	user.BodyBuild = ps.BodyBuild
@@ -145,7 +144,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	user.WantChild = ps.WantChild
 	user.WhenMarry = ps.WhenMarry
 
-	//fmt.Printf("newu:%+v\n", user)
 	err = r.Update(&user)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
