@@ -135,16 +135,6 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 					Message: "Internal Server Error",
 				})
 		}
-		if userIDs == nil {
-			return si.NewGetMessagesBadRequest().WithPayload(
-				&si.GetMessagesBadRequestBody{
-					Code:    "400",
-					Message: "Bad Request",
-				})
-		}
-
-		sEnt := m.Build()
-		return si.NewGetMessagesOK().WithPayload(sEnt)
 	} else {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
@@ -152,6 +142,8 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
+	sEnt := m.Build()
+	return si.NewGetMessagesOK().WithPayload(sEnt)
 }
 
 //マッチングをしているか確認に使う関数
