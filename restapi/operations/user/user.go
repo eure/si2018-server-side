@@ -13,29 +13,79 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	repUserToken := repositories.NewUserTokenRepository()
 	repUserLike := repositories.NewUserLikeRepository()
 
+	// TODO: ユーザの一覧だから必要最低限の情報だけをかえしたい
+	// 出身地でソートしたい
+
+	// tokenのバリデーション
+	err := repUserToken.ValidateToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code: "401",
+				Message: "Your Token Is Invalid",
+					})
+	}
+
+	// bad Request
+	if p.Limit == 0 {
+		return si.NewGetMessagesOK().WithPayload(nil)
+	} else if (p.Limit < 1) || (p.Offset < 0) {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// ログインユーザーと反対の性別を取得する
-	entUserToken, _ := repUserToken.GetByToken(p.Token)
-	entUser, _ := repUser.GetByUserID(entUserToken.UserID)
-	opposite_gender := entUser.GetOppositeGender()
+	userToken, _ := repUserToken.GetByToken(p.Token)
+	loginUser, _ := repUser.GetByUserID(userToken.UserID)
+	oppositeGender := loginUser.GetOppositeGender()
 
-	// idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど) いいねやマッチした人、ブロックした人のidを取ってくる
-	//いいねした/された人のidを持ってくる
-	except_ids, _ := repUserLike.FindLikeAll(entUserToken.UserID)
+	// ログインユーザーがいいねした人/ログインユーザーをいいねした人のIDを取得
+	exceptIds, err := repUserLike.FindLikeAll(userToken.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
-	entsUser, _ := repUser.FindWithCondition(int(p.Limit), int(p.Offset), opposite_gender, except_ids)
+	// ログインユーザーがいいねしていない人&ログインユーザーをいいねしていない人を取得
+	user, err := repUser.FindWithCondition(int(p.Limit), int(p.Offset), oppositeGender, exceptIds)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
-	entUsers := entities.Users(entsUser)
+	// Userの配列をUsersにキャストする
+	users := entities.Users(user)
 
-	users := entUsers.Build()
+	usersModel := users.Build()
 
-	return si.NewGetUsersOK().WithPayload(users)
+	return si.NewGetUsersOK().WithPayload(usersModel)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	repUser := repositories.NewUserRepository()
+	repUserToken := repositories.NewUserTokenRepository()
 
-	entUser, err := repUser.GetByUserID(p.UserID)
+	// tokenのバリデーション
+	err := repUserToken.ValidateToken(p.Token)
+	if err != nil {
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code: "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
+	// ユーザの取得
+	user, err := repUser.GetByUserID(p.UserID)
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -43,28 +93,52 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if entUser == nil {
+	if user == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Profile Not Found",
+				Code:    "400",
+				Message: "User Not Found",
 			})
 	}
 
-	user := entUser.Build()
+	userModel := user.Build()
 
-	return si.NewGetProfileByUserIDOK().WithPayload(&user)
+	return si.NewGetProfileByUserIDOK().WithPayload(&userModel)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	repUser := repositories.NewUserRepository()
+	repUserToken := repositories.NewUserTokenRepository()
 
-	entUser := entities.User{ID: p.UserID}
+	// tokenのバリデーション
+	err := repUserToken.ValidateToken(p.Params.Token)
+	if err != nil {
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code: "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
-	BindParams(p.Params, &entUser)
+	// Forbidden
+	userToken, _ := repUserToken.GetByToken(p.Params.Token)
+	if userToken.UserID != p.UserID {
+		return si.NewPutProfileForbidden().WithPayload(
+			&si.PutProfileForbiddenBody{
+				Code: "403",
+				Message: "Forbidden",
+			})
+	}
 
-	err := repUser.Update(&entUser)
+	// 更新用のUserを作成
+	var updateUser entities.User
+	updateUser.ID = p.UserID
 
+	// パラメーターの値をupdateUserに入れる
+	bindParams(p.Params, &updateUser)
+
+	// Userを更新
+	err = repUser.Update(&updateUser)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -73,13 +147,23 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
-	user := entUser.Build()
+	// 更新したユーザーを再取得
+	updatedUser, err := repUser.GetByUserID(userToken.UserID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
-	return si.NewPutProfileOK().WithPayload(&user)
+	updateUserModel := updatedUser.Build()
+
+	return si.NewPutProfileOK().WithPayload(&updateUserModel)
 }
 
 // private
-func BindParams(p si.PutProfileBody, entUser *entities.User ){
+func bindParams(p si.PutProfileBody, entUser *entities.User ){
 	// paramsをjsonに出力
 	params, _ := p.MarshalBinary()
 	// userEntにjson変換したparamを入れる
