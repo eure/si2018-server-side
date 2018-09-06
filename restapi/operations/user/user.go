@@ -5,7 +5,6 @@ import (
 
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/repositories"
-	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/entities"
 )
 
@@ -14,6 +13,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	// ユーザートークンレポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
+	userR := repositories.NewUserRepository()
+	userLikeR := repositories.NewUserLikeRepository()
+	userImageR := repositories.NewUserImageRepository()
+	userMatchR := repositories.NewUserMatchRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -36,20 +39,14 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	// create token from model
-	token := tokenEnt.Build()
-
 	// 省くユーザーのid
 	var exceptIds []int64
 
 	// 自分のIDを検索に含めない設定をする
-	exceptIds = append(exceptIds, token.UserID)
-
-	// ユーザーレポジトリの初期化
-	userR := repositories.NewUserRepository()
+	exceptIds = append(exceptIds, tokenEnt.UserID)
 
 	// tokenのidからユーザーを取得する
-	myUserEnt, err := userR.GetByUserID(token.UserID)
+	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
 
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -59,14 +56,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	// ユーザーモデルを作る
-	myUser := myUserEnt.Build()
-
-	// ユーザーマッチレポジトリを初期化する
-	userMatchR := repositories.NewUserMatchRepository()
-
 	// マッチしているユーザーを取得する
-	matchUserIds, err := userMatchR.FindAllByUserID(myUser.ID)
+	matchUserIds, err := userMatchR.FindAllByUserID(tokenEnt.UserID)
 
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -81,11 +72,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		exceptIds = append(exceptIds, matchUserId)
 	}
 
-	// ユーザーライクレポジトリを初期化する
-	userLikeR := repositories.NewUserLikeRepository()
-
 	// ライクしているユーザーを取得する
-	likeUserIds, err := userLikeR.FindLikeAll(myUser.ID)
+	likeUserIds, err := userLikeR.FindLikeAll(myUserEnt.ID)
 
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -112,22 +100,49 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	// 返すユーザーモデルのポインタのスライスを定義する
-	var sUsers []*models.User
+	// 取得したユーザーIDの配列を作成する
+	var userIDs []int64
 
-	// 定義したモデルにマッピングする
 	for _, userEnt := range userEnts {
-		userModel := userEnt.Build()
-		sUsers = append(sUsers, &userModel)
+		userIDs = append(userIDs, userEnt.ID)
+	}
+
+	// 取得したユーザーに紐づくimage_uriを取得する
+	userImageEnts, err := userImageR.GetByUserIDs(userIDs)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// userモデルにマップする
+	var userEntities entities.Users = userEnts
+
+	users := userEntities.Build()
+
+	// user の image_uriに値を入れる
+	for _, user := range users {
+		for _, userImageEnt := range userImageEnts {
+			if user.ID == userImageEnt.UserID {
+				user.ImageURI = userImageEnt.Path
+			}
+		}
 	}
 
 	// 結果を返す
-	return si.NewGetUsersOK().WithPayload(sUsers)
+	return si.NewGetUsersOK().WithPayload(users)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
+
 	// ユーザートークンレポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
+	userR := repositories.NewUserRepository()
+	userImageR := repositories.NewUserImageRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -150,11 +165,29 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	// ユーザーレポジトリの初期化
-	userR := repositories.NewUserRepository()
+	// 指定したユーザーを取得する
+	myUserEnt, err := userR.GetByUserID(p.UserID)
 
-	// tokenのidからユーザーを取得する
-	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
+	// 400エラー
+	if myUserEnt == nil {
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. Can't get a user.",
+			})
+	}
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// ユーザー紐づくimage_uriを取得する
+	myUserImageEnt, err := userImageR.GetByUserID(tokenEnt.UserID)
 
 	// 500エラー
 	if err != nil {
@@ -168,7 +201,14 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	// ユーザーモデルを作る
 	myUser := myUserEnt.Build()
 
+	// imageUriを入れる
+	if myUserImageEnt != nil {
+		myUser.ImageURI = myUserImageEnt.Path
+	}
+
+	// 結果を返す
 	return si.NewGetProfileByUserIDOK().WithPayload(&myUser)
+
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
@@ -186,7 +226,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return si.NewPutProfileBadRequest().WithPayload(
 			&si.PutProfileBadRequestBody{
 				Code:    "400",
-				Message:  "Bad Request.",
+				Message:  "Bad Request. You can put only your data.",
 			})
 	}
 
@@ -253,6 +293,17 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 
 	// 更新後のユーザーを取得する
 	myUpdatedUserEnt, err := userR.GetByUserID(p.UserID)
+
+	// 500エラー
+	if err != nil {
+		if err != nil {
+			return si.NewPutProfileInternalServerError().WithPayload(
+				&si.PutProfileInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+	}
 
 	// モデルにマッピングする
 	myUpdatedUser := myUpdatedUserEnt.Build()
