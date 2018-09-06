@@ -13,10 +13,15 @@ import (
 	strfmt "github.com/go-openapi/strfmt"
 	"os"
 	"fmt"
-	"strconv"
+	//"strconv"
 	"encoding/hex"
 	"strings"
+	"math/rand"
+	"time"
+	"path/filepath"
 )
+
+const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	token := p.Params.Token
@@ -55,9 +60,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// Create image file
 	ap := os.Getenv("ASSETS_PATH")
-	filename := "icon" + strconv.Itoa(int(id)) + filetype
+	rand.Seed(time.Now().UnixNano())
+	const filenamelen = 8
+	filename := getRandStr(filenamelen) + filetype
 
-	f, err := os.Create(ap + filename) /* TODO use os.Filepath */
+	f, err := os.Create(filepath.Join(ap, filename))
 	if err != nil {
 		fmt.Println(err)
 		return si.NewPostImagesOK()
@@ -71,10 +78,22 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	ui.Path = ap + filename
 
 	r := repositories.NewUserImageRepository()
+	old, err := r.GetByUserID(id)
+	fmt.Println(old)
 	err = r.Update(ui) /* TODO check existance? */
+	new, err := r.GetByUserID(id)
+	fmt.Println(new)
 
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(ap + filename),
 		})
+}
+
+func getRandStr(n int) string {
+    var s []byte
+    for i := 0; i < n; i++ {
+        s = append(s, letters[rand.Intn(len(letters))])
+    }
+    return string(s)
 }
