@@ -2,7 +2,6 @@ package userimage
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -23,7 +22,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	usertkn, err := nutr.GetByToken(p.Params.Token)
 	if err != nil {
-		RespInternalErr()
+		return RespInternalErr()
 	}
 
 	if usertkn == nil {
@@ -33,7 +32,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	fmt.Println("OJjoj")
 
 	// Define save directory
 	writeimage := p.Params.Image
@@ -42,7 +40,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	checkext := bytes.NewReader(writeimage)
 	_, extension, err := image.DecodeConfig(checkext)
 	if err != nil {
-		RespInternalErr()
+		return RespInternalErr()
 	}
 	// check image extension
 	switch extension {
@@ -51,11 +49,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	case "jpg":
 		pathdir += ".jpg"
 	default:
-		RespInternalErr()
+		return RespInternalErr()
 	}
 	file, err := os.Create(pathdir)
 	if err != nil {
-		RespInternalErr()
+		return RespInternalErr()
 	}
 	defer file.Close()
 	//write picture
@@ -69,12 +67,13 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	err = nuir.Update(userimage)
 	if err != nil {
-		RespInternalErr()
+		return RespInternalErr()
 	}
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(pathdir),
 		})
+
 }
 
 // return 500 Internal Server Error
@@ -83,5 +82,13 @@ func RespInternalErr() middleware.Responder {
 		&si.PostImagesInternalServerErrorBody{
 			Code:    "500",
 			Message: "Internal Server Error",
+		})
+}
+
+func RespBadReqestErr() middleware.Responder {
+	return si.NewPostImagesBadRequest().WithPayload(
+		&si.PostImagesBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
 		})
 }
