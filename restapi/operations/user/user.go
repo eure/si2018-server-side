@@ -57,7 +57,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	id := p.UserID
 	token := p.Token
-	/* TODO bad request? */
 	
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -95,7 +94,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	id := p.UserID
 	ps := p.Params
 	token := ps.Token
-	/* TODO user not found?  not same id and token?*/
 	
 	// Validation
 	err := util.ValidateToken(token)
@@ -117,6 +115,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
+	// Prepare new User to update
 	r := repositories.NewUserRepository()
 	up, _ := r.GetByUserID(id)
 	user := *up
@@ -144,6 +143,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	user.WantChild = ps.WantChild
 	user.WhenMarry = ps.WhenMarry
 
+	// Update
 	err = r.Update(&user)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
@@ -153,6 +153,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 
+	// Response (return to check wheter updated or not)
 	after, _ := r.GetByUserID(id)
 	res := after.Build()
 
