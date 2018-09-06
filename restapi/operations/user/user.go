@@ -1,6 +1,8 @@
 package user
 
 import (
+	"strings"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
@@ -14,9 +16,18 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	nur := repositories.NewUserRepository()
 	//ngur := repositories.NewGetUserRepository()
 	// find userid
-	usrid, err := nutr.GetByToken(p.Token)
+	token := p.Token
+	//limit := p.Limit
+	//offset := p.Offset
+
+	// Validate usertoken format is collect
+	if strings.HasPrefix("USERTOKEN", token) {
+		return GetProfileRespUnauthErr()
+	}
+
+	usrid, err := nutr.GetByToken(token)
 	if err != nil {
-		return GetUserRespUnauthErr()
+		return GetUserRespInternalErr()
 	}
 	// find userlike
 	userlike, err := nulr.FindLikeAll(usrid.UserID)
