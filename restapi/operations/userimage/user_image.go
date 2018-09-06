@@ -41,6 +41,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		return postImageInternalServerErrorResponse()
 	}
 
+	imagePath = "https://si-2018-011.eure.jp/" + imagePath
 	userImage.Path = imagePath
 	err = userImageRepository.Update(*userImage)
 	if err != nil {
@@ -49,7 +50,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI("https://si-2018-011.eure.jp/" + imagePath),
+			ImageURI: strfmt.URI(userImage.Path),
 		})
 }
 
