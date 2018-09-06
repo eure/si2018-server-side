@@ -63,3 +63,17 @@ func userExists(token string) bool {
 
 	return true
 }
+
+func ValidateLimit(lim int64) error {
+	if lim < 0 { // If Limit 0, DB returns 0 result (maybe)
+		return errors.New("Limit must be >= 0")
+	}
+	return nil
+}
+
+func ValidateOffset(ofs int64) error {
+	if ofs < 0 {
+		return errors.New("Offset must be >= 0")
+	}
+	return nil
+}
