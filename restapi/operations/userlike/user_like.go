@@ -146,6 +146,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// レポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
+	userR := repositories.NewUserRepository()
 	userLikeR := repositories.NewUserLikeRepository()
 	userMatchR := repositories.NewUserMatchRepository()
 
@@ -176,6 +177,59 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
+			})
+	}
+
+	// ログイン中のユーザーを取得する
+	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// いいね先のユーザーを取得する
+	partnerUserEnt, err := userR.GetByUserID(p.UserID)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// 400エラー
+	if myUserEnt.Gender == partnerUserEnt.Gender {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request. Sorry, we are creating genderless society.",
+			})
+	}
+
+	pastLike, err := userLikeR.GetLikeBySenderIDReceiverID(tokenEnt.UserID, p.UserID)
+
+	// 500エラー
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// いいねは１度しか送れない
+	if pastLike != nil {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request. You have already sended a like to this user.",
 			})
 	}
 
