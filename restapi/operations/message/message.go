@@ -105,6 +105,14 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
+	// 時間比較
+	if time.Time(*p.Latest).Before(time.Time(*p.Oldest)) {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// Partnerかどうかのチェック
 	matchR         := repositories.NewUserMatchRepository()
