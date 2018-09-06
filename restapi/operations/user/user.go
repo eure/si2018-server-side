@@ -58,6 +58,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	id := p.UserID
 	token := p.Token
 	
+	// Validation
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
@@ -67,21 +68,33 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
+	myid, _ := util.GetIDByToken(token)
+
 	r := repositories.NewUserRepository()
 
-	user, err := r.GetByUserID(id)
-	if err != nil {
+	me, err1 := r.GetByUserID(myid)
+	user, err2 := r.GetByUserID(id)
+	if err1 != nil || err2 != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
-	if user == nil {
+	// User exists?
+	if user == nil { 
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
 				Message: "User Not Found",
+			})
+	}
+	// Same gender?
+	if user.Gender == me.Gender { 
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
 			})
 	}
 	
