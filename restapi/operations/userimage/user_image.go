@@ -9,18 +9,17 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/eure/si2018-server-side/repositories"
 	"os"
-	"strconv"
 	"github.com/go-openapi/strfmt"
 	"github.com/eure/si2018-server-side/entities"
-	"fmt"
 	"encoding/hex"
 	"strings"
+	"math/rand"
+	"time"
 )
 
 const baseUri = "http://localhhost:8888/"
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
-	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -30,6 +29,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	// Tokenのユーザが存在しない -> 401
 	if tokenEnt == nil{
 		return si.NewPostImagesUnauthorized().WithPayload(
 			&si.PostImagesUnauthorizedBody{
@@ -37,23 +37,28 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-
-	// DONE: Base64から画像ファイルを作成
-	// TODO: ファイル名をランダムな文字列にしたい
+	// ランダムな文字列作成
+	rand.Seed(time.Now().UnixNano())
+	n := 10
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	randString := string(b)
+	// Base64から画像ファイルを作成
 	fileString := hex.EncodeToString(p.Params.Image)
-	fmt.Println(strings.HasPrefix(fileString, "ffd8"))
 	var fileName string
+	// ファイルの形式を確認
 	if strings.HasPrefix(fileString, "ffd8") {
-		fileName = strconv.Itoa(int(tokenEnt.UserID))+".jpg"
-		fmt.Println("jpg")
+		fileName = randString+".jpg"
 	}else if strings.HasPrefix(fileString, "89504e47"){
-		fileName = strconv.Itoa(int(tokenEnt.UserID))+".png"
-		fmt.Println("png")
+		fileName = randString+".png"
 	}else if strings.HasPrefix(fileString, "47494638"){
-		fileName = strconv.Itoa(int(tokenEnt.UserID))+".gif"
-		fmt.Println("gif")
+		fileName = randString+".gif"
 	}
 	filePath := "assets/"+fileName
+	// ファイル作成
 	file, err := os.Create(filePath)
 	if err != nil {
 		return si.NewPostImagesBadRequest().WithPayload(
@@ -63,15 +68,20 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 	defer file.Close()
-	file.Write(p.Params.Image)
-
-	// DONE: DBの更新
-	// image_uriを返す
-	uri := baseUri + filePath
+	_, err = file.Write(p.Params.Image)
+	if err != nil {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	// DBの更新
+	imageUri := baseUri + filePath
 	imageR := repositories.NewUserImageRepository()
 	tmp := entities.UserImage{
 		UserID: tokenEnt.UserID,
-		Path: uri,
+		Path  : imageUri,
 	}
 	err = imageR.Update(tmp)
 	if err != nil {
@@ -83,13 +93,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 	imageEnt, err := imageR.GetByUserID(tokenEnt.UserID)
 	if err != nil {
-		return si.NewGetMatchesInternalServerError().WithPayload(
-			&si.GetMatchesInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code   : "500",
 				Message: "Internal Server Error",
 			})
 	}
-	// TODO: 正常に終了したら
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
 			ImageURI:strfmt.URI(imageEnt.Path),

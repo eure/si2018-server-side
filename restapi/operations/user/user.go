@@ -5,20 +5,18 @@ import (
 
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/entities"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	// 負値処理
-	if p.Offset < 0 || p.Limit < 0 {
+	// OFFSET LIMIT Check -> 400
+	if p.Offset < 0 || p.Limit <= 0 {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code   : "400",
 				Message: "Bad Request",
 			})
 	}
-	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -28,6 +26,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	// Tokenのユーザが存在しない -> 401
 	if tokenEnt == nil{
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
@@ -38,22 +37,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// 除外するユーザのIDを作成する
 	var omitIds []int64
 	omitIds = append(omitIds, tokenEnt.UserID)
-	// マッチしているユーザIDを取得する
-	matchR         := repositories.NewUserMatchRepository()
-	matchIds, err  := matchR.FindAllByUserID(tokenEnt.UserID)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code    : "500",
-				Message : "Internal Server Error",
-			})
-	}
-	for _, matchId := range matchIds {
-		omitIds = append(omitIds, matchId)
-	}
 
-	// いいねしているユーザを取得する
-	likeR             := repositories.NewUserLikeRepository()
+	// いいねしている/されているユーザIDを取得する
+	// いいねしてくれている人の一覧は `/likes` で取得できるから必要ないと判断
+	likeR         := repositories.NewUserLikeRepository()
 	likeIds, err  := likeR.FindLikeAll(tokenEnt.UserID)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
@@ -62,13 +49,15 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
-	for _, likeId := range likeIds {
-		omitIds = append(omitIds, likeId)
-	}
+	omitIds = append(omitIds, likeIds...)
+	//for _, likeId := range likeIds {
+	//	omitIds = append(omitIds, likeId)
+	//}
 
 	// 自分の性別情報の取得
 	userR       := repositories.NewUserRepository()
 	myEnt, err  := userR.GetByUserID(tokenEnt.UserID)
+	myGender    := myEnt.GetOppositeGender()
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -77,7 +66,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 	// omitIds以外のユーザ情報を取得する
-	findUsers, err := userR.FindWithCondition(int(p.Limit), int(p.Offset), myEnt.GetOppositeGender(), omitIds)
+	findUsers, err := userR.FindWithCondition(int(p.Limit), int(p.Offset), myGender, omitIds)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -86,16 +75,20 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	var responseData []*models.User
-	for _, userEnt := range findUsers {
-		userModel    := userEnt.Build()
-		responseData  = append(responseData, &userModel)
+	var tmp entities.Users
+	for _, userEnt := range findUsers{
+		tmp = append(tmp, userEnt)
 	}
+	responseData := tmp.Build()
+	//var responseData []*models.User
+	//for _, userEnt := range findUsers {
+	//	userModel    := userEnt.Build()
+	//	responseData  = append(responseData, &userModel)
+	//}
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -105,6 +98,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	// Tokenのユーザが存在しない -> 401
 	if tokenEnt == nil{
 		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
 			&si.GetProfileByUserIDUnauthorizedBody{
@@ -112,12 +106,9 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-
 	// 探しているユーザの情報取得
 	userR            := repositories.NewUserRepository()
 	findUserEnt, err := userR.GetByUserID(p.UserID)
-
-	// internal server error
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -125,7 +116,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	// not found
+	// ユーザが存在しない -> 404
 	if findUserEnt == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
@@ -134,13 +125,11 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	response := findUserEnt.Build()
-	return si.NewGetProfileByUserIDOK().WithPayload(&response)
+	responseData := findUserEnt.Build()
+	return si.NewGetProfileByUserIDOK().WithPayload(&responseData)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
-	// TODO: p.Paramsの形式がおかしいときの処理?
-	// Tokenのユーザが存在しない -> 401
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -150,6 +139,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	// Tokenのユーザが存在しない -> 401
 	if tokenEnt == nil{
 		return si.NewPutProfileUnauthorized().WithPayload(
 			&si.PutProfileUnauthorizedBody{
@@ -157,7 +147,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// 編集予定のIDと自分のIDが違う
+	// 編集予定のIDと自分のIDが違う -> 403
 	if p.UserID != tokenEnt.UserID {
 		return si.NewPutProfileForbidden().WithPayload(
 			&si.PutProfileForbiddenBody{
@@ -192,8 +182,8 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		Housework:      p.Params.Housework,
 	}
 
-	userR      := repositories.NewUserRepository()
-	err = userR.Update(&newUserEnt)
+	userR := repositories.NewUserRepository()
+	err    = userR.Update(&newUserEnt)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -201,7 +191,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-
 	// 更新後のデータを取得
 	responseEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
@@ -212,6 +201,5 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 			})
 	}
 	responseData := responseEnt.Build()
-
 	return si.NewPutProfileOK().WithPayload(&responseData)
 }

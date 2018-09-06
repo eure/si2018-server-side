@@ -9,11 +9,12 @@ import (
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	if p.Limit < 0 || p.Offset < 0 {
+	// LIMIT OFFSET Check -> 400
+	if p.Limit <= 0 || p.Offset < 0 {
 		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
-				Code   : "500",
-				Message: "Internal Server Error",
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
@@ -47,11 +48,12 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	// マッチしているuserIdsからPartnerユーザ情報の取得
+	// マッチしているユーザIDを作成
 	var matchIds []int64
 	for _, u := range matchEntList {
 		matchIds = append(matchIds, u.PartnerID)
 	}
+	// マッチしているユーザIDからPartnerユーザ情報の取得
 	userR            := repositories.NewUserRepository()
 	userEntList, err := userR.FindByIDs(matchIds)
 	if err != nil {
@@ -67,7 +69,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		tmp.ApplyUser(u)
 		array = append(array, tmp)
 	}
-
 	responseData := array.Build()
 	return si.NewGetMatchesOK().WithPayload(responseData)
 }
