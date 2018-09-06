@@ -64,6 +64,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			return getLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
 		}
 	}
+	// 相手の ID の取得
 	ids := make([]int64, 0)
 	for _, l := range like {
 		ids = append(ids, l.UserID)
