@@ -14,6 +14,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	offset := p.Offset
 	token := p.Token
 
+	// Validations
 	err1 := util.ValidateLimit(limit)
 	err2 := util.ValidateOffset(offset)
 	if (err1 != nil) || (err2 != nil) {
@@ -23,8 +24,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
-		
-	
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetUsersUnauthorized().WithPayload(

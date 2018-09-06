@@ -11,11 +11,12 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-func PostMessage(p si.PostMessageParams) middleware.Responder {
+func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 */
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
 
+	// Validations
 	err1 := util.ValidateLimit(limit)
 	err2 := util.ValidateOffset(offset)
 	if (err1 != nil) || (err2 != nil) {
@@ -25,7 +26,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
-
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewPostMessageUnauthorized().WithPayload(
@@ -37,26 +37,28 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	uid, _ := util.GetIDByToken(token)
 
-	rl := repositories.NewUserLikeRepository()
-	like, err := rl.GetLikeBySenderIDReceiverID(uid, pid)
+	// Already matching?
+	rm := repositories.NewUserMatchRepository()
+
+	mat, err := rm.Get(uid, pid)
 	if err != nil {
-		fmt.Print("Get likes err: ")
+		fmt.Print("Get err: ")
 		fmt.Println(err)
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
+		return si.NewPostMessagesInternalServerError().WithPayload(
+			&si.PostMessagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
-	if like == nil {
-		fmt.Println("Not matching yet")
-		return si.NewPostMessageBadRequest().WithPayload( /* TODO 403? */
+	if mat == nil {
+		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code:    "400",
-				Message: "Bad Request (Not matching yet)",
+				Message: "Bad Request",
 			})
 	}
 
+	// Prepare new UserMessage
 	ent := entities.UserMessage{}
 	ent.UserID = uid
 	ent.PartnerID = pid
@@ -64,8 +66,9 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	ent.CreatedAt = strfmt.DateTime(time.Now())
 	ent.UpdatedAt = strfmt.DateTime(time.Now())
 
-	rm := repositories.NewUserMessageRepository()
-	err = rm.Create(ent)
+	// Add
+	rs := repositories.NewUserMessageRepository()
+	err = rs.Create(ent)
 	if err != nil {
 		fmt.Print("Create message err: ")
 		fmt.Println(err)
@@ -85,8 +88,9 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	latest := p.Latest
 	oldest := p.Oldest
 	limit := *p.Limit
-	/* TODO bad request */
+	/* TODO check [lat|old]est? */
 
+	// Validations
 	err1 := util.ValidateLimit(limit)
 	err2 := util.ValidateOffset(offset)
 	if (err1 != nil) || (err2 != nil) {
@@ -96,7 +100,6 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
-		
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetMessagesUnauthorized().WithPayload(
@@ -108,11 +111,12 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	uid, _ := util.GetIDByToken(token)
 	
+	// Already matching?
 	rm := repositories.NewUserMatchRepository()
 
 	mat, err := rm.Get(uid, pid)
 	if err != nil {
-		fmt.Print("Get messages err: ")
+		fmt.Print("Get err: ")
 		fmt.Println(err)
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
@@ -128,6 +132,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
+	// Get messages in DESC order
 	rs := repositories.NewUserMessageRepository()
 
 	messages, err := rs.GetMessages(uid, pid, int(limit), latest, oldest)
@@ -141,6 +146,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
+	// Prepare response
 	var reses entities.UserMessages
 	reses = messages
 
