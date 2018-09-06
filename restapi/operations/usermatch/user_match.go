@@ -48,9 +48,9 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if userMatches == nil {
-		return si.NewGetMatchesOK().WithPayload(nil) // UserMatchがいない場合, nilで返す
-	}
+	//if userMatches == nil {
+	//	return si.NewGetMatchesOK().WithPayload(nil) // UserMatchがいない場合, nilで返す
+	//}
 
 	// マッチングしているユーザのIDを配列にいれる
 	var matchedUserIDs []int64
