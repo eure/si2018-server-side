@@ -11,6 +11,7 @@ import (
 	_ "image/png"
 	"os"
 	"strconv"
+	"strings"
 )
 
 //- プロフィール写真の更新
@@ -34,10 +35,35 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// tokenからuserTokenを取得
 	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
 
+	// 拡張子の判別
+	var magicTable = map[string]string{
+		"\xff\xd8\xff":      ".jpeg",
+		"\x89PNG\r\n\x1a\n": ".png",
+		"GIF87a":            ".gif",
+		"GIF89a":            ".gif",
+	}
+
+	var extension string
+
+	imageFile := string(p.Params.Image)
+	for magic, ext := range magicTable {
+		if strings.HasPrefix(imageFile, magic) {
+			extension = ext
+		}
+	}
+	// 該当しないフォーマットの場合, Bad Request
+	if extension == "" {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code: "401",
+				Message: "Bad Request",
+			})
+	}
+
 	//// 画像ファイルの保存
 	// 画像ファイルのパス設定
 	assetsPath := os.Getenv("ASSETS_PATH")
-	imagePath := assetsPath + "user" + strconv.Itoa(int(loginUser.UserID))
+	imagePath := assetsPath + "user" + strconv.Itoa(int(loginUser.UserID)) + extension
 
 	// パスからファイルを作成
 	file, err := os.Create(imagePath)
@@ -53,25 +79,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// 作成したファイルに画像ファイルを書き込む
 	file.Write(p.Params.Image)
 	////
-
-	// Imageのバリデーション
-	//	p.Params.Image
-	//_, format, err := image.DecodeConfig(file)
-	//if err != nil {
-	//	return si.NewPostImagesInternalServerError().WithPayload(
-	//		&si.PostImagesInternalServerErrorBody{
-	//			Code: "500",
-	//			Message: err.Error(),
-	//		})
-	//}
-	//
-	//if (format != "png") || (format != "jpg") || (format != "gif") {
-	//	return si.NewPostImagesBadRequest().WithPayload(
-	//		&si.PostImagesBadRequestBody{
-	//			Code: "400",
-	//			Message: "Bad Request",
-	//		})
-	//}
 
 	//// UserImageの更新
 	// 更新用のUserImageを作成
