@@ -8,21 +8,15 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/nfnt/resize"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
 	"os"
 	"strconv"
 )
-
-
-
-
-
-
-
-
-
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	/*
@@ -74,19 +68,71 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	バイナリの先頭部分からjpg, pngを判定する（それ以外の場合はbad requestを返す）
 	jpegファイルの場合は\xff\xd8
 	pngファイルの場合は\x89\x50\x4e\x47\x0d\x0a\x1a\x0a
+	400*400におさまるようにリサイズします。
 	*/
 	var extension string
-	if bytes.HasPrefix(p.Params.Image,[]byte{0xff, 0xd8}) {
-		extension = "jpg"
-	} else if bytes.HasPrefix(p.Params.Image,[]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}) {
-		extension = "png"
-	} else {
+	img := p.Params.Image
+	// imgが5MB以上の時は処理しない。413に対応するメソッドがない……。
+	if len(img) > 1048576*5 {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
-				"400",
-				"Bad Request",
+				"413",
+				"Payload Too Large",
 			})
 	}
+
+	// jpegの場合
+	if bytes.HasPrefix(img,[]byte{0xff, 0xd8}) {
+		extension = "jpg"
+		imgDecoded, errJpg := jpeg.Decode(bytes.NewReader(img))
+		if errJpg != nil {
+			return si.NewPostMessageInternalServerError().WithPayload(
+				&si.PostMessageInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		imgResizedDecoded := resize.Thumbnail(400,400,imgDecoded, resize.Lanczos3)
+		buf := new(bytes.Buffer)
+		errEncode := jpeg.Encode(buf, imgResizedDecoded, nil)
+		if errEncode != nil {
+			return si.NewPostMessageInternalServerError().WithPayload(
+				&si.PostMessageInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		img = buf.Bytes()
+	// pngの場合
+	} else if bytes.HasPrefix(img,[]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}) {
+		extension = "png"
+		imgDecoded, errPng := png.Decode(bytes.NewReader(img))
+		if errPng != nil {
+			return si.NewPostMessageInternalServerError().WithPayload(
+				&si.PostMessageInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		imgResizedDecoded := resize.Thumbnail(400,400,imgDecoded, resize.Lanczos3)
+		buf := new(bytes.Buffer)
+		errEncode := png.Encode(buf, imgResizedDecoded)
+		if errEncode != nil {
+			return si.NewPostMessageInternalServerError().WithPayload(
+				&si.PostMessageInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		img = buf.Bytes()
+	} else { // imgがjpg, png以外の時は処理しない。415に対応するメソッドがない……。
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				"415",
+				"Unsupported Media Type",
+			})
+	}
+
 
 	filename := strconv.FormatInt(sEntToken.UserID, 10)+"."+extension
 	file, errOpen := os.OpenFile(assets_path+filename, os.O_WRONLY|os.O_CREATE, 0666)
@@ -101,7 +147,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 	defer file.Close()
 
-	_, errOpen = file.Write(p.Params.Image)
+	_, errOpen = file.Write(img)
 
 	if errOpen  != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
