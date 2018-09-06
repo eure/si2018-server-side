@@ -40,27 +40,28 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	userRepo := repositories.NewUserRepository()
 	var err error
 	// トークン認証
-	var token *entities.UserToken
+	var id int64
 	{
 		tokenRepo := repositories.NewUserTokenRepository()
-		token, err = tokenRepo.GetByToken(p.Token)
+		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
 			return getLikesThrowInternalServerError("GetByToken", err)
 		}
 		if token == nil {
 			return getLikesThrowUnauthorized("GetByToken failed")
 		}
+		id = token.UserID
 	}
 	// もらったいいねを取得
 	var like []entities.UserLike
 	{
 		likeRepo := repositories.NewUserLikeRepository()
 		matchRepo := repositories.NewUserMatchRepository()
-		matched, err := matchRepo.FindAllByUserID(token.UserID)
+		matched, err := matchRepo.FindAllByUserID(id)
 		if err != nil {
 			return getLikesThrowInternalServerError("FindAllByUserID", err)
 		}
-		like, err = likeRepo.FindGotLikeWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset), matched)
+		like, err = likeRepo.FindGotLikeWithLimitOffset(id, int(p.Limit), int(p.Offset), matched)
 		if err != nil {
 			return getLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
 		}
