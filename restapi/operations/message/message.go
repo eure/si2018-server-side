@@ -27,7 +27,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	// Bad Request
+	//// Bad Request
+	// UserID
 	if p.UserID < 0 {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
@@ -35,7 +36,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
-
+	// Message
 	if p.Params.Message == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
@@ -44,12 +45,10 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	var message entities.UserMessage
-
 	// トークンからログインユーザーを取得
 	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
 
-	// メッセージ送信相手とマッチングしていない場合, Bad Requestを返す
+	// メッセージ送信相手とマッチングしているか確認
 	userMatch, err := repUserMatch.Get(loginUser.UserID, p.UserID)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
@@ -58,6 +57,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	// メッセージ送信相手とマッチングしていない場合, Bad Requestを返す
 	if userMatch == nil{
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
@@ -66,6 +66,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
+	// UserMessageの作成
+	var message entities.UserMessage
 	message.UserID = loginUser.UserID
 	message.PartnerID = p.UserID
 	message.Message = p.Params.Message
@@ -96,18 +98,56 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	repUserMessage := repositories.NewUserMessageRepository()
 	repUserToken := repositories.NewUserTokenRepository()
 
-	loginUser, _:= repUserToken.GetByToken(p.Token)
-	
-	userMessages, _:= repUserMessage.GetMessages(loginUser.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
-
-	if userMessages == nil {
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code:    "400",
-				Message: "Message is nothing",
+	err := repUserToken.ValidateToken(p.Token)
+	if err != nil {
+		return si.NewGetMessagesUnauthorized().WithPayload(
+			&si.GetMessagesUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
 
+	// limitが0の場合、メッセージを全取得してしまう => []を返したい
+	// xormの中でlimitが0の時にlimitが指定されなくなるところを書き換えたかったが処理の部分が分からない
+	if p.Limit != nil {
+		if *p.Limit == 0 {
+			return si.NewGetMessagesOK().WithPayload(nil)
+		} else if *p.Limit < 0 {
+			return si.NewGetMessagesBadRequest().WithPayload(
+				&si.GetMessagesBadRequestBody{
+					Code:    "400",
+					Message: "Bad Request",
+				})
+		}
+	}
+
+	// OldestとLatestが存在する場合
+	if (p.Oldest != nil) && (p.Latest != nil) {
+		// LatestがOldestより時間的に後だったら　
+		if time.Time(*p.Latest).After(time.Time(*p.Oldest)) {
+			return si.NewGetMessagesBadRequest().WithPayload(
+				&si.GetMessagesBadRequestBody{
+					Code: "400",
+					Message: "Bad Request",
+				})
+		}
+
+	}
+
+	// tokenからユーザーの取得
+	loginUser, _:= repUserToken.GetByToken(p.Token)
+
+	// メッセージの取得
+	userMessages, err:= repUserMessage.GetMessages(loginUser.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// UserMessageの配列をUserMessagesにキャスト
 	messages := entities.UserMessages(userMessages)
 
 	messagesModel := messages.Build()
