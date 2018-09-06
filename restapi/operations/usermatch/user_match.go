@@ -37,9 +37,16 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	// トークンからidの取得
-	userToken, _ := repUserToken.GetByToken(p.Token)
+	userToken, err := repUserToken.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
-	// マッチング済みの相手一覧を取得する.
+	// マッチング済みの相手一覧を取得する.(マッチ日時が新しい順)
 	userMatches, err := repUserMatch.FindByUserIDWithLimitOffset(userToken.UserID, int(p.Limit), int(p.Offset))
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
@@ -48,9 +55,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	//if userMatches == nil {
-	//	return si.NewGetMatchesOK().WithPayload(nil) // UserMatchがいない場合, nilで返す
-	//}
 
 	// マッチングしているユーザのIDを配列にいれる
 	var matchedUserIDs []int64
@@ -65,7 +69,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		matchedUserIDs = append(matchedUserIDs, matchedUserID)
 	}
 
-	// IDの配列からユーザーを取得
+	// IDの配列からユーザーを取得(ID昇順)
 	matchedUsers, err := repUser.FindByIDs(matchedUserIDs)
 	if err != nil {
 		return si.NewGetMatchesInternalServerError().WithPayload(
@@ -75,15 +79,22 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	//// マッチ日時が新しい順にMatchUserResponsesを作成する
+	// UserのIDをキー、Userをバリューとするマップを作成
+	matchUserMap := make(map[int64]entities.User)
+	for _, matchedUser := range matchedUsers {
+		matchUserMap[matchedUser.ID] = matchedUser
+
+	}
+
 	// return用のmodelを作るためのMatchUserResponsesのエンティティ
 	var matchUserReses entities.MatchUserResponses
 
-	for i, matchedUser := range matchedUsers {
-		// MatchUserResponsesに入れていくためのMatchUserResponseのエンティティの実態を宣言
+	for i, userMatche := range userMatches {
+		// MatchUserResponsesに入れていくためのMatchUserResponseのエンティティの実体を宣言
 		var matchUserRese = entities.MatchUserResponse{}
-		// User型からMatchUserResponse型に変換
-		matchUserRese.ApplyUser(matchedUser)
-		matchUserRese.MatchedAt = userMatches[i].CreatedAt
+		matchUserRese.ApplyUser(matchUserMap[matchedUserIDs[i]])
+		matchUserRese.MatchedAt = userMatche.CreatedAt
 		matchUserReses = append(matchUserReses, matchUserRese)
 	}
 

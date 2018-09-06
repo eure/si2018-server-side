@@ -18,32 +18,41 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	repUserLike := repositories.NewUserLikeRepository()
 	repUserToken := repositories.NewUserTokenRepository() // tokenからユーザーのIDを取得するため
 	repUserMatch := repositories.NewUserMatchRepository() // ユーザーとマッチングしているユーザーを取得するため
-	repUser := repositories.NewUserRepository() // idからユーザーを取得するため
+	repUser := repositories.NewUserRepository()           // idからユーザーを取得するため
 
 	// Tokenのバリデーション
 	err := repUserToken.ValidateToken(p.Token)
 	if err != nil {
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
-				Code: "401",
+				Code:    "401",
 				Message: "Token Is Invalid",
 			})
 	}
 
 	// bad Request
-	if (p.Limit < 1) || (p.Offset < 0) {
+	if p.Limit == 0 {
+		return si.NewGetLikesOK().WithPayload(nil)
+	} else if (p.Limit < 1) || (p.Offset < 0) {
 		return si.NewGetLikesBadRequest().WithPayload(
 			&si.GetLikesBadRequestBody{
-				Code: "400",
+				Code:    "400",
 				Message: "Bad Request",
 			})
 	}
 
 	// トークンからユーザーのIDを取得
-	loginUserToken, _ := repUserToken.GetByToken(p.Token)
+	loginUserToken, err := repUserToken.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	// そのユーザーとマッチングしているユーザーのIDを全取得
-	matchUserIDs, err := repUserMatch.FindAllByUserID(loginUserToken.UserID) 
+	matchUserIDs, err := repUserMatch.FindAllByUserID(loginUserToken.UserID)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -52,8 +61,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	// マッチングしている人を除く、ユーザーをいいねした人を全取得
-	userLikesForMe, err := repUserLike.FindGotLikeWithLimitOffset(loginUserToken.UserID, int(p.Limit), int(p.Offset), matchUserIDs)
+	// マッチングしている人を除く、ユーザーをいいねした人を全取得(いいね送信日時が新しい順)
+	userLikesMe, err := repUserLike.FindGotLikeWithLimitOffset(loginUserToken.UserID, int(p.Limit), int(p.Offset), matchUserIDs)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -61,32 +70,43 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	//if entsUserLike_LikedMe == nil {
-	//	return si.NewGetLikesOK().WithPayload(nil)
-	//}
 
 	// ユーザーをいいねした人のIDの配列を取得
 	var likedUserIDs []int64
-	for _, userLikeForMe := range userLikesForMe {
-		likedUserIDs = append(likedUserIDs, userLikeForMe.UserID)
+	for _, userLikeMe := range userLikesMe {
+		likedUserIDs = append(likedUserIDs, userLikeMe.UserID)
 	}
 
-	// idの配列からユーザーを取得
-	likedMeUsers , _:= repUser.FindByIDs(likedUserIDs)
+	// idの配列からユーザーを取得(id昇順)
+	likedMeUsers , err := repUser.FindByIDs(likedUserIDs)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	//// いいね送信日時が新しい順にLikeUserResponsesを作成する
+	// UserのIDをキー、Userをバリューとするマップを作成
+	var userMap = make(map[int]entities.User)
+	for _, likedMeUser := range likedMeUsers {
+		userMap[int(likedMeUser.ID)] = likedMeUser
+	}
 
 	// return用のmodelを作るためのLikeUserResponsesのエンティティ
 	var likeUserReses entities.LikeUserResponses
-	//
-	for i, likedMeUsers := range likedMeUsers {
+	// UserLikeで回し、いいね送信日時が新しい順でLikeUserResponsesを作成する
+	for _, userLikeToMe := range userLikesMe {
 		var likeUserRese = entities.LikeUserResponse{}
-		likeUserRese.ApplyUser(likedMeUsers)
-		likeUserRese.LikedAt = userLikesForMe[i].CreatedAt
+		likeUserRese.ApplyUser(userMap[int(userLikeToMe.UserID)])
+		likeUserRese.LikedAt = userLikeToMe.CreatedAt
 		likeUserReses = append(likeUserReses, likeUserRese)
 	}
 
-	likeUserRese := likeUserReses.Build()
+	likeUserResesModel := likeUserReses.Build()
 
-	return si.NewGetLikesOK().WithPayload(likeUserRese)
+	return si.NewGetLikesOK().WithPayload(likeUserResesModel)
 }
 
 
@@ -113,13 +133,22 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// Bad Request
-	if p.UserID < 0 {
+	user, err := repUser.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if user == nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code: "400",
 				Message: "Bad Request",
 			})
 	}
+
 
 	// tokenからユーザーIDを取得し、そのIDのユーザーを取得
 	loginUserToken, _ := repUserToken.GetByToken(p.Params.Token)
@@ -140,6 +169,9 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
+	}
+	if likeUser == nil {
+		return si.NewPostLikeBadRequest()
 	}
 
 	// 同性時のエラーハンドリング

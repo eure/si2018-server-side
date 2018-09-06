@@ -33,16 +33,23 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	// tokenからuserTokenを取得
-	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
+	loginUser, err := repUserToken.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	} // 万が一のため
 
-	// 拡張子の判別
+	//// 拡張子の判別
+	// (参考)https://stackoverflow.com/questions/25959386/how-to-check-if-a-file-is-a-valid-image
 	var magicTable = map[string]string{
 		"\xff\xd8\xff":      ".jpeg",
 		"\x89PNG\r\n\x1a\n": ".png",
 		"GIF87a":            ".gif",
 		"GIF89a":            ".gif",
 	}
-
 	var extension string
 
 	imageFile := string(p.Params.Image)
@@ -55,7 +62,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	if extension == "" {
 		return si.NewPostImagesBadRequest().WithPayload(
 			&si.PostImagesBadRequestBody{
-				Code: "401",
+				Code: "400",
 				Message: "Bad Request",
 			})
 	}

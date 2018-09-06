@@ -27,15 +27,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	//// Bad Request
-	// UserID
-	if p.UserID < 0 {
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
-			})
-	}
 	// Message
 	if p.Params.Message == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
@@ -46,7 +37,14 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	// トークンからログインユーザーを取得
-	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
+	loginUser, err := repUserToken.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	// メッセージ送信相手とマッチングしているか確認
 	userMatch, err := repUserMatch.Get(loginUser.UserID, p.UserID)
@@ -107,8 +105,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
-	// limitが0の場合、メッセージを全取得してしまう => []を返したい
-	// xormの中でlimitが0の時にlimitが指定されなくなるところを書き換えたかったが処理の部分が分からない
+	// limitが0の場合、メッセージを全取得してしまう => []を返す
 	if p.Limit != nil {
 		if *p.Limit == 0 {
 			return si.NewGetMessagesOK().WithPayload(nil)
@@ -135,7 +132,14 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	}
 
 	// tokenからユーザーの取得
-	loginUser, _:= repUserToken.GetByToken(p.Token)
+	loginUser, err:= repUserToken.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	// メッセージの取得
 	userMessages, err:= repUserMessage.GetMessages(loginUser.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
