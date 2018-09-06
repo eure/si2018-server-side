@@ -61,22 +61,39 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	for _, m := range matched {
 		ids = append(ids, m.GetPartnerID(id))
 	}
+	mapping := make(map[int64]int)
+	for i, m := range matched {
+		mapping[m.UserID] = i
+	}
+	count := len(matched)
 	// 相手のユーザー情報を取得
-	var users []entities.User
+	users := make([]entities.User, count)
 	{
 		userRepo := repositories.NewUserRepository()
-		users, err = userRepo.FindByIDs(ids)
+		shuffledUsers, err := userRepo.FindByIDs(ids)
 		if err != nil {
 			return getMatchesThrowInternalServerError("FindByIDs", err)
 		}
+		if len(shuffledUsers) != count {
+			return getMatchesThrowBadRequest("FindByIDs failed")
+		}
+		for _, u := range shuffledUsers {
+			users[mapping[u.ID]] = u
+		}
 	}
 	// 相手の写真を取得
-	var images []entities.UserImage
+	images := make([]entities.UserImage, count)
 	{
 		imageRepo := repositories.NewUserImageRepository()
-		images, err = imageRepo.GetByUserIDs(ids)
+		shuffledImages, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
 			return getMatchesThrowInternalServerError("GetByUserIDs", err)
+		}
+		if len(shuffledImages) != count {
+			return getMatchesThrowBadRequest("GetByUserIDs failed")
+		}
+		for _, im := range shuffledImages {
+			images[mapping[im.UserID]] = im
 		}
 	}
 	// 以上の情報をまとめる
