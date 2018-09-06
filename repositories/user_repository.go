@@ -1,10 +1,6 @@
 package repositories
 
 import (
-	"time"
-
-	"github.com/go-openapi/strfmt"
-
 	"github.com/eure/si2018-server-side/entities"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
@@ -25,10 +21,7 @@ func (r *UserRepository) Create(ent entities.User) error {
 }
 
 func (r *UserRepository) Update(ent *entities.User) error {
-	now := strfmt.DateTime(time.Now())
-
 	s := engine.NewSession().Where("id = ?", ent.ID)
-	ent.UpdatedAt = now
 	if _, err := s.Update(ent); err != nil {
 		return err
 	}

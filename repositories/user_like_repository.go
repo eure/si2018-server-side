@@ -2,10 +2,8 @@ package repositories
 
 import (
 	"errors"
-	"time"
 
 	"github.com/eure/si2018-server-side/entities"
-	"github.com/go-openapi/strfmt"
 )
 
 type UserLikeRepository struct{}
@@ -15,10 +13,6 @@ func NewUserLikeRepository() UserLikeRepository {
 }
 
 func (r *UserLikeRepository) Create(ent entities.UserLike) error {
-	now := strfmt.DateTime(time.Now())
-	ent.CreatedAt = now
-	ent.UpdatedAt = now
-
 	s := engine.NewSession()
 
 	if err := s.Begin(); err != nil {
@@ -43,12 +37,9 @@ func (r *UserLikeRepository) Create(ent entities.UserLike) error {
 
 	if has {
 		// マッチングさせる
-		now = strfmt.DateTime(time.Now())
 		userMatch := entities.UserMatch{
 			UserID:    ent.UserID,
 			PartnerID: ent.PartnerID,
-			CreatedAt: now,
-			UpdatedAt: now,
 		}
 
 		if _, err := s.Insert(&userMatch); err != nil {

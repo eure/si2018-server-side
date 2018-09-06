@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image"
 	"os"
-	"time"
 
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
@@ -28,10 +27,7 @@ func (r *UserImageRepository) Create(ent entities.UserImage) error {
 }
 
 func (r *UserImageRepository) Update(ent entities.UserImage) error {
-	now := strfmt.DateTime(time.Now())
-
 	s := engine.NewSession().Where("user_id = ?", ent.UserID)
-	ent.UpdatedAt = now
 
 	if _, err := s.Update(ent); err != nil {
 		return err

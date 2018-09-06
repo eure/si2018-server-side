@@ -3,7 +3,6 @@ package repositories
 import (
 	"errors"
 	"log"
-	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/go-xorm/builder"
@@ -18,10 +17,6 @@ func NewUserMessageRepository() UserMessageRepository {
 }
 
 func (r *UserMessageRepository) Create(ent entities.UserMessage) error {
-	now := strfmt.DateTime(time.Now())
-	ent.CreatedAt = now
-	ent.UpdatedAt = now
-
 	s := engine.NewSession()
 	if _, err := s.Insert(&ent); err != nil {
 		return err
