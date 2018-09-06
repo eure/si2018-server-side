@@ -49,6 +49,21 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
+	// メッセージのチェック(空白ではないか，1万字いないか)
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	} else if len(p.Params.Message) > 10000 {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// マッチしているユーザーかをきちんと確認する
 	if CheckMatchUserID(userIDs, p.UserID) {
 		// メッセージの値の定義
@@ -68,12 +83,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 					Message: "Internal Server Error",
 				})
 		}
-	} else {
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
 	}
 
 	return si.NewPostMessageOK().WithPayload(
