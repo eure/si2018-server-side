@@ -57,9 +57,15 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	var mr entities.MatchUserResponses
 	var userIDs []int64
 
+	// マッチ済みのユーザーのIDをスライスに入れる
 	for _, matchUser := range match {
-		userIDs = append(userIDs, matchUser.UserID)
+		if matchUser.UserID != token.UserID {
+			userIDs = append(userIDs, matchUser.UserID)
+		} else {
+			userIDs = append(userIDs, matchUser.PartnerID)
+		}
 	}
+
 	// マッチしているユーザーの情報をすべて取得する
 	users, err := u.FindByIDs(userIDs)
 	if err != nil {
