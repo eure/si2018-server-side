@@ -15,7 +15,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	mr := repositories.NewUserMessageRepository()
 	mchr := repositories.NewUserMatchRepository()
 
-	// usr, _ := ur.GetByToken(p.Params.Token)
 	token, err := tr.GetByToken(p.Params.Token)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
@@ -25,6 +24,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
+	//
 	if token == nil {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
@@ -59,13 +59,13 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	if matchIDs == nil {
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
-			})
-	} 
+	// if matchIDs == nil {
+	// 	return si.NewPostMessageBadRequest().WithPayload(
+	// 		&si.PostMessageBadRequestBody{
+	// 			Code: "400",
+	// 			Message: "Bad Request",
+	// 		})
+	// } 
 
 	if !common.Contains(matchIDs, p.UserID) {
 		return si.NewPostMessageBadRequest().WithPayload(
@@ -74,6 +74,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Message: "Bad Request (not match)",
 			})
 	}
+
 	msg := entities.NewUserMessage(usr.ID, p.UserID, p.Params.Message)
 	err = mr.Create(msg)
 	if err != nil {
@@ -82,7 +83,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 				Code: "500",
 				Message: "Internal Server Error",
 			})
-	
 	}
 
 	return si.NewPostMessageOK().WithPayload(

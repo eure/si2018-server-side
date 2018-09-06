@@ -45,6 +45,22 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	if p.Limit < 0 {
+		si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				Code: "400",
+				Message: "limit must be Natural*",
+			})
+	}
+
+	if p.Offset < 0 {
+		si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				Code: "400",
+				Message: "offset must be Natural*",
+			})
+	}
+
 	var ents entities.UserMatches
 	ents, err = mr.FindByUserIDWithLimitOffset(user.ID, int(p.Limit), int(p.Offset))
 	if err != nil {
@@ -59,7 +75,13 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	for _, matched := range ents {
 		res := entities.MatchUserResponse{}
-		user, err := ur.GetByUserID(matched.UserID)
+		var id int64
+		if matched.UserID != user.ID {
+			id = matched.UserID
+		} else {
+			id = matched.PartnerID
+		}
+		matchUser, err := ur.GetByUserID(id)
 		if err != nil {
 			return si.NewGetMatchesInternalServerError().WithPayload(
 				&si.GetMatchesInternalServerErrorBody{
@@ -67,13 +89,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 					Message: "Internal Server Error",
 				})
 		}
-
-		if 
-		res.ApplyUser(*user)
+		res.ApplyUser(*matchUser)
 		responses = append(responses, res)
 	}
 
 	sResponses := responses.Build()
-
 	return si.NewGetMatchesOK().WithPayload(sResponses)
 }

@@ -35,7 +35,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code: "500",
-				Message: "Internal Server Error()",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -53,6 +53,22 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			&si.GetUsersInternalServerErrorBody{
 				Code: "500",
 				Message: "Internal Server Error",
+			})
+	}
+
+	if p.Limit <= 0 {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
+	if p.Offset < 0 {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
 			})
 	}
 
@@ -119,7 +135,25 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	if user.ID != p.UserID {
+	// 同性は見れない
+	oppositeUser, err := ur.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code: "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if oppositeUser == nil {
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
+
+	if user.Gender == oppositeUser.Gender {
 		return si.NewGetProfileByUserIDBadRequest().WithPayload(
 			&si.GetProfileByUserIDBadRequestBody{
 				Code: "400",
