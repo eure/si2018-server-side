@@ -78,10 +78,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	// ApplyUserの形にしてBuildしないといけないので
 	// ApplyUserの型に変換する
-	for _, user := range users {
+	for i := len(users) - 1; i >= 0; i-- {
 		// 構造体の初期化
 		r := entities.MatchUserResponse{}
-		r.ApplyUser(user)
+		r.ApplyUser(users[i])
 		mr = append(mr, r)
 	}
 
