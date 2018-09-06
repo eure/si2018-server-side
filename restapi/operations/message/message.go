@@ -16,6 +16,15 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	userMatchR := repositories.NewUserMatchRepository()
 	userMessageR := repositories.NewUserMessageRepository()
 
+	// 400エラー
+	if p.Params.Token == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Can't find token.",
+			})
+	}
+
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 

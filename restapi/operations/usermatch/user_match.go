@@ -78,6 +78,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+
 	// レスポンス用の構造体に必要な情報をマップする
 	var getMatchesResponsesEnt entities.MatchUserResponses
 

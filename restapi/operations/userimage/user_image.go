@@ -21,6 +21,14 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	tokenR := repositories.NewUserTokenRepository()
 	userImageR := repositories.NewUserImageRepository()
 
+	// 400エラー
+	if p.Params.Token == "" {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code:    "400",
+				Message:  "Can't find token.",
+			})
+	}
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
@@ -43,8 +51,19 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
+	// ファイルデータから拡張子を判別する
+	extension := findExtensionFromByteFile(p.Params.Image)
+
+	if extension == "" {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. Only jpeg and png file can be accepted.",
+			})
+	}
+
 	// 挿入するファイル名を決定する
-	fileName := strconv.FormatInt(time.Now().Unix(), 10) + ".png"
+	fileName := strconv.FormatInt(time.Now().Unix(), 10) + "." + extension
 
 	// 挿入先のパスを指定する
 	insertPath := os.Getenv("ASSETS_PATH") + fileName
@@ -83,4 +102,29 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(imageUrl),
 		})
+}
+
+// 拡張子を判別する
+func findExtensionFromByteFile(fileData []byte) string {
+	fileDataBytes := []byte(fileData)
+
+	var jpegBytes = []byte{'\xff', '\xd8'}
+	var pngBytes = []byte{'\x89', '\x50', '\x4e', '\x47', '\x0d', '\x0a', '\x1a', '\x0a'}
+
+	if fileDataBytes[0] == jpegBytes[0] && fileDataBytes[1] == jpegBytes[1] {
+		return "jpeg"
+	}
+
+	if fileDataBytes[0] == pngBytes[0] &&
+		fileDataBytes[1] == pngBytes[1] &&
+		fileDataBytes[2] == pngBytes[2] &&
+		fileDataBytes[3] == pngBytes[3] &&
+		fileDataBytes[4] == pngBytes[4] &&
+		fileDataBytes[5] == pngBytes[5] &&
+		fileDataBytes[6] == pngBytes[6] &&
+		fileDataBytes[7] == pngBytes[7] {
+			return "png"
+	}
+
+	return ""
 }

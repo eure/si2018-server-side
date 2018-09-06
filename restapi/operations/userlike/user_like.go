@@ -17,6 +17,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	userMatchR := repositories.NewUserMatchRepository()
 	userLikeR := repositories.NewUserLikeRepository()
 	userR := repositories.NewUserRepository()
+	userImageR := repositories.NewUserImageRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Token)
@@ -84,6 +85,26 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	var userEntities entities.Users = userEnts
+
+	// ユーザーIDのスライスを取得する
+	var userIDs []int64
+
+	for _, userEntity := range userEntities {
+		userIDs = append(userIDs, userEntity.ID)
+	}
+
+	// 取得したユーザーに紐づく画像を取得する
+	userImageEnts, err := userImageR.GetByUserIDs(userIDs)
+
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
 	// レスポンス用のスライスに必要な値をマップする
 	var likeUserResponses entities.LikeUserResponses
 
@@ -91,13 +112,23 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 		var likeUserResponse entities.LikeUserResponse
 
+		// いいねした時間を入れる
 		likeUserResponse.LikedAt = userLikeEnt.CreatedAt
 
+		// ユーザーを入れる
 		for _, userEnt := range userEnts {
 
-			if userLikeEnt.UserID == userEnt.ID {
-				likeUserResponse.User = userEnt
+			// ユーザーにimage_uriを入れる
+			for _, userImageEnt := range userImageEnts {
+				if userEnt.ID == userImageEnt.UserID {
+					userEnt.ImageURI = userImageEnt.Path
+				}
 			}
+
+			if userLikeEnt.UserID == userEnt.ID {
+				likeUserResponse.ApplyUser(userEnt)
+			}
+
 		}
 
 		likeUserResponses = append(likeUserResponses, likeUserResponse)
@@ -117,6 +148,15 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	tokenR := repositories.NewUserTokenRepository()
 	userLikeR := repositories.NewUserLikeRepository()
 	userMatchR := repositories.NewUserMatchRepository()
+
+	// 400エラー
+	if p.Params.Token == "" {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message:  "Can't find token.",
+			})
+	}
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)

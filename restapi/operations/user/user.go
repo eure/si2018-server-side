@@ -218,6 +218,15 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	userR := repositories.NewUserRepository()
 	userImageR := repositories.NewUserImageRepository()
 
+	// 400エラー
+	if p.Params.Token == "" {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code:    "400",
+				Message:  "Can't find token",
+			})
+	}
+
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 
@@ -322,7 +331,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 
 	// モデルにマッピングする
 	myUpdatedUser := myUpdatedUserEnt.Build()
-	
+
 	if myUserImageEnt != nil {
 		myUpdatedUser.ImageURI = myUserImageEnt.Path
 	}
