@@ -25,7 +25,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 

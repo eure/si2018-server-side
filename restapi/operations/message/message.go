@@ -28,7 +28,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -101,7 +101,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 

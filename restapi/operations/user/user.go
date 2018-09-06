@@ -95,17 +95,17 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	token, err := t.GetByToken(p.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if token == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -138,17 +138,17 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// ユーザーID取得用
 	token, err := t.GetByToken(p.Params.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
 	if token == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
+		return si.NewPutProfileUnauthorized().WithPayload(
+			&si.PutProfileUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 

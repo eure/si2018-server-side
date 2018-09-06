@@ -29,7 +29,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -116,7 +116,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 

@@ -35,7 +35,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		return si.NewPostImagesUnauthorized().WithPayload(
 			&si.PostImagesUnauthorizedBody{
 				Code:    "401",
-				Message: "Your Token Is Invalid",
+				Message: "Token Is Invalid",
 			})
 	}
 
