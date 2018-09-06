@@ -13,7 +13,21 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	//トークンからユーザーidを取得する為に利用
-	token, _ := t.GetByToken(p.Token)
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	//いいねをすでに送っている人を取得
 	ids, err := l.FindLikeAll(token.UserID)
