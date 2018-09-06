@@ -56,6 +56,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		fileName = randString+".png"
 	}else if strings.HasPrefix(fileString, "47494638"){
 		fileName = randString+".gif"
+	}else {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
 	}
 	filePath := "assets/"+fileName
 	// ファイル作成
