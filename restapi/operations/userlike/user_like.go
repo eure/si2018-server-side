@@ -47,6 +47,15 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	// offset 負の数になったときにBadRequestを返す
+	if paramsOffset < 0 {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// match済みのユーザーを取得
 	match, err := m.FindAllByUserID(token.UserID)
 	if err != nil {
