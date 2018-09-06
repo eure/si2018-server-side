@@ -30,8 +30,8 @@ type User struct {
 	CostOfDate     string          `xorm:"cost_of_date"`
 	NthChild       string          `xorm:"nth_child"`
 	Housework      string          `xorm:"housework"`
-	CreatedAt      strfmt.DateTime `xorm:"created_at"`
-	UpdatedAt      strfmt.DateTime `xorm:"updated_at"`
+	CreatedAt      strfmt.DateTime `xorm:"created_at created"`
+	UpdatedAt      strfmt.DateTime `xorm:"updated_at updated"`
 
 	ImageURI string `xorm:"-"`
 }
