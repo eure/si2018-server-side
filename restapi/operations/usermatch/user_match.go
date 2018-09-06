@@ -48,12 +48,14 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	// TODO: ユーザ情報の順番がID順になってしまっている
-
 	// マッチしているユーザIDを作成
 	var matchIds []int64
 	for _, u := range matchEntList {
-		matchIds = append(matchIds, u.PartnerID)
+		if u.PartnerID != tokenEnt.UserID {
+			matchIds = append(matchIds, u.PartnerID)
+		}else if u.UserID != tokenEnt.UserID {
+			matchIds = append(matchIds, u.UserID)
+		}
 	}
 	// マッチしているユーザIDからPartnerユーザ情報の取得
 	userR            := repositories.NewUserRepository()
@@ -65,11 +67,26 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+
+	// create順に修正
+	// TODO: もう少しシンプルにしたい
 	var array entities.MatchUserResponses
-	for _, u := range userEntList {
-		var tmp entities.MatchUserResponse
-		tmp.ApplyUser(u)
-		array = append(array, tmp)
+	for _, m := range matchEntList {
+		for _, u := range userEntList {
+			if m.PartnerID != tokenEnt.UserID{
+				if m.PartnerID == u.ID {
+					var tmp entities.MatchUserResponse
+					tmp.ApplyUser(u)
+					array = append(array, tmp)
+				}
+			}else if m.UserID != tokenEnt.UserID{
+				if m.UserID == u.ID {
+					var tmp entities.MatchUserResponse
+					tmp.ApplyUser(u)
+					array = append(array, tmp)
+				}
+			}
+		}
 	}
 	responseData := array.Build()
 	return si.NewGetMatchesOK().WithPayload(responseData)

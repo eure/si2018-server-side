@@ -56,13 +56,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+
 	// likeのidからユーザ情報取得
 	var likedIds []int64
 	for _, u    := range likeEntList {
 		likedIds = append(likedIds, u.UserID)
 	}
-
-	// TODO: ユーザ情報の順番がID順になってしまっている
 
 	// likeしてくれているユーザIDsから各ユーザ情報を取得
 	userR            := repositories.NewUserRepository()
@@ -74,14 +73,18 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+	// likeしてくれているユーザ情報をlikeのcreated順に作成する
 	var array entities.LikeUserResponses
-	for _, u := range userEntList {
-		var tmp entities.LikeUserResponse
-		tmp.ApplyUser(u)
-		array = append(array, tmp)
+	for _, l := range likeEntList {
+		for _, u := range userEntList {
+			if l.UserID == u.ID {
+				var tmp entities.LikeUserResponse
+				tmp.ApplyUser(u)
+				array = append(array, tmp)
+			}
+		}
 	}
 	responseData := array.Build()
-
 	return si.NewGetLikesOK().WithPayload(responseData)
 }
 
