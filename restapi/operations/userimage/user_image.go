@@ -85,9 +85,9 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	// pathの名前を定義
-	pathname := assetsBaseURI + p.Params.Token + "." + format
+	pathname := assetsBaseURI + string(token.UserID) + "." + format
 	// fileの名前を定義
-	filename := assetsPath + p.Params.Token + "." + format
+	filename := assetsPath + string(token.UserID) + "." + format
 
 	// ファイル作成
 	f, err := os.Create(filename)
