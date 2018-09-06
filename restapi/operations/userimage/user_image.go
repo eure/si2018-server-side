@@ -23,7 +23,21 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	i := repositories.NewUserImageRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	var assetsPath string
 	var assetsBaseURI string
