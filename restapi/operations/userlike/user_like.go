@@ -102,6 +102,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	l := repositories.NewUserLikeRepository()
 	u := repositories.NewUserRepository()
+	m := repositories.NewUserMatchRepository()
 
 	// ユーザーID取得用
 	token, err := t.GetByToken(p.Params.Token)
@@ -203,14 +204,33 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
-	// マッチングするかの確認
-	err = LikeMatch(p.UserID, token.UserID)
+
+	// お互いいいねになったらマッチングさせる
+	r, err := l.GetLikeBySenderIDReceiverID(p.UserID, token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
+	}
+	if r != nil {
+		// マッチングの初期値を定義
+		match := entities.UserMatch{
+			UserID:    token.UserID,
+			PartnerID: p.UserID,
+			CreatedAt: strfmt.DateTime(time.Now()),
+			UpdatedAt: strfmt.DateTime(time.Now()),
+		}
+		// マッチングのインサート
+		err = m.Create(match)
+		if err != nil {
+			return si.NewPostLikeInternalServerError().WithPayload(
+				&si.PostLikeInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
 	}
 
 	return si.NewPostLikeOK().WithPayload(
@@ -236,26 +256,4 @@ func CheckGenderUserID(likeUser, user *entities.User) bool {
 		return false
 	}
 	return true
-}
-
-// お互いいいねになったらマッチングさせる
-func LikeMatch(likeUserID, userID int64) error {
-	var err error
-	m := repositories.NewUserMatchRepository()
-	l := repositories.NewUserLikeRepository()
-
-	r, _ := l.GetLikeBySenderIDReceiverID(likeUserID, userID)
-	if r != nil {
-		// マッチングの初期値を定義
-		match := entities.UserMatch{
-			UserID:    userID,
-			PartnerID: likeUserID,
-			CreatedAt: strfmt.DateTime(time.Now()),
-			UpdatedAt: strfmt.DateTime(time.Now()),
-		}
-		// マッチングのインサート
-		err = m.Create(match)
-		return err
-	}
-	return nil
 }
