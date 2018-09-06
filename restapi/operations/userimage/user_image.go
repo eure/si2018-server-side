@@ -66,11 +66,25 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	f, err := os.Create(filepath.Join(ap, filename))
 	if err != nil {
+		fmt.Println("File create failed")
 		fmt.Println(err)
-		return si.NewPostImagesOK()
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	defer f.Close()
-	f.Write(img)
+	_, err = f.Write(img)
+	if err != nil {
+		fmt.Println("File write failed")
+		fmt.Println(err)
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	// Update DB
 	ui := entities.UserImage{}
@@ -78,10 +92,20 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	ui.Path = ap + filename
 
 	r := repositories.NewUserImageRepository()
-	old, err := r.GetByUserID(id)
+
+	old, err := r.GetByUserID(id) /* TODO check existance? */
 	fmt.Println(old)
-	err = r.Update(ui) /* TODO check existance? */
-	new, err := r.GetByUserID(id)
+
+	err = r.Update(ui) 
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	new, _ := r.GetByUserID(id)
 	fmt.Println(new)
 
 	return si.NewPostImagesOK().WithPayload(
