@@ -45,6 +45,16 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return getLikesInternalServerErrorResponse()
 	}
 
+	userImageRepository := repositories.NewUserImageRepository()
+	images, err := userImageRepository.GetByUserIDs(ids)
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	for i := range users {
+		users[i].ImageURI = images[i].Path
+	}
+
 	likeUserResponsesEnt = likeUserResponsesEnt.ApplyUsers(users)
 	likeResponses := likeUserResponsesEnt.Build()
 
