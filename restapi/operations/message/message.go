@@ -39,7 +39,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		return PostMsgBadReqestErr()
 	}
 	// validate already matching opposite
-	existmatchopposite, err := numar.Get(usertoken.UserID, userID)
+	existmatchopposite, err := numar.Get(userID, usertoken.UserID)
 	if err != nil {
 		return PostMsgRespInternalErr()
 	}

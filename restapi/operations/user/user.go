@@ -9,16 +9,16 @@ import (
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	nutr := repositories.NewUserTokenRepository()
-	nulr := repositories.NewUserLikeRepository()
-	nur := repositories.NewUserRepository()
+	usertokenHandler := repositories.NewUserTokenRepository()
+	userlikeHandler := repositories.NewUserLikeRepository()
+	userHandler := repositories.NewUserRepository()
 	//ngur := repositories.NewGetUserRepository()
 	// find userid
 	token := p.Token
 	limit := int(p.Limit)
 	offset := int(p.Offset)
 
-	usertoken, err := nutr.GetByToken(token)
+	usertoken, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetUserRespUnauthErr()
 	}
@@ -27,17 +27,17 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return GetProfileBadRequestErr()
 	}
 	// find userlike
-	userlike, err := nulr.FindLikeAll(usertoken.UserID)
+	userlike, err := userlikeHandler.FindLikeAll(usertoken.UserID)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
 	// find user
-	userprofile, err := nur.GetByUserID(usertoken.UserID)
+	userprofile, err := userHandler.GetByUserID(usertoken.UserID)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
 	oppositeGenger := userprofile.GetOppositeGender()
-	ent, err := nur.FindWithCondition(limit, offset, oppositeGenger, userlike)
+	ent, err := userHandler.FindWithCondition(limit, offset, oppositeGenger, userlike)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
@@ -53,12 +53,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	nur := repositories.NewUserRepository()
-	nut := repositories.NewUserTokenRepository()
+	userHandler := repositories.NewUserRepository()
+	usertokenHandler := repositories.NewUserTokenRepository()
 	token := p.Token
 	myuserid := p.UserID
 
-	userprofile, err := nur.GetByUserID(myuserid)
+	userprofile, err := userHandler.GetByUserID(myuserid)
 	if err != nil {
 		return GetProfileInternalErr()
 	}
@@ -66,7 +66,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	if userprofile == nil {
 		return GetProfileNotFoundErr()
 	}
-	usertoken, err := nut.GetByToken(token)
+	usertoken, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetProfileRespUnauthErr()
 

@@ -17,10 +17,10 @@ import (
 )
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
-	nuir := repositories.NewUserImageRepository()
-	nutr := repositories.NewUserTokenRepository()
+	userimageHandler := repositories.NewUserImageRepository()
+	usertokenHandler := repositories.NewUserTokenRepository()
 
-	usertkn, err := nutr.GetByToken(p.Params.Token)
+	usertkn, err := usertokenHandler.GetByToken(p.Params.Token)
 	if err != nil {
 		return RespInternalErr()
 	}
@@ -65,15 +65,19 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		UpdatedAt: strfmt.DateTime(time.Now()),
 	}
 
-	err = nuir.Update(userimage)
+	err = userimageHandler.Update(userimage)
 	if err != nil {
 		return RespInternalErr()
 	}
+	return PutImageOK(pathdir)
+
+}
+
+func PutImageOK(savepath string) middleware.Responder {
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI(pathdir),
+			ImageURI: strfmt.URI(savepath),
 		})
-
 }
 
 // return 500 Internal Server Error

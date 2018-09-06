@@ -12,23 +12,28 @@ import (
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	nulr := repositories.NewUserLikeRepository()
-	nutr := repositories.NewUserTokenRepository()
-	nur := repositories.NewUserRepository()
-	numr := repositories.NewUserMatchRepository()
-
-	usrid, err := nutr.GetByToken(p.Token)
+	userlikeHandler := repositories.NewUserLikeRepository()
+	usertokenHandler := repositories.NewUserTokenRepository()
+	userHandler := repositories.NewUserRepository()
+	usermatchhandler := repositories.NewUserMatchRepository()
+	token := p.Token
+	limit := int(p.Limit)
+	offset := int(p.Offset)
+	usertoken, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetLikesRespUnauthErr()
 	}
+	if usertoken == nil {
+		return GetLiksRespBadReqestErr()
+	}
 	// find already matching user
-	match, err := numr.FindAllByUserID(usrid.UserID)
+	match, err := usermatchhandler.FindAllByUserID(usertoken.UserID)
 	if err != nil {
 		GetLikesRespInternalErr()
 	}
 
 	// find recive like except already matching user
-	usrs, err := nulr.FindGotLikeWithLimitOffset(usrid.UserID, int(p.Limit), int(p.Offset), match)
+	usrs, err := userlikeHandler.FindGotLikeWithLimitOffset(usertoken.UserID, limit, offset, match)
 	if err != nil {
 		GetLikesRespInternalErr()
 	}
@@ -36,8 +41,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	for i := 0; i < len(usrs); i++ {
 		userids = append(userids, usrs[i].UserID)
 	}
-	//jimae
-	ent, err := nur.FindByIDs(userids)
+	ent, err := userHandler.FindByIDs(userids)
 	if err != nil {
 		GetLikesRespInternalErr()
 	}
@@ -53,18 +57,26 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	nulr := repositories.NewUserLikeRepository()
-	nutr := repositories.NewUserTokenRepository()
-	//numr := repositories.NewUserMatchRepository()
-	nur := repositories.NewUserRepository()
+	userlikeHandler := repositories.NewUserLikeRepository()
+	usertokenHandler := repositories.NewUserTokenRepository()
+	userHandler := repositories.NewUserRepository()
 	// find myuser data
-	userid, _ := nutr.GetByToken(p.Params.Token)
-	// validate if send same sex
-	partner, err := nur.GetByUserID(p.UserID)
+	userID := p.UserID
+	postlikeParam := p.Params
+	usertoken, err := usertokenHandler.GetByToken(postlikeParam.Token)
 	if err != nil {
 		return PosLikesRespInternalErr()
 	}
-	user, err := nur.GetByUserID(userid.UserID)
+	if usertoken == nil {
+		return PostLiksRespBadReqestErr()
+	}
+	// validate if send same sex
+	partner, err := userHandler.GetByUserID(userID)
+	if err != nil {
+		return PosLikesRespInternalErr()
+	}
+	user, err := userHandler.GetByUserID(usertoken.UserID)
+
 	if err != nil {
 		return PosLikesRespInternalErr()
 	}
@@ -72,7 +84,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return PostLiksRespBadReqestErr()
 	}
 	// duplicate like send
-	duplicatelike, err := nulr.GetLikeBySenderIDReceiverID(userid.UserID, p.UserID)
+	duplicatelike, err := userlikeHandler.GetLikeBySenderIDReceiverID(usertoken.UserID, userID)
 	if err != nil {
 		PostLiksRespBadReqestErr()
 	}
@@ -80,18 +92,14 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		PostLiksRespBadReqestErr()
 	}
 	var userlike entities.UserLike
-	BindUserLike(&userlike, userid.UserID, partner.ID)
+	BindUserLike(&userlike, userID, partner.ID)
 
-	err = nulr.Create(userlike)
+	err = userlikeHandler.Create(userlike)
 	if err != nil {
 		PosLikesRespInternalErr()
 	}
 	fmt.Println(err)
-	return si.NewPostLikeOK().WithPayload(
-		&si.PostLikeOKBody{
-			Code:    "200",
-			Message: "OK",
-		})
+	return PostLikeOK()
 }
 func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
 	like.UserID = userid
@@ -121,6 +129,14 @@ func GetLikesRespInternalErr() middleware.Responder {
 		&si.GetLikesInternalServerErrorBody{
 			Code:    "500",
 			Message: "Internal Server Error",
+		})
+}
+
+func PostLikeOK() middleware.Responder {
+	return si.NewPostLikeOK().WithPayload(
+		&si.PostLikeOKBody{
+			Code:    "200",
+			Message: "OK",
 		})
 }
 

@@ -10,14 +10,14 @@ import (
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	nutr := repositories.NewUserTokenRepository()
-	numr := repositories.NewUserMatchRepository()
-	nur := repositories.NewUserRepository()
-	user, err := nutr.GetByToken(p.Token)
+	usertokenHandler := repositories.NewUserTokenRepository()
+	usermatchHandler := repositories.NewUserMatchRepository()
+	userHandler := repositories.NewUserRepository()
+	user, err := usertokenHandler.GetByToken(p.Token)
 	if err != nil {
 		return GetMatchessRespUnauthErr()
 	}
-	ent, err := numr.FindByUserIDWithLimitOffset(user.UserID, int(p.Limit), int(p.Offset))
+	ent, err := usermatchHandler.FindByUserIDWithLimitOffset(user.UserID, int(p.Limit), int(p.Offset))
 	if err != nil {
 		return GetMatchesRespInternalErr()
 	}
@@ -26,7 +26,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		userids = append(userids, val.PartnerID)
 	}
 	fmt.Println(userids)
-	ents, _ := nur.FindByIDs(userids)
+	ents, _ := userHandler.FindByIDs(userids)
 	var allmatches entities.MatchUserResponses
 	for _, val := range ents {
 		var tmp = entities.MatchUserResponse{}
