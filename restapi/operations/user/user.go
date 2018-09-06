@@ -34,6 +34,15 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
+	// limitが20になっているかをvalidation
+	if paramsLimit != int64(20) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	//いいねをすでに送っている人を取得
 	userIDs, err := l.FindLikeOnley(token.UserID)
 	if err != nil {
@@ -66,15 +75,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	//明示的に型宣言
 	var f entities.Users
-
-	// limitが20になっているかをvalidation
-	if p.Limit != int64(20) {
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
 
 	//探す処理
 	f, err = u.FindWithCondition(int(paramsLimit), int(paramsOffset), gender, userIDs)

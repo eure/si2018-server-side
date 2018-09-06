@@ -126,6 +126,15 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
+	// limitが20になっているかをvalidation
+	if *paramsLimit != int64(20) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// matchingしているユーザーの取得
 	userIDs, err := match.FindAllByUserID(token.UserID)
 	if err != nil {
@@ -145,15 +154,6 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	// 明示的に宣言
 	var m entities.UserMessages
-
-	// limitが20になっているかをvalidation
-	if *paramsLimit != int64(20) {
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
 
 	// マッチしているユーザーかをきちんと確認する
 	if CheckMatchUserID(userIDs, paramsUserID) {

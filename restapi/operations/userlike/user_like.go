@@ -38,6 +38,15 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	// limitが20になっているかをvalidation
+	if p.Limit != int64(20) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// match済みのユーザーを取得
 	match, err := m.FindAllByUserID(token.UserID)
 	if err != nil {
@@ -45,15 +54,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
-			})
-	}
-
-	// limitが20になっているかをvalidation
-	if p.Limit != int64(20) {
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
 			})
 	}
 
