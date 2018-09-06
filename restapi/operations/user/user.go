@@ -3,11 +3,10 @@ package user
 import (
 	"github.com/go-openapi/runtime/middleware"
 
-	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/eure/si2018-server-side/repositories"
-	"github.com/k0kubun/pp"
-	"fmt"
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/repositories"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
+	"github.com/k0kubun/pp"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -25,7 +24,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersUnauthorized().WithPayload(
 			&si.GetUsersUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Your Token Is Invalid",
 			})
 	}
 
@@ -116,7 +115,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
 			&si.GetProfileByUserIDUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -142,8 +141,6 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 
 	ent, err := r.GetByUserID(p.UserID)
-	fmt.Println(err)
-
 
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
@@ -157,7 +154,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
-				Message: "User Not Found",
+				Message: "User Token Not Found",
 			})
 	}
 
@@ -175,7 +172,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return si.NewPutProfileUnauthorized().WithPayload(
 			&si.PutProfileUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -194,7 +191,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return si.NewPutProfileUnauthorized().WithPayload(
 			&si.PutProfileUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 

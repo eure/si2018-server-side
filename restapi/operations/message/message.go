@@ -137,8 +137,20 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	rMessage := repositories.NewUserMessageRepository()
 
+	limit := int(*(p.Limit))
+	latest := time.Time(*(p.Latest))
+	oldest := time.Time(*(p.Oldest))
+	now := time.Now()
+	// oldest latest now ->（時系列）の順になっていないとおかしい
+	if limit < 0 || !(oldest.Before(latest) && latest.Before(now)) {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
-	entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, int(*(p.Limit)), p.Latest, p.Oldest)
+	entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, limit, p.Latest, p.Oldest)
 
 	if errMessage != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(

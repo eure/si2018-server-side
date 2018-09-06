@@ -18,6 +18,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	3.	userIDからマッチ済みの相手matchIDを取得
 	4.	useridからマッチ済み以外のいいねの受信リストを取得
 	5.	いいねの受信リストからユーザーのプロフィールのリストを取得
+	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	*/
 
 
@@ -46,7 +47,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -92,12 +93,24 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	//fmt.Println("likes",likes)
+
+
+	// fmt.Println("likes",likes)
 	userLikes := entities.UserLikes(likes)
 
 	//fmt.Println("userLikes",userLikes)
-	sUsers := userLikes.Build() // userID partnerID createdAt UpdatedAtのリスト
+	sUsers := userLikes.Build() // userID(送信元) partnerID（送信先） createdAt UpdatedAtのリスト
 	//fmt.Println("sUsers",sUsers)
+
+	partnerLikedAt := map[int64]strfmt.DateTime{}
+
+
+	for _, sUser := range sUsers {
+		partnerLikedAt[sUser.UserID] = sUser.CreatedAt
+	}
+
+	// fmt.Println("partnerLikedAt",partnerLikedAt)
+
 
 	rUser := repositories.NewUserRepository()
 
@@ -109,6 +122,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 
 	partners, errFind := rUser.FindByIDs(IDs)
+	// fmt.Println("partners",partners)
 	if errFind != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
@@ -116,40 +130,14 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	entPartners := entities.Users(partners)
-	sEntPartners := entPartners.Build() // プロフィールのリスト
 
 	var payloads []*models.LikeUserResponse
-	for _, sEntPartner := range sEntPartners{
-		//entities.User -> models.LikeUserResponse
-		r := models.LikeUserResponse{}
-		r.ID = sEntPartner.ID
-		r.Nickname = sEntPartner.Nickname
-		r.Tweet = sEntPartner.Tweet
-		r.Introduction = sEntPartner.Introduction
-		r.ResidenceState = sEntPartner.ResidenceState
-		r.HomeState = sEntPartner.HomeState
-		r.Education = sEntPartner.Education
-		r.Job = sEntPartner.Job
-		r.AnnualIncome = sEntPartner.AnnualIncome
-		r.Height = sEntPartner.Height
-		r.BodyBuild = sEntPartner.BodyBuild
-		r.MaritalStatus = sEntPartner.MaritalStatus
-		r.Child = sEntPartner.Child
-		r.WhenMarry = sEntPartner.WhenMarry
-		r.WantChild = sEntPartner.WantChild
-		r.Smoking = sEntPartner.Smoking
-		r.Drinking = sEntPartner.Drinking
-		r.Holiday = sEntPartner.Holiday
-		r.HowToMeet = sEntPartner.HowToMeet
-		r.CostOfDate = sEntPartner.CostOfDate
-		r.NthChild = sEntPartner.NthChild
-		r.Housework = sEntPartner.Housework
-		r.ImageURI = sEntPartner.ImageURI
-		r.CreatedAt = sEntPartner.CreatedAt
-		r.UpdatedAt = sEntPartner.UpdatedAt
-		/* r.LikedAt = (探しても見つからない)*/
-		payloads = append(payloads,&r)
+	for _, partner := range partners {
+		var r entities.LikeUserResponse
+		r.ApplyUser(partner)
+		r.LikedAt = partnerLikedAt[partner.ID]
+		m := r.Build()
+		payloads = append(payloads,&m)
 	}
 
 	//fmt.Println("payloads",payloads)
@@ -172,7 +160,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -192,7 +180,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 

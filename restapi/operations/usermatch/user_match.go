@@ -6,6 +6,7 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
@@ -13,6 +14,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	1. tokenのvalidation
 	2. tokenからuseridを取得
 	3. useridからマッチングしたユーザーの一覧を取得
+	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	*/
 
 
@@ -71,6 +73,13 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	rUser := repositories.NewUserRepository()
 
+
+	partnerMatchedAt := map[int64]strfmt.DateTime{}
+
+	for _, sMatch := range sMatches {
+		partnerMatchedAt[sMatch.PartnerID] = sMatch.CreatedAt
+	}
+
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
 
 	var IDs []int64
@@ -88,40 +97,13 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	entPartners := entities.Users(partners)
-	sEntPartners := entPartners.Build() // プロフィールのリスト
-
 	var payloads []*models.MatchUserResponse
-	for _, sEntPartner := range sEntPartners{
-		//entities.User -> models.LikeUserResponse
-		r := models.MatchUserResponse{}
-		r.ID = sEntPartner.ID
-		r.Nickname = sEntPartner.Nickname
-		r.Tweet = sEntPartner.Tweet
-		r.Introduction = sEntPartner.Introduction
-		r.ResidenceState = sEntPartner.ResidenceState
-		r.HomeState = sEntPartner.HomeState
-		r.Education = sEntPartner.Education
-		r.Job = sEntPartner.Job
-		r.AnnualIncome = sEntPartner.AnnualIncome
-		r.Height = sEntPartner.Height
-		r.BodyBuild = sEntPartner.BodyBuild
-		r.MaritalStatus = sEntPartner.MaritalStatus
-		r.Child = sEntPartner.Child
-		r.WhenMarry = sEntPartner.WhenMarry
-		r.WantChild = sEntPartner.WantChild
-		r.Smoking = sEntPartner.Smoking
-		r.Drinking = sEntPartner.Drinking
-		r.Holiday = sEntPartner.Holiday
-		r.HowToMeet = sEntPartner.HowToMeet
-		r.CostOfDate = sEntPartner.CostOfDate
-		r.NthChild = sEntPartner.NthChild
-		r.Housework = sEntPartner.Housework
-		r.ImageURI = sEntPartner.ImageURI
-		r.CreatedAt = sEntPartner.CreatedAt
-		r.UpdatedAt = sEntPartner.UpdatedAt
-		/* r.LikedAt = (探しても見つからない)*/
-		payloads = append(payloads,&r)
+	for _, partner := range partners {
+		var r entities.MatchUserResponse
+		r.ApplyUser(partner)
+		r.MatchedAt = partnerMatchedAt[partner.ID]
+		m := r.Build()
+		payloads = append(payloads,&m)
 	}
 
 	return si.NewGetMatchesOK().WithPayload(payloads)
