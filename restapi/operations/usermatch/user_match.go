@@ -10,19 +10,21 @@ import (
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	r := repositories.NewUserMatchRepository()
+	t := repositories.NewUserTokenRepository()
+	u := repositories.NewUserRepository()
+	
+	// tokenから UserToken entitiesの取得 (Validation)
+	token := p.Token
+	loginUserToken , _ := t.GetByToken(token)
 
-	userR := repositories.NewUserRepository()
-	user , _ := userR.GetByToken(p.Token)
-	userid := user.ID
-
-	ent, _ := r.FindByUserIDWithLimitOffset(userid,int(p.Limit),int(p.Offset))
+	ent, _ := r.FindByUserIDWithLimitOffset(loginUserToken.UserID,int(p.Limit),int(p.Offset))
 
 	// applied メソッドによって変換されたUsersがほしい。
 	// とりあえずほしいから，格納先を用意してあげる。
 	var appliedusers entities.MatchUserResponses
 	for _,m := range ent {
 		var applied = entities.MatchUserResponse{}
-		matcheduser , _ := userR.GetByUserID(m.PartnerID)
+		matcheduser , _ := u.GetByUserID(m.PartnerID)
 		applied.ApplyUser(*matcheduser)
 		appliedusers = append (appliedusers, applied)
 	}
