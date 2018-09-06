@@ -11,33 +11,47 @@ import (
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	// トークンからユーザーIDを取得
-	ruserR := repositories.NewUserRepository()
-	user, _ := ruserR.GetByToken(p.Token)
-	userid := user.ID
+	t := repositories.NewUserTokenRepository()
+	m := repositories.NewUserMatchRepository()
+	u := repositories.NewUserRepository()
+	r := repositories.NewUserLikeRepository()
+	
+	// loginUserのUser entitiesを取得 (Validation)
+	loginUserToken := p.Token
+	loginUser,err := t.GetByToken(loginUserToken)
+	if err != nil {
+		return outPutGetStatus(500)
+	}
+	if loginUser == nil {
+		return outPutGetStatus(401)
+	}
+	loginUserID := loginUser.UserID
 
 	// マッチング済みのユーザーを取得
-	ruserM := repositories.NewUserMatchRepository()
-	matchedids, _ := ruserM.FindAllByUserID(userid)
-
-	r := repositories.NewUserLikeRepository()
-
+	matchedIDs, err := m.FindAllByUserID(loginUserID)
+	if err != nil {
+		return outPutGetStatus(500)
+	}
+	
 	// いいねされたやつらを集める
 	var ent entities.UserLikes
-	ent, _ = r.FindGotLikeWithLimitOffset(userid,int(p.Limit),int(p.Offset),matchedids)
+	ent, err = r.FindGotLikeWithLimitOffset(loginUserID,int(p.Limit),int(p.Offset),matchedIDs)
+	if err != nil {
+		return outPutGetStatus(500)
+	}
 
 	// applied メソッドによって変換されたUser's'がほしい。
 	// とりあえずほしいから，格納先を用意してあげる。
-	var appliedusers entities.LikeUserResponses
+	var appliedUsers entities.LikeUserResponses
 	for _,m := range ent {
 		var applied = entities.LikeUserResponse{}
-		likeduser , _ := ruserR.GetByUserID(m.UserID)
-		applied.ApplyUser(*likeduser)
-		appliedusers = append (appliedusers, applied)
+		likedUser , _ := u.GetByUserID(m.UserID)
+		applied.ApplyUser(*likedUser)
+		appliedUsers = append (appliedUsers, applied)
 	}
 
 	// aplyされた結果がbuildされればいい
-	sEnt := appliedusers.Build()
+	sEnt := appliedUsers.Build()
 	return si.NewGetLikesOK().WithPayload(sEnt)
 }
 
@@ -47,44 +61,45 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	m := repositories.NewUserMatchRepository()
 
-	// p.Params からいいねの送信ユーザーのUserID,Userを取得
-	FromUserParam := p.Params
-	FromUserToken, _ := t.GetByToken(FromUserParam.Token)
-	FromUserID := FromUserToken.UserID
-	FromUser, _ := u.GetByToken(FromUserToken.Token)
-
+	// fromUser == loginUser
+	// tokenから User entitiesを取得 (Validation)
+	token := p.Params.Token
+	fromUserToken, _ := t.GetByToken(token)
+	fromUserID := fromUserToken.UserID
+	fromUser, _ := u.GetByUserID(fromUserID)
+	
 	// p.UserID からいいねの受信ユーザーのUserID,Userを取得
-	ToUserID := p.UserID
-	ToUser, _ := u.GetByUserID(ToUserID)
+	toUserID := p.UserID
+	toUser, _ := u.GetByUserID(toUserID)
 	
 	// 同性かどうか
-	if ToUser.Gender != FromUser.Gender {
+	if toUser.Gender != fromUser.Gender {
 		// いいねをすでに送信しているか
-		SendLikeResult, err1 := r.GetLikeBySenderIDReceiverID(FromUserID, ToUserID)
-		if err1 != nil {
+		SendLikeResult, err := r.GetLikeBySenderIDReceiverID(fromUserID, toUserID)
+		if err != nil {
 			return outPutPostStatus(500)
 		} else if SendLikeResult != nil {
 			return outPutPostStatus(400)
 		} else {
 			// いいねを作成
 			var Like entities.UserLike
-			Like.UserID = FromUserID
-			Like.PartnerID = ToUserID
+			Like.UserID = fromUserID
+			Like.PartnerID = toUserID
 			Like.CreatedAt = strfmt.DateTime(time.Now())
 			Like.UpdatedAt = strfmt.DateTime(time.Now())
 
 			// いいねを送信
-			err2 := r.Create(Like)
-			if err2 != nil {
+			err := r.Create(Like)
+			if err != nil {
 				return outPutPostStatus(500)
 			}
 			// 相手もいいねしてるかどうか (1件だけ)
-			SendLikeResult, err1 = r.GetLikeBySenderIDReceiverID(ToUserID, FromUserID)
+			SendLikeResult, err = r.GetLikeBySenderIDReceiverID(toUserID, fromUserID)
 			if SendLikeResult != nil {
 				// マッチングを作成
 				var NewMatching entities.UserMatch
-				NewMatching.UserID = FromUserID
-				NewMatching.PartnerID = ToUserID
+				NewMatching.UserID = fromUserID
+				NewMatching.PartnerID = toUserID
 				NewMatching.CreatedAt = strfmt.DateTime(time.Now())
 				NewMatching.UpdatedAt = strfmt.DateTime(time.Now())
 				_ = m.Create(NewMatching)
@@ -108,6 +123,30 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 }
 
+func outPutGetStatus (num int) middleware.Responder {
+	switch num {
+	case 500:
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	case 401:
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized",
+			})
+	case 400:
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	return nil
+}
+
 func outPutPostStatus (num int) middleware.Responder {
 	switch num {
 	case 500:
@@ -115,6 +154,12 @@ func outPutPostStatus (num int) middleware.Responder {
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
+			})
+	case 401:
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗)",
 			})
 	case 400:
 		return si.NewPostLikeBadRequest().WithPayload(

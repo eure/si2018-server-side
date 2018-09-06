@@ -13,26 +13,25 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	l := repositories.NewUserLikeRepository()
 	t := repositories.NewUserTokenRepository()
 
-	// loginUserのUserToken entitiesを取得
-	token, err := t.GetByToken(p.Token)
+	// tokenから UserToken entitiesを取得 (Validation)
+	token := p.Token
+	loginUserToken , err := t.GetByToken(token)
 	if err != nil {
 		return outPutGetStatus(500)
 	}
-	if token == nil {
-		return outPutGetStatus(401)
+	if loginUserToken == nil {
+		return outPutGetStatus(400)
 	}
-	
-	// tokenからloginUserのUser entitiesを取得
-	user , err := u.GetByUserID(token.UserID)
+	loginUser, err := u.GetByUserID(loginUserToken.UserID)
 	if err != nil {
 		return outPutGetStatus(500)
 	}
-	if user == nil {
+	if loginUser == nil {
 		return outPutGetStatus(400)
 	}
 	
 	// すでにいいね！しているユーザーのUserID int64を集める
-	likedUserIDs, err := l.FindLikeAll(token.UserID)
+	likedUserIDs, err := l.FindLikeAll(loginUserToken.UserID)
 	
 	if err != nil {
 		return outPutGetStatus(500)
@@ -42,7 +41,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 	
 	var ent entities.Users
-	ent, err = u.FindWithCondition(int(p.Limit),int(p.Offset),user.GetOppositeGender(),likedUserIDs)
+	ent, err = u.FindWithCondition(int(p.Limit),int(p.Offset),loginUser.GetOppositeGender(),likedUserIDs)
 	
 	if err != nil {
 		return outPutGetStatus(500)
@@ -58,9 +57,27 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	r := repositories.NewUserRepository()
-
-	ent, err := r.GetByUserID(p.UserID)
-
+	t := repositories.NewUserTokenRepository()
+	
+	// tokenから UserToken entitiesを取得 (Validation)
+	token := p.Token
+	loginUser , err := t.GetByToken(token)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if loginUser == nil {
+		return si.NewGetProfileByUserIDNotFound().WithPayload(
+			&si.GetProfileByUserIDNotFoundBody{
+				Code:    "404",
+				Message: "User Not Found",
+			})
+	}
+	
+	ent, err := r.GetByUserID(loginUser.UserID)
 	if err != nil {
 		return outPutGetStatus(500)
 	}
@@ -76,22 +93,22 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	r := repositories.NewUserRepository()
 	t := repositories.NewUserTokenRepository()
 
-	token , err := t.GetByUserID(p.UserID)
-	
+	// tokenから UserToken entitiesを取得 (Validation)
+	token := p.Params.Token
+	loginUserToken , err := t.GetByToken(token)
 	if err != nil {
 		return outPutPutStatus(401)
 	}
-	
-	if token == nil {
+	if loginUserToken == nil {
 		return outPutPutStatus(400)
 	}
 	
-	loginUser , err := r.GetByUserID(token.UserID)
+	loginUser , err := r.GetByUserID(loginUserToken.UserID)
 	
 	if err != nil {
 		return outPutPutStatus(500)
 	}
-	if token.UserID == p.UserID {
+	if loginUserToken.UserID == p.UserID {
 		ProfileUpdate(loginUser,p.Params)
 
 		// 書き換えた情報でデータベースを更新
@@ -103,7 +120,13 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return outPutPutStatus(403)
 	}
 
-	ent, _ := r.GetByUserID(p.UserID)
+	ent, err := r.GetByUserID(p.UserID)
+	if err != nil {
+		return outPutPutStatus(500)
+	}
+	if ent != nil {
+		return outPutPutStatus(400)
+	}
 	sEnt := ent.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
 }
