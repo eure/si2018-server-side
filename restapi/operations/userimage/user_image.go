@@ -47,63 +47,76 @@ func exists(filename string) bool {
 }
 
 func getFreeFileName(path string) (string, error) {
-	// 100000000 枚までしか写真を保存しない
+	// 100000 枚までしか写真を保存しない
 	const len = 8
-	const format = "img%08d.png"
-	var filename string
-	for i := 0; i < 100000000; i++ {
-		filename = fmt.Sprintf(format, i)
+	const format = "img%05d.png"
+	const limit = 100000
+	for i := 0; i < limit; i++ {
+		filename := fmt.Sprintf(format, i)
 		if !exists(path + filename) {
-			break
+			return filename, nil
 		}
 	}
-	if filename == "" {
-		return "", errors.New("storage capacity exceeded")
-	}
-	return filename, nil
+	return "", errors.New("storage capacity exceeded")
 }
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
-	ri := repositories.NewUserImageRepository()
-	rt := repositories.NewUserTokenRepository()
-	t, err := rt.GetByToken(p.Params.Token)
-	if err != nil {
-		return postImageThrowInternalServerError("GetByToken", err)
+	var err error
+	imageRepo := repositories.NewUserImageRepository()
+	// トークン認証
+	var id int64
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Params.Token)
+		if err != nil {
+			return postImageThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return postImageThrowUnauthorized("GetByToken failed")
+		}
+		id = token.UserID
 	}
-	if t == nil {
-		return postImageThrowUnauthorized("GetByToken failed")
-	}
-	image, err := ri.GetByUserID(t.UserID)
+	// 既にある画像のタイムスタンプを使いまわしたい
+	image, err := imageRepo.GetByUserID(id)
 	if err != nil {
 		return postImageThrowInternalServerError("GetByUserID", err)
 	}
-	path := os.Getenv("ASSETS_PATH")
-	uri := os.Getenv("ASSETS_BASE_URI")
-	filename, err := getFreeFileName(path)
-	if err != nil {
-		return postImageThrowInternalServerError("getFreeFileName", err)
+	var localFile, serverFile string
+	{
+		path := os.Getenv("ASSETS_PATH")
+		uri := os.Getenv("ASSETS_BASE_URI")
+		filename, err := getFreeFileName(path)
+		if err != nil {
+			return postImageThrowInternalServerError("getFreeFileName", err)
+		}
+		localFile = path + filename
+		serverFile = uri + filename
 	}
-	file, err := os.Create(path + filename)
-	if err != nil {
-		return postImageThrowInternalServerError("Create", err)
+	// 画像をローカルに保存する
+	{
+		file, err := os.Create(localFile)
+		if err != nil {
+			return postImageThrowInternalServerError("Create", err)
+		}
+		// file.Close() でも error が吐かれる可能性がある
+		// とりあえず今は対処しない
+		defer file.Close()
+		file.Write(p.Params.Image)
 	}
-	// file.Close() でも error が吐かれる可能性がある
-	// とりあえず今は対処しない
-	defer file.Close()
-	file.Write(p.Params.Image)
+	// DB を更新
 	now := strfmt.DateTime(time.Now())
-	fmt.Printf("Hello! path: %v, id: %d", path, t.UserID)
 	ent := entities.UserImage{
-		UserID:    t.UserID,
-		Path:      uri + filename,
+		UserID:    id,
+		Path:      serverFile,
 		UpdatedAt: now}
+	// 既に DB にデータがあれば Update、なければ Create
 	if image == nil {
-		err = ri.Create(ent)
+		err = imageRepo.Create(ent)
 		if err != nil {
 			return postImageThrowInternalServerError("Create", err)
 		}
 	} else {
-		err = ri.Update(ent)
+		err = imageRepo.Update(ent)
 		if err != nil {
 			return postImageThrowInternalServerError("Update", err)
 		}

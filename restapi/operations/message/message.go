@@ -11,51 +11,70 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
+func postMessageThrowInternalServerError(fun string, err error) *si.PostMessageInternalServerError {
+	return si.NewPostMessageInternalServerError().WithPayload(
+		&si.PostMessageInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
+
+func postMessageThrowUnauthorized(mes string) *si.PostMessageUnauthorized {
+	return si.NewPostMessageUnauthorized().WithPayload(
+		&si.PostMessageUnauthorizedBody{
+			Code:    "401",
+			Message: "Unauthorized (トークン認証に失敗): " + mes,
+		})
+}
+
+func postMessageThrowBadRequest(mes string) *si.PostMessageBadRequest {
+	return si.NewPostMessageBadRequest().WithPayload(
+		&si.PostMessageBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
+}
+
 func PostMessage(p si.PostMessageParams) middleware.Responder {
-	rm := repositories.NewUserMessageRepository()
-	rmt := repositories.NewUserMatchRepository()
-	rt := repositories.NewUserTokenRepository()
-	// r := repositories.NewUserRepository()
-	t, err := rt.GetByToken(p.Params.Token)
+	var err error
+	messageRepo := repositories.NewUserMessageRepository()
 	// トークン認証
-	if err != nil {
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
-			})
-	}
-	if t == nil {
-		return si.NewPostMessageUnauthorized().WithPayload(
-			&si.PostMessageUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
-			})
+	var id int64
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		t, err := tokenRepo.GetByToken(p.Params.Token)
+		// トークン認証
+		if err != nil {
+			return postMessageThrowInternalServerError("GetByToken", err)
+		}
+		if t == nil {
+			return postMessageThrowUnauthorized("GetByToken failed")
+		}
+		id = t.UserID
 	}
 	// マッチしているかの確認
-	match, err := rmt.Get(p.UserID, t.UserID)
-	if err != nil {
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: Get failed: " + err.Error(),
-			})
+	{
+		matchRepo := repositories.NewUserMatchRepository()
+		match, err := matchRepo.Get(p.UserID, id)
+		if err != nil {
+			return postMessageThrowInternalServerError("Get", err)
+		}
+		if match == nil {
+			return postMessageThrowBadRequest("Get failed")
+		}
 	}
-	if match == nil {
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: Get failed",
-			})
-	}
+	// メッセージを書きこむ
 	now := strfmt.DateTime(time.Now())
 	mes := entities.UserMessage{
-		UserID:    t.UserID,
+		UserID:    id,
 		PartnerID: p.UserID,
 		Message:   p.Params.Message,
 		UpdatedAt: now,
 		CreatedAt: now}
-	rm.Create(mes)
+	err = messageRepo.Create(mes)
+	if err != nil {
+		return postMessageThrowInternalServerError("Create", err)
+	}
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
 			Code:    "200",
@@ -63,41 +82,45 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		})
 }
 
+func getMessagesThrowInternalServerError(fun string, err error) *si.GetMessagesInternalServerError {
+	return si.NewGetMessagesInternalServerError().WithPayload(
+		&si.GetMessagesInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
+
+func getMessagesThrowUnauthorized(mes string) *si.GetMessagesUnauthorized {
+	return si.NewGetMessagesUnauthorized().WithPayload(
+		&si.GetMessagesUnauthorizedBody{
+			Code:    "401",
+			Message: "Unauthorized (トークン認証に失敗): " + mes,
+		})
+}
+
+func getMessagesThrowBadRequest(mes string) *si.GetMessagesBadRequest {
+	return si.NewGetMessagesBadRequest().WithPayload(
+		&si.GetMessagesBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
+}
+
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
-	rm := repositories.NewUserMessageRepository()
-	rt := repositories.NewUserTokenRepository()
-	r := repositories.NewUserRepository()
-	t, err := rt.GetByToken(p.Token)
+	var err error
+	messageRepo := repositories.NewUserMessageRepository()
 	// トークン認証
-	if err != nil {
-		return si.NewGetMessagesInternalServerError().WithPayload(
-			&si.GetMessagesInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
-			})
-	}
-	if t == nil {
-		return si.NewGetMessagesUnauthorized().WithPayload(
-			&si.GetMessagesUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
-			})
-	}
-	// p.UserID の実在確認
-	user, err := r.GetByUserID(p.UserID)
-	if err != nil {
-		return si.NewGetMessagesInternalServerError().WithPayload(
-			&si.GetMessagesInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-			})
-	}
-	if user == nil {
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID failed",
-			})
+	var id int64
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Token)
+		if err != nil {
+			return getMessagesThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return getMessagesThrowUnauthorized("GetByToken failed")
+		}
+		id = token.UserID
 	}
 	// p.Limit のデフォルトは 100 (restapi/summerintern/get_messages_parameters.go)
 	var limit int
@@ -106,7 +129,11 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	} else {
 		limit = int(*p.Limit)
 	}
-	mes, err := rm.GetMessages(p.UserID, t.UserID, limit, p.Latest, p.Oldest)
-	ent := entities.UserMessages(mes)
+	// メッセージの取得
+	message, err := messageRepo.GetMessages(p.UserID, id, limit, p.Latest, p.Oldest)
+	if err != nil {
+		return getMessagesThrowInternalServerError("GetMessages", err)
+	}
+	ent := entities.UserMessages(message)
 	return si.NewGetMessagesOK().WithPayload(ent.Build())
 }

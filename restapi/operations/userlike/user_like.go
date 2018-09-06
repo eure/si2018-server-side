@@ -37,41 +37,65 @@ func getLikesThrowBadRequest(mes string) *si.GetLikesBadRequest {
 }
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	rt := repositories.NewUserTokenRepository()
-	r := repositories.NewUserRepository()
-	rl := repositories.NewUserLikeRepository()
-	rm := repositories.NewUserMatchRepository()
-	t, err := rt.GetByToken(p.Token)
-	if err != nil {
-		return getLikesThrowInternalServerError("GetByToken", err)
+	userRepo := repositories.NewUserRepository()
+	var err error
+	// トークン認証
+	var token *entities.UserToken
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err = tokenRepo.GetByToken(p.Token)
+		if err != nil {
+			return getLikesThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return getLikesThrowUnauthorized("GetByToken failed")
+		}
 	}
-	if t == nil {
-		return getLikesThrowUnauthorized("GetByToken failed")
-	}
-	matched, err := rm.FindAllByUserID(t.UserID)
-	if err != nil {
-		return getLikesThrowInternalServerError("FindAllByUserID", err)
-	}
-	like, err := rl.FindGotLikeWithLimitOffset(t.UserID, int(p.Limit), int(p.Offset), matched)
-	if err != nil {
-		return getLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
+	// もらったいいねを取得
+	var like []entities.UserLike
+	{
+		likeRepo := repositories.NewUserLikeRepository()
+		matchRepo := repositories.NewUserMatchRepository()
+		matched, err := matchRepo.FindAllByUserID(token.UserID)
+		if err != nil {
+			return getLikesThrowInternalServerError("FindAllByUserID", err)
+		}
+		like, err = likeRepo.FindGotLikeWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset), matched)
+		if err != nil {
+			return getLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
+		}
 	}
 	ids := make([]int64, 0)
 	for _, l := range like {
 		ids = append(ids, l.UserID)
 	}
-	users, err := r.FindByIDs(ids)
+	// いいねに紐づくユーザー情報を取得
+	users, err := userRepo.FindByIDs(ids)
 	if err != nil {
 		return getLikesThrowInternalServerError("FindByIDs", err)
 	}
 	if len(users) != len(like) {
 		return getLikesThrowBadRequest("FindByIDs failed")
 	}
+	// 対応する画像の取得
+	var images []entities.UserImage
+	{
+		imageRepo := repositories.NewUserImageRepository()
+		images, err = imageRepo.GetByUserIDs(ids)
+		if err != nil {
+			return getLikesThrowInternalServerError("GetByUserIDs", err)
+		}
+		if len(images) != len(like) {
+			return getLikesThrowBadRequest("GetByUserIDs failed")
+		}
+	}
+	// 以上の情報をまとめる
 	sEnt := make([]*models.LikeUserResponse, 0)
 	for i, l := range like {
 		response := entities.LikeUserResponse{LikedAt: l.UpdatedAt}
 		response.ApplyUser(users[i])
 		swaggerLike := response.Build()
+		swaggerLike.ImageURI = images[i].Path
 		sEnt = append(sEnt, &swaggerLike)
 	}
 
@@ -103,65 +127,80 @@ func postLikeThrowBadRequest(mes string) *si.PostLikeBadRequest {
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
-	rt := repositories.NewUserTokenRepository()
-	r := repositories.NewUserRepository()
-	rl := repositories.NewUserLikeRepository()
-	rm := repositories.NewUserMatchRepository()
-	t, err := rt.GetByToken(p.Params.Token)
-	if err != nil {
-		return postLikeThrowInternalServerError("GetByToken", err)
+	userRepo := repositories.NewUserRepository()
+	likeRepo := repositories.NewUserLikeRepository()
+	// トークン認証
+	var id int64
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Params.Token)
+		if err != nil {
+			return postLikeThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return postLikeThrowUnauthorized("GetByToken failed")
+		}
+		id = token.UserID
 	}
-	if t == nil {
-		return postLikeThrowUnauthorized("GetByToken failed")
+	// 同性にいいねは送れないので, 性別情報を取得する
+	var oppositeGender string
+	{
+		user, err := userRepo.GetByUserID(id)
+		if err != nil {
+			return postLikeThrowInternalServerError("GetByUserID", err)
+		}
+		if user == nil {
+			return postLikeThrowBadRequest("GetByUserID failed")
+		}
+		oppositeGender = user.GetOppositeGender()
 	}
-	user, err := r.GetByUserID(t.UserID)
-	if err != nil {
-		return postLikeThrowInternalServerError("GetByUserID", err)
-	}
-	if user == nil {
-		return postLikeThrowBadRequest("GetByUserID failed")
-	}
-	partner, err := r.GetByUserID(p.UserID)
+	// 送る相手の情報を取得
+	partner, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
 		return postLikeThrowInternalServerError("GetByUserID", err)
 	}
 	if partner == nil {
 		return postLikeThrowBadRequest("GetByUserID failed")
 	}
-	if user.Gender != partner.GetOppositeGender() {
+	if partner.Gender != oppositeGender {
 		return postLikeThrowBadRequest("genders must be opposite")
 	}
-	like, err := rl.GetLikeBySenderIDReceiverID(user.ID, partner.ID)
+	// いいねが重複していないかの確認
+	like, err := likeRepo.GetLikeBySenderIDReceiverID(id, partner.ID)
 	if err != nil {
 		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
 	}
 	if like != nil {
 		return postLikeThrowBadRequest("like action duplicates")
 	}
-	reverse, err := rl.GetLikeBySenderIDReceiverID(partner.ID, user.ID)
+	// 相手からいいねが来ていたかの確認
+	reverse, err := likeRepo.GetLikeBySenderIDReceiverID(partner.ID, id)
 	if err != nil {
 		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
 	}
 	now := strfmt.DateTime(time.Now())
+	like = new(entities.UserLike)
 	*like = entities.UserLike{
-		UserID:    user.ID,
+		UserID:    id,
 		PartnerID: partner.ID,
 		CreatedAt: now,
 		UpdatedAt: now}
 	// like を書き込んだあと, match を書き込むときにエラーが発生すると致命的
 	// https://qiita.com/komattio/items/838ea5df68eb076e8099
 	// transaction を利用してまとめて書きこむ必要がある
-	err = rl.Create(*like)
+	err = likeRepo.Create(*like)
 	if err != nil {
 		return postLikeThrowInternalServerError("Create", err)
 	}
+	// お互いにいいねしていればマッチング成立
 	if reverse != nil {
+		matchRepo := repositories.NewUserMatchRepository()
 		match := entities.UserMatch{
 			UserID:    partner.ID,
-			PartnerID: user.ID,
+			PartnerID: id,
 			CreatedAt: now,
 			UpdatedAt: now}
-		err = rm.Create(match)
+		err = matchRepo.Create(match)
 		if err != nil {
 			return postLikeThrowInternalServerError("Create", err)
 		}
