@@ -1,9 +1,13 @@
 package userimage
 
 import (
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
+	"bytes"
+	"errors"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"os"
 
 	"github.com/eure/si2018-server-side/entities"
@@ -11,9 +15,16 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/nfnt/resize"
 )
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
+	t := repositories.NewUserTokenRepository()
+	i := repositories.NewUserImageRepository()
+
+	// ユーザーID取得用
+	token, _ := t.GetByToken(p.Params.Token)
+
 	var assetsPath string
 	var assetsBaseURI string
 
@@ -24,29 +35,66 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// 変数に代入
 	img := p.Params.Image
 
-	t := repositories.NewUserTokenRepository()
-	i := repositories.NewUserImageRepository()
+	// 画像のサイズを調べる(1M以上のときはBad Request)
+	// 画像の容量が大きすぎるものをあげさせないようにするため
+	reader := bytes.NewBuffer(img)
+	size := int64(len(img))
+	if size >= 1000000 {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
-	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Params.Token)
+	// 画像のリサイズ
+	// 全て300x300の正方形に統一
+	// フォーマットも確認しておく
+	decode, format, err := image.Decode(reader)
+	if err != nil {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+	// resize.Lanczos3は圧縮アルゴリズム
+	resized := resize.Resize(300, 300, decode, resize.Lanczos3)
+	buf := new(bytes.Buffer)
+	err = imageEncode(buf, resized, format)
+	if err != nil {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	// pathの名前を定義
-	pathname := assetsBaseURI + p.Params.Token + ".png"
+	pathname := assetsBaseURI + p.Params.Token + "." + format
 	// fileの名前を定義
-	filename := assetsPath + p.Params.Token + ".png"
+	filename := assetsPath + p.Params.Token + "." + format
 
-	// エラー処理を書くべきか調べる
 	// ファイル作成
-	f, _ := os.Create(filename)
+	f, err := os.Create(filename)
+	if err != nil {
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 	defer f.Close()
-	f.Write(img)
+
+	// ファイルに書き込む
+	f.Write(buf.Bytes())
 
 	// アップデートしたい値の定義
 	init := entities.UserImage{
 		Path: pathname,
 	}
 	// 更新
-	err := i.Update(init)
+	err = i.Update(init)
 	if err != nil {
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
@@ -75,4 +123,18 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(ent.Path),
 		})
+}
+
+func imageEncode(target io.Writer, image image.Image, format string) error {
+	switch format {
+	case "jpeg", "jpg":
+		jpeg.Encode(target, image, nil)
+	case "png":
+		png.Encode(target, image)
+	case "gif":
+		gif.Encode(target, image, nil)
+	default:
+		return errors.New("invalid format")
+	}
+	return nil
 }
