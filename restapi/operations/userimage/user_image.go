@@ -46,16 +46,28 @@ func exists(filename string) bool {
 	return err == nil
 }
 
+func xorshift(n uint64) uint64 {
+	n = n ^ (n << 7)
+	return n ^ (n >> 9)
+}
+
+func quickEncrypt(n uint64) uint64 {
+	n ^= 8123456789123456789
+	for i := 0; i < 10; i++ {
+		n = xorshift(n)
+	}
+	return n
+}
+
 func getFreeFileName(path, extension string) (string, error) {
-	now := time.Now().UnixNano()
-	// 時刻がバレないように簡易的に暗号化する
-	now = now ^ 123456789123456789
+	// 時刻がバレないように簡易的に暗号化したものをファイル名にする
+	code := quickEncrypt(uint64(time.Now().UnixNano()))
 	// 同じ時刻では 100 枚までしか写真を保存しない
 	// 1 ns 単位で重複することはほぼないはずなので, サーバーの時刻を止めない限り問題ない
 	const limit = 100
 	format := "img%x%02d" + extension
 	for i := 0; i < limit; i++ {
-		filename := fmt.Sprintf(format, now, i)
+		filename := fmt.Sprintf(format, code, i)
 		if !exists(path + filename) {
 			return filename, nil
 		}
