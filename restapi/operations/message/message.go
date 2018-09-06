@@ -11,21 +11,12 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 */
+func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 */ /* TODO injection */
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
 
-	// Validations
-	err1 := util.ValidateLimit(limit)
-	err2 := util.ValidateOffset(offset)
-	if (err1 != nil) || (err2 != nil) {
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
+	// Validation
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewPostMessageUnauthorized().WithPayload(
@@ -44,8 +35,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 *
 	if err != nil {
 		fmt.Print("Get err: ")
 		fmt.Println(err)
-		return si.NewPostMessagesInternalServerError().WithPayload(
-			&si.PostMessagesInternalServerErrorBody{
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -87,19 +78,22 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	pid := p.UserID
 	latest := p.Latest
 	oldest := p.Oldest
-	limit := *p.Limit
+	limit := p.Limit
 	/* TODO check [lat|old]est? */
 
-	// Validations
-	err1 := util.ValidateLimit(limit)
-	err2 := util.ValidateOffset(offset)
-	if (err1 != nil) || (err2 != nil) {
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
+	// Validation
+	if limit != nil {
+        err := util.ValidateLimit(*limit)
+        if err != nil {
+			fmt.Println("Invalid limit")
+        	return si.NewGetMessagesBadRequest().WithPayload(
+        		&si.GetMessagesBadRequestBody{
+        			Code:    "400",
+        			Message: "Bad Request",
+        		})
+		}
 	}
+        
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetMessagesUnauthorized().WithPayload(
@@ -125,6 +119,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 	if mat == nil {
+		fmt.Println("Not matching")
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",
@@ -135,7 +130,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	// Get messages in DESC order
 	rs := repositories.NewUserMessageRepository()
 
-	messages, err := rs.GetMessages(uid, pid, int(limit), latest, oldest)
+	messages, err := rs.GetMessages(uid, pid, int(*limit), latest, oldest)
 	if err != nil {
 		fmt.Print("Get messages err: ")
 		fmt.Println(err)

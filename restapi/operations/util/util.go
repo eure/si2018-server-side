@@ -65,7 +65,7 @@ func userExists(token string) bool {
 }
 
 func ValidateLimit(lim int64) error {
-	if lim < 0 { // If Limit 0, DB returns 0 result (maybe)
+	if lim <= 0 { // If Limit 0, DB returns 0 result (maybe) <= NO!!!!!!!
 		return errors.New("Limit must be >= 0")
 	}
 	return nil
@@ -77,5 +77,3 @@ func ValidateOffset(ofs int64) error {
 	}
 	return nil
 }
-
-/* TODO ページネーション　offset 複数回のうちにデータ変化した場合漏れる */

@@ -12,7 +12,7 @@ import (
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	limit := p.Limit
 	offset := p.Offset
-	token := p.token
+	token := p.Token
 
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -23,7 +23,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	err := util.ValidateToken(token)
+	err = util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
