@@ -13,8 +13,12 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	numar := repositories.NewUserMatchRepository()
 	// get my user id
 	postParams := p.Params
-	userID := p.UserID
-
+	partnerID := p.UserID
+	messagelength := len(postParams.Message)
+	// is there message
+	if messagelength != 0 && messagelength > 10000 {
+		return PostMsgBadReqestErr()
+	}
 	usertoken, err := nutr.GetByToken(postParams.Token)
 	if err != nil {
 		return PostMsgRespUnauthErr()
@@ -26,7 +30,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	// Is there already matching?
-	existmatch, err := numar.Get(usertoken.UserID, userID)
+	existmatch, err := numar.Get(usertoken.UserID, partnerID)
 	if err != nil {
 		return PostMsgRespInternalErr()
 	}
@@ -35,7 +39,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		return PostMsgBadReqestErr()
 	}
 	// validate already matching opposite
-	existmatchopposite, err := numar.Get(userID, usertoken.UserID)
+	existmatchopposite, err := numar.Get(partnerID, usertoken.UserID)
 	if err != nil {
 		return PostMsgRespInternalErr()
 	}
@@ -45,8 +49,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	user := entities.UserMessage{
 		UserID:    usertoken.UserID,
-		PartnerID: p.UserID,
-		Message:   p.Params.Message,
+		PartnerID: partnerID,
+		Message:   postParams.Message,
 	}
 
 	err = numr.Create(user)
