@@ -16,16 +16,17 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
+// PUT Profile Image
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	userimageHandler := repositories.NewUserImageRepository()
 	usertokenHandler := repositories.NewUserTokenRepository()
-
-	usertkn, err := usertokenHandler.GetByToken(p.Params.Token)
+	// find token
+	usertokn, err := usertokenHandler.GetByToken(p.Params.Token)
 	if err != nil {
 		return RespInternalErr()
 	}
 
-	if usertkn == nil {
+	if usertokn == nil {
 		return si.NewPostImagesUnauthorized().WithPayload(
 			&si.PostImagesUnauthorizedBody{
 				Code:    "401",
@@ -36,7 +37,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// Define save directory
 	writeimage := p.Params.Image
 
-	pathdir := "assets/" + usertkn.Token
+	pathdir := "assets/" + usertokn.Token
 	checkext := bytes.NewReader(writeimage)
 	_, extension, err := image.DecodeConfig(checkext)
 	if err != nil {
@@ -59,7 +60,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	//write picture
 	file.Write(writeimage)
 	userimage := entities.UserImage{
-		UserID:    usertkn.UserID,
+		UserID:    usertokn.UserID,
 		Path:      pathdir,
 		CreatedAt: strfmt.DateTime(time.Now()),
 		UpdatedAt: strfmt.DateTime(time.Now()),
@@ -73,6 +74,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 }
 
+// return 200 OK
 func PutImageOK(savepath string) middleware.Responder {
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
@@ -89,6 +91,7 @@ func RespInternalErr() middleware.Responder {
 		})
 }
 
+// return 400 Bad Request
 func RespBadReqestErr() middleware.Responder {
 	return si.NewPostImagesBadRequest().WithPayload(
 		&si.PostImagesBadRequestBody{

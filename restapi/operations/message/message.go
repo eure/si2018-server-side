@@ -97,6 +97,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	return si.NewGetMessagesOK().WithPayload(sEnt)
 }
 
+// return 400 Bad Request
 func GetMsgBadReqestErr() middleware.Responder {
 	return si.NewGetMessagesBadRequest().WithPayload(
 		&si.GetMessagesBadRequestBody{
@@ -105,6 +106,7 @@ func GetMsgBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func GetMsgRespUnauthErr() middleware.Responder {
 	return si.NewGetMessagesUnauthorized().WithPayload(
 		&si.GetMessagesUnauthorizedBody{
@@ -113,6 +115,7 @@ func GetMsgRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func GetMsgRespInternalErr() middleware.Responder {
 	return si.NewGetMessagesInternalServerError().WithPayload(
 		&si.GetMessagesInternalServerErrorBody{
@@ -121,6 +124,7 @@ func GetMsgRespInternalErr() middleware.Responder {
 		})
 }
 
+// return 200 OK
 func PostMsgOK() middleware.Responder {
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
@@ -129,6 +133,7 @@ func PostMsgOK() middleware.Responder {
 		})
 }
 
+// return 400 Bad Request
 func PostMsgBadReqestErr() middleware.Responder {
 	return si.NewPostMessageBadRequest().WithPayload(
 		&si.PostMessageBadRequestBody{
@@ -137,6 +142,7 @@ func PostMsgBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func PostMsgRespUnauthErr() middleware.Responder {
 	return si.NewPostMessageUnauthorized().WithPayload(
 		&si.PostMessageUnauthorizedBody{
@@ -145,6 +151,7 @@ func PostMsgRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func PostMsgRespInternalErr() middleware.Responder {
 	return si.NewPostMessageInternalServerError().WithPayload(
 		&si.PostMessageInternalServerErrorBody{

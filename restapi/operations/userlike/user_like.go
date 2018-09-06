@@ -108,6 +108,7 @@ func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
 	like.UpdatedAt = strfmt.DateTime(time.Now())
 }
 
+// return 400 Bad Request
 func GetLiksRespBadReqestErr() middleware.Responder {
 	return si.NewGetLikesBadRequest().WithPayload(
 		&si.GetLikesBadRequestBody{
@@ -116,6 +117,7 @@ func GetLiksRespBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func GetLikesRespUnauthErr() middleware.Responder {
 	return si.NewGetLikesUnauthorized().WithPayload(
 		&si.GetLikesUnauthorizedBody{
@@ -124,6 +126,7 @@ func GetLikesRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func GetLikesRespInternalErr() middleware.Responder {
 	return si.NewGetLikesInternalServerError().WithPayload(
 		&si.GetLikesInternalServerErrorBody{
@@ -132,6 +135,7 @@ func GetLikesRespInternalErr() middleware.Responder {
 		})
 }
 
+// return 200 OK
 func PostLikeOK() middleware.Responder {
 	return si.NewPostLikeOK().WithPayload(
 		&si.PostLikeOKBody{
@@ -140,6 +144,7 @@ func PostLikeOK() middleware.Responder {
 		})
 }
 
+// return 400 Bad Request
 func PostLiksRespBadReqestErr() middleware.Responder {
 	return si.NewPostLikeBadRequest().WithPayload(
 		&si.PostLikeBadRequestBody{
@@ -148,6 +153,7 @@ func PostLiksRespBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func PostLikesRespUnauthErr() middleware.Responder {
 	return si.NewPostLikeUnauthorized().WithPayload(
 		&si.PostLikeUnauthorizedBody{
@@ -156,6 +162,7 @@ func PostLikesRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func PosLikesRespInternalErr() middleware.Responder {
 	return si.NewPostLikeInternalServerError().WithPayload(
 		&si.PostLikeInternalServerErrorBody{

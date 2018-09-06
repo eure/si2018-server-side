@@ -146,6 +146,7 @@ func binduser(user si.PutProfileBody, ent *entities.User) {
 
 }
 
+// return 400 Bad Request
 func GetUserRespBadReqestErr() middleware.Responder {
 	return si.NewGetUsersBadRequest().WithPayload(
 		&si.GetUsersBadRequestBody{
@@ -154,6 +155,7 @@ func GetUserRespBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func GetUserRespUnauthErr() middleware.Responder {
 	return si.NewGetUsersUnauthorized().WithPayload(
 		&si.GetUsersUnauthorizedBody{
@@ -162,6 +164,7 @@ func GetUserRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 50 Internal Server Error
 func GetUserRespInternalErr() middleware.Responder {
 	return si.NewGetUsersInternalServerError().WithPayload(
 		&si.GetUsersInternalServerErrorBody{
@@ -170,6 +173,7 @@ func GetUserRespInternalErr() middleware.Responder {
 		})
 }
 
+// return 400 Bad Request
 func PutProfileBadRequestErr() middleware.Responder {
 	return si.NewPutProfileBadRequest().WithPayload(
 		&si.PutProfileBadRequestBody{
@@ -178,6 +182,7 @@ func PutProfileBadRequestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func PutProfileRespUnauthErr() middleware.Responder {
 	return si.NewPutProfileUnauthorized().WithPayload(
 		&si.PutProfileUnauthorizedBody{
@@ -186,6 +191,7 @@ func PutProfileRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 403 Forbidden
 func PutProfileForbiddenErr() middleware.Responder {
 	return si.NewPutProfileForbidden().WithPayload(
 		&si.PutProfileForbiddenBody{
@@ -194,14 +200,16 @@ func PutProfileForbiddenErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func PutProfileInternalErr() middleware.Responder {
 	return si.NewPutProfileInternalServerError().WithPayload(
 		&si.PutProfileInternalServerErrorBody{
 			Code:    "500",
-			Message: "Intsernal Server Error",
+			Message: "Internal Server Error",
 		})
 }
 
+// return 400 bad Request
 func GetProfileBadRequestErr() middleware.Responder {
 	return si.NewGetProfileByUserIDBadRequest().WithPayload(
 		&si.GetProfileByUserIDBadRequestBody{
@@ -210,6 +218,7 @@ func GetProfileBadRequestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func GetProfileRespUnauthErr() middleware.Responder {
 	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
 		&si.GetProfileByUserIDUnauthorizedBody{
@@ -218,6 +227,7 @@ func GetProfileRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 404 User Not Found
 func GetProfileNotFoundErr() middleware.Responder {
 	return si.NewGetProfileByUserIDNotFound().WithPayload(
 		&si.GetProfileByUserIDNotFoundBody{
@@ -226,6 +236,7 @@ func GetProfileNotFoundErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func GetProfileInternalErr() middleware.Responder {
 	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 		&si.GetProfileByUserIDInternalServerErrorBody{

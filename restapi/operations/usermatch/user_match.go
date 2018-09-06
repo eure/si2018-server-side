@@ -38,6 +38,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	return si.NewGetMatchesOK().WithPayload(sEnt)
 }
 
+// return 400 Bad Request
 func GetMatchessRespBadReqestErr() middleware.Responder {
 	return si.NewGetMatchesBadRequest().WithPayload(
 		&si.GetMatchesBadRequestBody{
@@ -46,6 +47,7 @@ func GetMatchessRespBadReqestErr() middleware.Responder {
 		})
 }
 
+// return 401 Token Is Invalid
 func GetMatchessRespUnauthErr() middleware.Responder {
 	return si.NewGetMatchesUnauthorized().WithPayload(
 		&si.GetMatchesUnauthorizedBody{
@@ -54,6 +56,7 @@ func GetMatchessRespUnauthErr() middleware.Responder {
 		})
 }
 
+// return 500 Internal Server Error
 func GetMatchesRespInternalErr() middleware.Responder {
 	return si.NewGetMatchesInternalServerError().WithPayload(
 		&si.GetMatchesInternalServerErrorBody{
