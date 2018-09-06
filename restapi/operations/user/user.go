@@ -93,20 +93,30 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	if partnerInfos == nil {
 		return getUsersThrowBadRequest("FindWithCondition")
 	}
+	count := len(partnerInfos)
+	// あとで順番を調整するのに用いる
+	mapping := make(map[int64]int)
+	for i, m := range partnerInfos {
+		mapping[m.ID] = i
+	}
 	// 相手の画像を取得する
-	var partnerImages []entities.UserImage
+	partnerImages := make([]entities.UserImage, count)
 	{
 		imageRepo := repositories.NewUserImageRepository()
 		partnerIDs := make([]int64, 0)
 		for _, u := range partnerInfos {
 			partnerIDs = append(partnerIDs, u.ID)
 		}
-		partnerImages, err = imageRepo.GetByUserIDs(partnerIDs)
+		shuffledPartnerImages, err := imageRepo.GetByUserIDs(partnerIDs)
 		if err != nil {
 			return getUsersThrowInternalServerError("GetByUserIDs", err)
 		}
-		if len(partnerImages) != len(partnerInfos) {
+		if len(shuffledPartnerImages) != count {
 			return getUsersThrowBadRequest("GetByUserIDs failed")
+		}
+		// 正しい順番に直す
+		for _, im := range shuffledPartnerImages {
+			partnerImages[mapping[im.UserID]] = im
 		}
 	}
 	for i := range partnerInfos {
