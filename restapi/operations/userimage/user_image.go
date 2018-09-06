@@ -92,13 +92,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	ui.Path = ap + filename
 
 	r := repositories.NewUserImageRepository()
-	oldimg, _ := r.GetByUserID(id)
-	fmt.Println(oldimg)
-	err = r.Update(ui) /* TODO check existance? */
-	fmt.Println(err)
-	newimg, err := r.GetByUserID(id)
-	time.Sleep(1 * time.Second)
-	fmt.Println(newimg)
 
 	old, err := r.GetByUserID(id) /* TODO check existance? */
 	fmt.Println(old)
