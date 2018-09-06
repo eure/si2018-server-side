@@ -48,6 +48,21 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return getUsersInteralServerErrorResponse("Internal Server Error")
 	}
 
+  var ids []int64
+  for _, u := range usersEnt {
+    ids = append(ids, u.ID)
+  }
+
+  userImageRepository := repositories.NewUserImageRepository()
+  images, err := userImageRepository.GetByUserIDs(ids)
+	if err != nil {
+		return getUsersInteralServerErrorResponse("Internal Server Error")
+	}
+
+  for i, _ := range usersEnt {
+    usersEnt[i].ImageURI = images[i].Path
+  }
+
 	users := usersEnt.Build()
 	return si.NewGetUsersOK().WithPayload(users)
 }
@@ -75,6 +90,14 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	if userEnt == nil {
 		return getUserProfileByUserIDNotFoundResponse("User Not Found")
 	}
+
+  userImageRepository := repositories.NewUserImageRepository()
+  userImage, err := userImageRepository.GetByUserID(userID)
+	if err != nil {
+		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
+	}
+
+  userEnt.ImageURI = userImage.Path
 
 	user := userEnt.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&user)
