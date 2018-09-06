@@ -1,6 +1,7 @@
 package userimage
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
@@ -27,8 +28,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	/*
 	1.	tokenのバリデーション
 	2.	tokenから使用者のuseridを取得
-	3.	画像を送信する
-	（4.	画像を削除する）
+	3.	画像をassetsの中に書き込む（本当はユニークな文字列にしなくてはいけない）
+	4.	（画像を削除する）
 	// userIDは送信者, partnerIDは受信者
 	*/
 
@@ -68,41 +69,30 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	assets_path := os.Getenv("ASSETS_PATH")
 
-	// ファイルを書き込み用にオープン
-
-	// 拡張子判別
-	// base64をデコードしてbyte
-	// byteにしてからio.readerの形にする
-	// image.Decodeconfigでformat判別
+	// 拡張子の判別
 	/*
-	f, _ := os.Open("path/to/image")
-
-	defer f.Close()
-
+	バイナリの先頭部分からjpg, pngを判定する（それ以外の場合はbad requestを返す）
+	jpegファイルの場合は\xff\xd8
+	pngファイルの場合は\x89\x50\x4e\x47\x0d\x0a\x1a\x0a
 	*/
-
-	filename := strconv.FormatInt(sEntToken.UserID, 10)+".jpg"
-	file, err := os.OpenFile(assets_path+filename, os.O_WRONLY|os.O_CREATE, 0666)
-
-	/*
-	byteData, errDecode := base64.StdEncoding.DecodeString(p.Params.Image)
-	_, format, err := image.DecodeConfig(strings.NewReader())
-	*/
-	// pngファイルの場合はformatがpng
-	// jpegファイルの場合はformatがjpg
-	// gifファイルの場合はformatがgif
-	/*
-	if err != nil {
-		// 画像フォーマットではない場合はエラーが発生する
-		fmt.Println(err)
-		return
+	var extension string
+	if bytes.HasPrefix(p.Params.Image,[]byte{0xff, 0xd8}) {
+		extension = "jpg"
+	} else if bytes.HasPrefix(p.Params.Image,[]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}) {
+		extension = "png"
+	} else {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				"400",
+				"Bad Request",
+			})
 	}
 
-	*/
+	filename := strconv.FormatInt(sEntToken.UserID, 10)+"."+extension
+	file, errOpen := os.OpenFile(assets_path+filename, os.O_WRONLY|os.O_CREATE, 0666)
 
-
-	if err != nil {
-		fmt.Println(err)
+	if errOpen != nil {
+		fmt.Println(errOpen)
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
@@ -111,15 +101,15 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 	defer file.Close()
 
-	_, err = file.Write(p.Params.Image)
-	if err != nil {
+	_, errOpen = file.Write(p.Params.Image)
+
+	if errOpen  != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
-
 
 
 	var userImage entities.UserImage
