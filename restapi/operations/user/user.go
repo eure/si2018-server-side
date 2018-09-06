@@ -1,8 +1,6 @@
 package user
 
 import (
-	"fmt"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
@@ -18,37 +16,21 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// find userid
 	usrid, err := nutr.GetByToken(p.Token)
 	if err != nil {
-		fmt.Println(err)
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+		return GetUserRespUnauthErr()
 	}
 	// find userlike
 	userlike, err := nulr.FindLikeAll(usrid.UserID)
 	if err != nil {
-		fmt.Println(err)
-		return si.NewGetLikesInternalServerError().WithPayload(
-			&si.GetLikesInternalServerErrorBody{
-				Code:    "404",
-				Message: "UnknownFindfavorite",
-			})
+		return GetUserRespInternalErr()
 	}
 	// find user
 	userdesc, err := nur.GetByUserID(usrid.UserID)
 	if err != nil {
-		fmt.Println(err)
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+		return GetUserRespInternalErr()
 	}
 	ent, err := nur.FindWithCondition(int(p.Limit), int(p.Offset), userdesc.GetOppositeGender(), userlike)
 	if err != nil {
-		fmt.Println(err)
-		si.NewGetUsersInternalServerError()
+		return GetUserRespInternalErr()
 	}
 
 	var ud []*models.User
@@ -66,14 +48,15 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	nut := repositories.NewUserTokenRepository()
 	usrid, err := nur.GetByUserID(p.UserID)
 	if err != nil {
-		fmt.Println(err)
+		return GetProfileInternalErr()
 	}
 	usrtoken, err := nut.GetByToken(p.Token)
 	if err != nil {
-		fmt.Println(err)
+		return GetProfileRespUnauthErr()
+
 	}
 	if usrid.ID != usrtoken.UserID {
-		fmt.Println("error")
+		return GetProfileNotFoundErr()
 	}
 	sEnt := usrid.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
@@ -81,44 +64,20 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	nur := repositories.NewUserRepository()
+	//Find user
 	user, err := nur.GetByUserID(p.UserID)
 	if err != nil {
-		fmt.Println(err)
+		return PutProfileInternalErr()
 	}
-	// token validation implemtation later
-
-	/*
-		updateuser := reflect.Indirect(reflect.ValueOf(p.Params))
-		updatefield := updateuser.Type()
-		usr := reflect.Indirect(reflect.ValueOf(user))
-		userfield := usr.Type()
-		for i := 0; i < updatefield.NumField(); i++ {
-			nic := updatefield.Field(i).Name
-			up := updateuser.FieldByName(nic).Interface()
-			//if up == nil {
-			//	break
-			//}
-			fmt.Println(up.(string))
-			if updatefield.Field(i).Name == userfield.Field(i).Name {
-
-				user.Nickname = up.(string)
-				fmt.Println(up.(string))
-				break
-			}
-		}
-	*/
-	//for i := 0; i < userfield.NumField(); i++ {
-	//	fmt.Println(userfield.Field(i).Name)
-	//
-	//}
 	binduser(p.Params, user)
 	err = nur.Update(user)
 	if err != nil {
-		fmt.Println(err)
+		return PutProfileForbiddenErr()
 	}
+	// Want Response User profile
 	respuser, err := nur.GetByUserID(p.UserID)
 	if err != nil {
-		fmt.Println(err)
+		return PutProfileInternalErr()
 	}
 	updateuser := respuser.Build()
 	return si.NewPutProfileOK().WithPayload(&updateuser)
@@ -148,4 +107,92 @@ func binduser(user si.PutProfileBody, ent *entities.User) {
 	ent.WantChild = user.WantChild
 	ent.WhenMarry = user.WhenMarry
 
+}
+
+func GetUserRespUnauthErr() middleware.Responder {
+	return si.NewGetUsersUnauthorized().WithPayload(
+		&si.GetUsersUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func GetUserRespBadReqestErr() middleware.Responder {
+	return si.NewGetUsersBadRequest().WithPayload(
+		&si.GetUsersBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+func GetUserRespInternalErr() middleware.Responder {
+	return si.NewGetUsersInternalServerError().WithPayload(
+		&si.GetUsersInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func PutProfileRespUnauthErr() middleware.Responder {
+	return si.NewPutProfileUnauthorized().WithPayload(
+		&si.PutProfileUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func PutProfileBadRequestErr() middleware.Responder {
+	return si.NewPutProfileBadRequest().WithPayload(
+		&si.PutProfileBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+func PutProfileForbiddenErr() middleware.Responder {
+	return si.NewPutProfileForbidden().WithPayload(
+		&si.PutProfileForbiddenBody{
+			Code:    "403",
+			Message: "Forbidden",
+		})
+}
+
+func PutProfileInternalErr() middleware.Responder {
+	return si.NewPutProfileInternalServerError().WithPayload(
+		&si.PutProfileInternalServerErrorBody{
+			Code:    "500",
+			Message: "Intsernal Server Error",
+		})
+}
+
+func GetProfileRespUnauthErr() middleware.Responder {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func GetProfileBadRequestErr() middleware.Responder {
+	return si.NewGetProfileByUserIDBadRequest().WithPayload(
+		&si.GetProfileByUserIDBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+func GetProfileNotFoundErr() middleware.Responder {
+	return si.NewGetProfileByUserIDNotFound().WithPayload(
+		&si.GetProfileByUserIDNotFoundBody{
+			Code:    "404",
+			Message: "User Not Found",
+		})
+}
+
+func GetProfileInternalErr() middleware.Responder {
+	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+		&si.GetProfileByUserIDInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
 }
