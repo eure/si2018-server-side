@@ -1,6 +1,11 @@
 package repositories
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"image"
+	"os"
 	"time"
 
 	"github.com/eure/si2018-server-side/entities"
@@ -58,4 +63,42 @@ func (r *UserImageRepository) GetByUserIDs(userIDs []int64) ([]entities.UserImag
 	}
 
 	return userImages, nil
+}
+
+func (r *UserImageRepository) SaveImageAssets(base64Str strfmt.Base64, userID int64, typeName string) (string, error) {
+	imagePath := fmt.Sprintf("%d.%s", userID, typeName)
+	file, err := os.Create("./assets/" + imagePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	_, err = file.Write(base64Str)
+	if err != nil {
+		return "", err
+	}
+
+	return imagePath, err
+}
+
+// formatを返しているのにvalidationはおかしい気がする
+func (r *UserImageRepository) ImageValidation(base64Str strfmt.Base64) (string, error) {
+	reader := bytes.NewReader(base64Str)
+	imageByteSize := reader.Size()
+
+	if imageByteSize > 5e6 {
+		return "", errors.New("画像サイズが大きいです(5MBまで)")
+	}
+
+	_, typeName, err := image.DecodeConfig(reader)
+	if err != nil {
+		return "", err
+	}
+
+	if typeName != "jpeg" && typeName != "png" {
+		return "", errors.New("画像フォーマットが適切ではありません")
+	}
+
+	return typeName, nil
 }
