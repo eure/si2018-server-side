@@ -3,6 +3,7 @@ package userimage
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -85,9 +86,9 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	// pathの名前を定義
-	pathname := assetsBaseURI + string(token.UserID) + "." + format
+	pathname := assetsBaseURI + fmt.Sprint(token.UserID) + "." + format
 	// fileの名前を定義
-	filename := assetsPath + string(token.UserID) + "." + format
+	filename := assetsPath + fmt.Sprint(token.UserID) + "." + format
 
 	// ファイル作成
 	f, err := os.Create(filename)
