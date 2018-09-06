@@ -15,8 +15,13 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	message := repositories.NewUserMessageRepository()
 	match := repositories.NewUserMatchRepository()
 
+	// paramsの変数を定義
+	paramsToken := p.Params.Token
+	paramsMessage := p.Params.Message
+	paramsUserID := p.UserID
+
 	// ユーザーID取得用
-	token, err := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
@@ -50,13 +55,13 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	// メッセージのチェック(空白ではないか，1万字いないか)
-	if p.Params.Message == "" {
+	if paramsMessage == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code:    "400",
 				Message: "Bad Request",
 			})
-	} else if len(p.Params.Message) > 10000 {
+	} else if len(paramsMessage) > 10000 {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code:    "400",
@@ -65,12 +70,12 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	// マッチしているユーザーかをきちんと確認する
-	if CheckMatchUserID(userIDs, p.UserID) {
+	if CheckMatchUserID(userIDs, paramsUserID) {
 		// メッセージの値の定義
 		m := entities.UserMessage{
 			UserID:    token.UserID,
-			PartnerID: p.UserID,
-			Message:   p.Params.Message,
+			PartnerID: paramsUserID,
+			Message:   paramsMessage,
 			CreatedAt: strfmt.DateTime(time.Now()),
 			UpdatedAt: strfmt.DateTime(time.Now()),
 		}
@@ -97,8 +102,15 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	message := repositories.NewUserMessageRepository()
 	match := repositories.NewUserMatchRepository()
 
+	// paramsの変数を定義
+	paramsToken := p.Token
+	paramsUserID := p.UserID
+	paramsLimit := p.Limit
+	paramsLatest := p.Latest
+	paramsOldest := p.Oldest
+
 	// ユーザーID取得用
-	token, err := t.GetByToken(p.Token)
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
@@ -134,9 +146,9 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	// 明示的に宣言
 	var m entities.UserMessages
 	// マッチしているユーザーかをきちんと確認する
-	if CheckMatchUserID(userIDs, p.UserID) {
+	if CheckMatchUserID(userIDs, paramsUserID) {
 		// メッセージを取得する
-		m, err = message.GetMessages(token.UserID, p.UserID, int(*p.Limit), p.Latest, p.Oldest)
+		m, err = message.GetMessages(token.UserID, paramsUserID, int(*paramsLimit), paramsLatest, paramsOldest)
 		if err != nil {
 			return si.NewGetMessagesInternalServerError().WithPayload(
 				&si.GetMessagesInternalServerErrorBody{

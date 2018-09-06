@@ -12,8 +12,11 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	l := repositories.NewUserLikeRepository()
 	u := repositories.NewUserRepository()
 
+	// paramsの変数を定義
+	paramsToken := p.Token
+
 	//トークンからユーザーidを取得する為に利用
-	token, err := t.GetByToken(p.Token)
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -30,7 +33,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	//いいねをすでに送っている人を取得
-	ids, err := l.FindLikeAll(token.UserID)
+	userIDs, err := l.FindLikeAll(token.UserID)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -38,7 +41,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if ids == nil {
+	if userIDs == nil {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code:    "400",
@@ -64,12 +67,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	//ユーザーが女だった時に検索するユーザーを男とする
-	g := user.GetOppositeGender()
+	gender := user.GetOppositeGender()
 
 	//明示的に型宣言
 	var f entities.Users
 	//探す処理
-	f, err = u.FindWithCondition(int(p.Limit), int(p.Offset), g, ids)
+	f, err = u.FindWithCondition(int(p.Limit), int(p.Offset), gender, userIDs)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -93,7 +96,11 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	r := repositories.NewUserRepository()
 
-	token, err := t.GetByToken(p.Token)
+	// paramsの変数を定義
+	paramsToken := p.Token
+	paramsUserID := p.UserID
+
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -111,7 +118,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	// Bad Requestをどのタイミングで使うかわからないのであとで調査
 	// User情報を取得する
-	ent, err := r.GetByUserID(p.UserID)
+	user, err := r.GetByUserID(paramsUserID)
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -119,7 +126,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if ent == nil {
+	if user == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
@@ -127,7 +134,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	sEnt := ent.Build()
+	sEnt := user.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
 }
 
@@ -135,8 +142,12 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	u := repositories.NewUserRepository()
 
+	// paramsの変数を定義
+	paramsToken := p.Params.Token
+	paramsUserID := p.UserID
+
 	// ユーザーID取得用
-	token, err := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -153,7 +164,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	}
 
 	// ユーザーの情報の取得
-	us, err := u.GetByUserID(p.UserID)
+	us, err := u.GetByUserID(paramsUserID)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -174,7 +185,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 
 	// tokenのUserIDと受け取ったUserIDが一致しているか確認
 	// 一致していなかったら403を返す
-	if p.UserID == token.UserID {
+	if paramsUserID == token.UserID {
 		// 書き換えた情報でデータベースを更新
 		err = u.Update(us)
 		if err != nil {
@@ -193,7 +204,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	}
 
 	// 更新後のユーザー情報の取得
-	user, err := u.GetByUserID(p.UserID)
+	user, err := u.GetByUserID(paramsUserID)
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{

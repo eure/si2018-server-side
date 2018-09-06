@@ -23,8 +23,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	i := repositories.NewUserImageRepository()
 
+	// paramsの変数を定義
+	paramsToken := p.Params.Token
+	paramsImage := p.Params.Image
+
 	// ユーザーID取得用
-	token, err := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(paramsToken)
 	if err != nil {
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
@@ -47,13 +51,10 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	assetsPath = os.Getenv("ASSETS_PATH")
 	assetsBaseURI = os.Getenv("ASSETS_BASE_URI")
 
-	// 変数に代入
-	img := p.Params.Image
-
 	// 画像のサイズを調べる(1M以上のときはBad Request)
 	// 画像の容量が大きすぎるものをあげさせないようにするため
-	reader := bytes.NewBuffer(img)
-	size := int64(len(img))
+	reader := bytes.NewBuffer(paramsImage)
+	size := int64(len(paramsImage))
 	if size >= 1000000 {
 		return si.NewPostImagesBadRequest().WithPayload(
 			&si.PostImagesBadRequestBody{
