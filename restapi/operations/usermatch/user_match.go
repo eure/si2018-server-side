@@ -13,7 +13,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	limit := int(p.Limit)
 	offset := int(p.Offset)
 	token := p.Token
-	/* TODO bad response */
+	/* TODO bad request */
 
 	err := util.ValidateToken(token)
 	if err != nil {

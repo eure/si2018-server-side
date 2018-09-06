@@ -219,7 +219,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Bad Request (Duplicate like)",
 			})
 	}
-	/* TODO check already matching? */
 
 	return si.NewPostLikeOK()
 }
