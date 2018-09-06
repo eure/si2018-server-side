@@ -18,6 +18,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	offset := p.Offset
 	token := p.Token
 	
+	// Validations
 	err1 := util.ValidateLimit(limit)
 	err2 := util.ValidateOffset(offset)
 	if (err1 != nil) || (err2 != nil) {
@@ -41,8 +42,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	rm := repositories.NewUserMatchRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	id, _ := util.GetIDByToken(token) // ValidateToken()で先に呼ばれているのでerrは潰す
+	id, _ := util.GetIDByToken(token) // ValidateToken()で先に呼ばれているのでerrは潰してよい
 
+	// Get users already matching
 	matches, err := rm.FindAllByUserID(id)
 	if err != nil {
 		fmt.Print("Find matches err: ") /* TODO use log */
@@ -54,6 +56,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	// Get a list of UserLike the user got 
 	likes, err := rl.FindGotLikeWithLimitOffset(id, int(limit), int(offset), matches)
 	if err != nil {
 		fmt.Print("Find likes err: ")
@@ -83,6 +86,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 	um := make(map[int64]entities.User)
 	for _, u := range users {
+		//u := u
 		um[u.ID] = u
 	}
 

@@ -57,7 +57,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	ap := os.Getenv("ASSETS_PATH")
 	filename := "icon" + strconv.Itoa(int(id)) + filetype
 
-	f, err := os.Create(ap + filename)
+	f, err := os.Create(ap + filename) /* TODO use os.Filepath */
 	if err != nil {
 		fmt.Println(err)
 		return si.NewPostImagesOK()
