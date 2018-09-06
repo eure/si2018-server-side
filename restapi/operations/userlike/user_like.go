@@ -39,7 +39,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 
 	// limitが20になっているかをvalidation
-	if p.Limit != int64(20) {
+	if paramsLimit != int64(20) {
 		return si.NewGetLikesBadRequest().WithPayload(
 			&si.GetLikesBadRequestBody{
 				Code:    "400",
