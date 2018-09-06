@@ -61,6 +61,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	for _, u    := range likeEntList {
 		likedIds = append(likedIds, u.UserID)
 	}
+
+	// TODO: ユーザ情報の順番がID順になってしまっている
+
 	// likeしてくれているユーザIDsから各ユーザ情報を取得
 	userR            := repositories.NewUserRepository()
 	userEntList, err := userR.FindByIDs(likedIds)

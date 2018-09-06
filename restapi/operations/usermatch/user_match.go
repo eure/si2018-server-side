@@ -48,6 +48,8 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	// TODO: ユーザ情報の順番がID順になってしまっている
+
 	// マッチしているユーザIDを作成
 	var matchIds []int64
 	for _, u := range matchEntList {
