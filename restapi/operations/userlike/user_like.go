@@ -24,8 +24,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 401エラー
 	if tokenEnt == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
 				Code:    "401",
 				Message:  "Your token is invalid.",
 			})
@@ -33,8 +33,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -45,8 +45,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -57,8 +57,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -78,8 +78,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -98,8 +98,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	userImageEnts, err := userImageR.GetByUserIDs(userIDs)
 
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -152,8 +152,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 400エラー
 	if p.Params.Token == "" {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
 				Code:    "400",
 				Message:  "Can't find token.",
 			})
@@ -164,8 +164,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 401エラー
 	if tokenEnt == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
 				Code:    "401",
 				Message:  "Your token is invalid.",
 			})
@@ -173,8 +173,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -185,8 +185,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -197,8 +197,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -206,8 +206,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 400エラー
 	if myUserEnt.Gender == partnerUserEnt.Gender {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
 				Code:    "400",
 				Message: "Bad Request. Sorry, we are creating genderless society.",
 			})
@@ -217,8 +217,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -226,8 +226,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// いいねは１度しか送れない
 	if pastLike != nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
 				Code:    "400",
 				Message: "Bad Request. You have already sended a like to this user.",
 			})
@@ -246,8 +246,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -258,8 +258,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	// 500エラー
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -277,8 +277,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		err := userMatchR.Create(userMatchEnt)
 
 		if err != nil {
-			return si.NewGetUsersInternalServerError().WithPayload(
-				&si.GetUsersInternalServerErrorBody{
+			return si.NewGetLikesInternalServerError().WithPayload(
+				&si.GetLikesInternalServerErrorBody{
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
