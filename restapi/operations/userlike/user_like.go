@@ -37,8 +37,6 @@ func getLikesThrowBadRequest(mes string) *si.GetLikesBadRequest {
 }
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	userRepo := repositories.NewUserRepository()
-	var err error
 	// トークン認証
 	var id int64
 	{
@@ -70,24 +68,39 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	for _, l := range like {
 		ids = append(ids, l.UserID)
 	}
-	// いいねに紐づくユーザー情報を取得
-	users, err := userRepo.FindByIDs(ids)
-	if err != nil {
-		return getLikesThrowInternalServerError("FindByIDs", err)
+	count := len(like)
+	mapping := make(map[int64]int)
+	for i, l := range like {
+		mapping[l.UserID] = i
 	}
-	if len(users) != len(like) {
-		return getLikesThrowBadRequest("FindByIDs failed")
+	// いいねに紐づくユーザー情報を取得
+	users := make([]entities.User, count)
+	{
+		userRepo := repositories.NewUserRepository()
+		shuffledUsers, err := userRepo.FindByIDs(ids)
+		if err != nil {
+			return getLikesThrowInternalServerError("FindByIDs", err)
+		}
+		if len(shuffledUsers) != count {
+			return getLikesThrowBadRequest("FindByIDs failed")
+		}
+		for _, u := range shuffledUsers {
+			users[mapping[u.ID]] = u
+		}
 	}
 	// 対応する画像の取得
-	var images []entities.UserImage
+	images := make([]entities.UserImage, count)
 	{
 		imageRepo := repositories.NewUserImageRepository()
-		images, err = imageRepo.GetByUserIDs(ids)
+		shuffledImages, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
 			return getLikesThrowInternalServerError("GetByUserIDs", err)
 		}
-		if len(images) != len(like) {
+		if len(shuffledImages) != count {
 			return getLikesThrowBadRequest("GetByUserIDs failed")
+		}
+		for _, im := range shuffledImages {
+			images[mapping[im.UserID]] = im
 		}
 	}
 	// 以上の情報をまとめる
