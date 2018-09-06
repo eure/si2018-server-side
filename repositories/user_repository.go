@@ -62,7 +62,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	s.Limit(limit, offset)
 	s.Desc("id")
 
-	err := s.Find(&users)
+	err := s.Desc("created_at").Find(&users)
 	if err != nil {
 		return users, err
 	}

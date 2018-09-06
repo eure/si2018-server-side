@@ -21,10 +21,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	repUserImage := repositories.NewUserImageRepository()
 	repUserToken := repositories.NewUserTokenRepository()
 
-	token := p.Params.Token
-
 	// tokenのバリデーション
-	err := repUserToken.ValidateToken(token)
+	err := repUserToken.ValidateToken(p.Params.Token)
 	if err != nil {
 		return si.NewPostImagesUnauthorized().WithPayload(
 			&si.PostImagesUnauthorizedBody{
@@ -33,10 +31,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
-	// TODO： Imageのバリデーション
-
 	// tokenからuserTokenを取得
-	loginUser, _ := repUserToken.GetByToken(token)
+	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
 
 	//// 画像ファイルの保存
 	// 画像ファイルのパス設定
@@ -57,6 +53,25 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	// 作成したファイルに画像ファイルを書き込む
 	file.Write(p.Params.Image)
 	////
+
+	// Imageのバリデーション
+	//	p.Params.Image
+	//_, format, err := image.DecodeConfig(file)
+	//if err != nil {
+	//	return si.NewPostImagesInternalServerError().WithPayload(
+	//		&si.PostImagesInternalServerErrorBody{
+	//			Code: "500",
+	//			Message: err.Error(),
+	//		})
+	//}
+	//
+	//if (format != "png") || (format != "jpg") || (format != "gif") {
+	//	return si.NewPostImagesBadRequest().WithPayload(
+	//		&si.PostImagesBadRequestBody{
+	//			Code: "400",
+	//			Message: "Bad Request",
+	//		})
+	//}
 
 	//// UserImageの更新
 	// 更新用のUserImageを作成
