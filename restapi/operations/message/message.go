@@ -88,6 +88,12 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 					Message: "Internal Server Error",
 				})
 		}
+	} else {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
 	}
 
 	return si.NewPostMessageOK().WithPayload(
