@@ -46,11 +46,10 @@ func exists(filename string) bool {
 	return err == nil
 }
 
-func getFreeFileName(path string) (string, error) {
+func getFreeFileName(path, extension string) (string, error) {
 	// 100000 枚までしか写真を保存しない
-	const len = 8
-	const format = "img%05d.png"
 	const limit = 100000
+	format := "img%05d" + extension
 	for i := 0; i < limit; i++ {
 		filename := fmt.Sprintf(format, i)
 		if !exists(path + filename) {
@@ -58,6 +57,45 @@ func getFreeFileName(path string) (string, error) {
 		}
 	}
 	return "", errors.New("storage capacity exceeded")
+}
+
+// image のタグが tag と一致するか
+func tagMatches(tag []byte, image strfmt.Base64) bool {
+	seq := []byte(image)
+	if len(seq) < len(tag) {
+		return false
+	}
+	for i, t := range tag {
+		if seq[i] != t {
+			return false
+		}
+	}
+	return true
+}
+
+var pngTag = []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+
+// image のファイル形式が png であるか
+func isPngFile(image strfmt.Base64) bool {
+	return tagMatches(pngTag, image)
+}
+
+var jpgTag = []byte{0xff, 0xd8}
+
+// image のファイル形式が jpg であるか
+func isJpgFile(image strfmt.Base64) bool {
+	return tagMatches(jpgTag, image)
+}
+
+// image が png, jpg 形式であれば対応する拡張子 ".png" などを返す
+func getFileType(image strfmt.Base64) (string, error) {
+	if isPngFile(image) {
+		return ".png", nil
+	}
+	if isJpgFile(image) {
+		return ".jpg", nil
+	}
+	return "", errors.New("unknown file type")
 }
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
@@ -85,7 +123,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	{
 		path := os.Getenv("ASSETS_PATH")
 		uri := os.Getenv("ASSETS_BASE_URI")
-		filename, err := getFreeFileName(path)
+		extension, err := getFileType(p.Params.Image)
+		if err != nil {
+			return postImageThrowInternalServerError("getFileType", err)
+		}
+		filename, err := getFreeFileName(path, extension)
 		if err != nil {
 			return postImageThrowInternalServerError("getFreeFileName", err)
 		}
