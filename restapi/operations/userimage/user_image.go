@@ -13,12 +13,17 @@ import (
 	strfmt "github.com/go-openapi/strfmt"
 	"os"
 	"fmt"
+<<<<<<< HEAD
 	//"strconv"
 	"encoding/hex"
 	"strings"
 	"math/rand"
 	"time"
 	"path/filepath"
+=======
+	"strconv"
+	"time"
+>>>>>>> a1a3cb6e1ad88803c38cc97e19308ca2ca4944e6
 )
 
 const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -38,6 +43,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	id, _ := util.GetIDByToken(token)
 
+<<<<<<< HEAD
 	// Get filetype
 	
 	head := hex.EncodeToString(img[:4])
@@ -87,12 +93,33 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	// Update DB
+=======
+	ap := os.Getenv("ASSETS_PATH")
+	filename := "icon" + strconv.Itoa(int(id)) + ".png" /* TODO filetype */
+
+	f, err := os.Create(ap + filename)
+	if err != nil {
+		fmt.Println(err)
+		return si.NewPostImagesOK()
+	}
+	defer f.Close()
+	f.Write(img)
+
+>>>>>>> a1a3cb6e1ad88803c38cc97e19308ca2ca4944e6
 	ui := entities.UserImage{}
 	ui.UserID = id
 	ui.Path = ap + filename
 
 	r := repositories.NewUserImageRepository()
+	oldimg, _ := r.GetByUserID(id)
+	fmt.Println(oldimg)
+	err = r.Update(ui) /* TODO check existance? */
+	fmt.Println(err)
+	newimg, err := r.GetByUserID(id)
+	time.Sleep(1 * time.Second)
+	fmt.Println(newimg)
 
+<<<<<<< HEAD
 	old, err := r.GetByUserID(id) /* TODO check existance? */
 	fmt.Println(old)
 
@@ -108,10 +135,13 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	new, _ := r.GetByUserID(id)
 	fmt.Println(new)
 
+=======
+>>>>>>> a1a3cb6e1ad88803c38cc97e19308ca2ca4944e6
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
 			ImageURI: strfmt.URI(ap + filename),
 		})
+<<<<<<< HEAD
 }
 
 func getRandStr(n int) string {
@@ -120,4 +150,6 @@ func getRandStr(n int) string {
         s = append(s, letters[rand.Intn(len(letters))])
     }
     return string(s)
+=======
+>>>>>>> a1a3cb6e1ad88803c38cc97e19308ca2ca4944e6
 }
