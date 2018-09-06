@@ -79,9 +79,8 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	latest := p.Latest
 	oldest := p.Oldest
 	limit := p.Limit
-	/* TODO check [lat|old]est? */
 
-	// Validation
+	// Validations
 	if limit != nil {
         err := util.ValidateLimit(*limit)
         if err != nil {
@@ -92,6 +91,15 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
         			Message: "Bad Request",
         		})
 		}
+	}
+
+	if (oldest != nil && latest != nil) && time.Time(*oldest).After(time.Time(*latest)) {
+		fmt.Println("Invalid duration")
+        	return si.NewGetMessagesBadRequest().WithPayload(
+        		&si.GetMessagesBadRequestBody{
+        			Code:    "400",
+        			Message: "Bad Request",
+        		})
 	}
         
 	err := util.ValidateToken(token)
