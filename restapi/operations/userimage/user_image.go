@@ -107,8 +107,10 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// アップデートしたい値の定義
 	init := entities.UserImage{
-		Path: pathname,
+		UserID: token.UserID,
+		Path:   pathname,
 	}
+
 	// 更新
 	err = i.Update(init)
 	if err != nil {
