@@ -151,7 +151,11 @@ func isLiked(userLike entities.UserLike) error {
 func isHeterosexual(userLike entities.UserLike) error {
 	var sender = entities.User{ID: userLike.UserID}
 
-	has, _ := engine.Get(&sender)
+	has, err := engine.Get(&sender)
+
+	if err != nil {
+		return err
+	}
 
 	if !has {
 		return errors.New("送信ユーザーが見つかりません")
@@ -159,7 +163,10 @@ func isHeterosexual(userLike entities.UserLike) error {
 
 	var destination = entities.User{ID: userLike.PartnerID}
 
-	has, _ = engine.Get(&destination)
+	has, err = engine.Get(&destination)
+	if err != nil {
+		return err
+	}
 
 	if !has {
 		return errors.New("送信先ユーザーが見つかりません")
