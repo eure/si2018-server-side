@@ -8,8 +8,8 @@ import (
 type UserToken struct {
 	UserID    int64           `xorm:"user_id"`
 	Token     string          `xorm:"token"`
-	CreatedAt strfmt.DateTime `xorm:"created_at"`
-	UpdatedAt strfmt.DateTime `xorm:"updated_at"`
+	CreatedAt strfmt.DateTime `xorm:"created_at created updated"`
+	UpdatedAt strfmt.DateTime `xorm:"updated_at created updated"`
 }
 
 func (u UserToken) Build() models.UserToken {
