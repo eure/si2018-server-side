@@ -42,15 +42,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if match == nil {
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
 
-	// 自分が既にマッチングしている全てのお相手のUserIDを返す
+	// 自分が既にマッチングしている全てのお相手のUserIDを返す(limit,offset)
 	like, err := l.FindGetLikeWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset), match)
 	if err != nil {
 		return si.NewGetLikesInternalServerError().WithPayload(
@@ -59,39 +52,32 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if like == nil {
-		return si.NewGetLikesBadRequest().WithPayload(
-			&si.GetLikesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
 
 	// 明示的に型宣言
 	var lu entities.LikeUserResponses
+	var userIDs []int64
+
+	for _, likeUser := range like {
+		userIDs = append(userIDs, likeUser.UserID)
+	}
+
+	// いいねされているユーザーの情報をすべて取得する
+	users, err := u.FindByIDs(userIDs)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
 	// ApplyUserの形にしてBuildしないといけないので
 	// ApplyUserの型に変換する
-	for _, likeUser := range like {
+	for _, user := range users {
 		// 構造体の初期化
 		r := entities.LikeUserResponse{}
 		// Userの情報を取得
-		user, err := u.GetByUserID(likeUser.UserID)
-		if err != nil {
-			return si.NewGetLikesInternalServerError().WithPayload(
-				&si.GetLikesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
-		}
-		if user == nil {
-			return si.NewGetLikesBadRequest().WithPayload(
-				&si.GetLikesBadRequestBody{
-					Code:    "400",
-					Message: "Bad Request",
-				})
-		}
-
-		r.ApplyUser(*user)
+		r.ApplyUser(user)
 		lu = append(lu, r)
 	}
 	sEnt := lu.Build()
