@@ -46,6 +46,16 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		return getMatchesInternalServerErrorRespose()
 	}
 
+	userImageRepository := repositories.NewUserImageRepository()
+	images, err := userImageRepository.GetByUserIDs(ids)
+	if err != nil {
+		return getMatchesInternalServerErrorRespose()
+	}
+
+	for i := range users {
+		users[i].ImageURI = images[i].Path
+	}
+
 	matchUserResponses = matchUserResponses.ApplyUsers(users)
 	matchUser := matchUserResponses.Build()
 
