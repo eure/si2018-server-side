@@ -77,3 +77,5 @@ func ValidateOffset(ofs int64) error {
 	}
 	return nil
 }
+
+/* TODO ページネーション　offset 複数回のうちにデータ変化した場合漏れる */

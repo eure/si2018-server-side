@@ -10,10 +10,18 @@ import (
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	limit := int(p.Limit)
-	offset := int(p.Offset)
-	token := p.Token
-	/* TODO bad request */
+	limit := p.Limit
+	offset := p.Offset
+	token := p.token
+
+	err := util.ValidateToken(token)
+	if err != nil {
+		return si.NewGetMatchesUnauthorized().WithPayload(
+			&si.GetMatchesUnauthorizedBody{
+				Code:    "401",
+				Message: "Token Is Invalid",
+			})
+	}
 
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -29,7 +37,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
 	
-	matches, err := rm.FindByUserIDWithLimitOffset(id, limit, offset)
+	matches, err := rm.FindByUserIDWithLimitOffset(id, int(limit), int(offset))
 	if err != nil {
 		fmt.Print("Find matches err: ")
 		fmt.Println(err)

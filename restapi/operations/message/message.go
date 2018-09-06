@@ -15,7 +15,16 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
-	/* TODO bad request */
+
+	err1 := util.ValidateLimit(limit)
+	err2 := util.ValidateOffset(offset)
+	if (err1 != nil) || (err2 != nil) {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -78,6 +87,16 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	limit := *p.Limit
 	/* TODO bad request */
 
+	err1 := util.ValidateLimit(limit)
+	err2 := util.ValidateOffset(offset)
+	if (err1 != nil) || (err2 != nil) {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+		
 	err := util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetMessagesUnauthorized().WithPayload(
@@ -89,11 +108,29 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	uid, _ := util.GetIDByToken(token)
 	
-	/* TODO validate matching state? */
+	rm := repositories.NewUserMatchRepository()
 
-	r := repositories.NewUserMessageRepository()
+	mat, err := rm.Get(uid, pid)
+	if err != nil {
+		fmt.Print("Get messages err: ")
+		fmt.Println(err)
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if mat == nil {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
-	messages, err := r.GetMessages(uid, pid, int(limit), latest, oldest)
+	rs := repositories.NewUserMessageRepository()
+
+	messages, err := rs.GetMessages(uid, pid, int(limit), latest, oldest)
 	if err != nil {
 		fmt.Print("Get messages err: ")
 		fmt.Println(err)

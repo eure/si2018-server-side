@@ -13,7 +13,17 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	limit := p.Limit
 	offset := p.Offset
 	token := p.Token
-	/* TODO bad request? */
+
+	err1 := util.ValidateLimit(limit)
+	err2 := util.ValidateOffset(offset)
+	if (err1 != nil) || (err2 != nil) {
+		return si.NewGetUsersBadRequest().WithPayload(
+			&si.GetUsersBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+		
 	
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -29,7 +39,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	id, err := util.GetIDByToken(token)
 	user, err := ru.GetByUserID(id)
-	likes, err := rl.FindLikeAll(id)
+	likes, err := rl.FindLikeAll(id) /* TODO filter? */
 
 	users_ent, err := ru.FindWithCondition(int(limit), int(offset), user.GetOppositeGender(), likes);
 	if err != nil {
@@ -86,6 +96,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	id := p.UserID
 	ps := p.Params
 	token := ps.Token
+	/* TODO user not found?  not same id and token?*/
 	
 	err := util.ValidateToken(token)
 	if err != nil {

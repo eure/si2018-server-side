@@ -13,11 +13,20 @@ import (
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
-	//limit := int(p.Limit)
-	limit := 20
-	offset := int(p.Offset)
+	limit := p.Limit
+	//limit := 20
+	offset := p.Offset
 	token := p.Token
-	/* TODO bad request */
+	
+	err1 := util.ValidateLimit(limit)
+	err2 := util.ValidateOffset(offset)
+	if (err1 != nil) || (err2 != nil) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
 
 	err := util.ValidateToken(token)
 	if err != nil {
@@ -45,7 +54,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	likes, err := rl.FindGotLikeWithLimitOffset(id, limit, offset, matches)
+	likes, err := rl.FindGotLikeWithLimitOffset(id, int(limit), int(offset), matches)
 	if err != nil {
 		fmt.Print("Find likes err: ")
 		fmt.Println(err)
