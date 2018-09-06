@@ -29,6 +29,15 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	// imitが20になっているかをvalidation
+	if p.Limit != int64(20) {
+		return si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// マッチ済みのユーザーを取得
 	match, err := m.FindByUserIDWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset))
 	if err != nil {
@@ -36,13 +45,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			&si.GetMatchesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
-			})
-	}
-	if match == nil {
-		return si.NewGetMatchesBadRequest().WithPayload(
-			&si.GetMatchesBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
 			})
 	}
 

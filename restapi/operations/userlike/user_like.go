@@ -43,6 +43,15 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	// limitが20になっているかをvalidation
+	if p.Limit != int64(20) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	// 自分が既にマッチングしている全てのお相手のUserIDを返す(limit,offset)
 	like, err := l.FindGetLikeWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset), match)
 	if err != nil {
