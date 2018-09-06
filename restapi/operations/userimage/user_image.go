@@ -3,7 +3,8 @@ package userimage
 import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
-
+	
+	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -11,8 +12,9 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	
+	"bytes"
 	"os"
-	//"image"
+	"fmt"
 	"github.com/go-openapi/strfmt"
 )
 
@@ -21,7 +23,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	t := repositories.NewUserTokenRepository()
 	
 	// Params から, Image,Tokenの取得
-	image := p.Params.Image
+	uploadImage := p.Params.Image
 	token := p.Params.Token
 	
 	// 取得したtokenからUserTokenの取得
@@ -41,35 +43,29 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	
 	// プロフィール画像の保存する際の名前
 	var fileName string
-	fileName = token + ".png"
+	fileName = token
 	
-	// localに保存するプロフィール画像のPATH
-	var filePathLocal string
-	filePathLocal = localpath + fileName
-	// dbに保存するプロフィール画像のPATH
-	var filePathDB string
-	filePathDB = dbpath + fileName
-	
-	/*
 	// 取得したImageの形式を調べる
-	_, format , err := image.DecodeConfig(image)
-	if err != nil {
-		fmt.Print("error")
-	}
-	fmt.Print(format)
+	leader := bytes.NewBuffer(uploadImage)
+	_, format , _ := image.DecodeConfig(leader)
+	
 	// プロフィール画像の名前
 	// 拡張子によって名前を変更
-	switch format {
-	case "png":  fileName += ".png"
-	case "jpeg": fileName += ".jpeg"
-	case "gif":  fileName += ".gif"
-	}
-	*/
+	// localに保存するプロフィール画像のPATH
+	var filePathLocal string
+	filePathLocal = localpath + fileName + "." + format
+	// dbに保存するプロフィール画像のPATH
+	var filePathDB string
+	filePathDB = dbpath + fileName + "." + format
+	
+	fmt.Print("--- ")
+	fmt.Print(filePathLocal)
+	fmt.Print(" ---")
 	
 	// localに空のimage fileを用意
-	file , _ := os.Create(filePathLocal)
+	file , err := os.Create(filePathLocal)
 	defer file.Close()
-	file.Write(image)
+	file.Write(uploadImage)
 	
 	var updatedProfile entities.UserImage
 	updatedProfile.UserID    = loginUserToken.UserID
