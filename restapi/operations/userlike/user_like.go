@@ -124,15 +124,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	ru := repositories.NewUserRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	// Not same id?
-	if rid == sid {
-		return si.NewPostLikeBadRequest().WithPayload(
-			&si.PostLikeBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request (Can't send to yourself)",
-			})
-	}
-
 	// Same gender?
 	users, err := ru.FindByIDs([]int64{rid, sid})
 	if err != nil {
