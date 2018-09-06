@@ -8,260 +8,305 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+func getUsersThrowInternalServerError(fun string, err error) *si.GetUsersInternalServerError {
+	return si.NewGetUsersInternalServerError().WithPayload(
+		&si.GetUsersInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
+
+func getUsersThrowUnauthorized(mes string) *si.GetUsersUnauthorized {
+	return si.NewGetUsersUnauthorized().WithPayload(
+		&si.GetUsersUnauthorizedBody{
+			Code:    "401",
+			Message: "Unauthorized (トークン認証に失敗): " + mes,
+		})
+}
+
+func getUsersThrowBadRequest(mes string) *si.GetUsersBadRequest {
+	return si.NewGetUsersBadRequest().WithPayload(
+		&si.GetUsersBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
+}
+
 func GetUsers(p si.GetUsersParams) middleware.Responder {
-	rt := repositories.NewUserTokenRepository()
-	r := repositories.NewUserRepository()
-	rl := repositories.NewUserLikeRepository()
-	rm := repositories.NewUserMatchRepository()
+	var err error
+	userRepo := repositories.NewUserRepository()
 
-	t, err := rt.GetByToken(p.Token)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
-			})
+	// トークン認証
+	var id int64
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Token)
+		if err != nil {
+			return getUsersThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return getUsersThrowUnauthorized("GetByToken failed")
+		}
+		id = token.UserID
 	}
-	if t == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
-			})
+	// 異性のみを検索するために, 性別情報が必要
+	var oppositeGender string
+	{
+		user, err := userRepo.GetByUserID(id)
+		if err != nil {
+			return getUsersThrowInternalServerError("GetByUserID", err)
+		}
+		if user == nil {
+			return getUsersThrowBadRequest("GetByUserID failed")
+		}
+		oppositeGender = user.GetOppositeGender()
 	}
-	u, err := r.GetByUserID(t.UserID)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-			})
-	}
-	if u == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID failed",
-			})
-	}
-	idmap := make(map[int64]bool)
-	like, err := rl.FindLikeAll(u.ID)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: FindLikeAll failed: " + err.Error(),
-			})
-	}
-	for _, id := range like {
-		idmap[id] = true
-	}
-	matched, err := rm.FindAllByUserID(u.ID)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: FindAllByUserID failed: " + err.Error(),
-			})
-	}
-	for _, id := range matched {
-		idmap[id] = true
-	}
+	// いいねまたはマッチ済みの相手を取得
 	ids := make([]int64, 0)
-	for k := range idmap {
-		ids = append(ids, k)
+	{
+		likeRepo := repositories.NewUserLikeRepository()
+		matchRepo := repositories.NewUserMatchRepository()
+		idmap := make(map[int64]bool)
+		like, err := likeRepo.FindLikeAll(id)
+		if err != nil {
+			return getUsersThrowInternalServerError("FindLikeAll", err)
+		}
+		for _, id := range like {
+			idmap[id] = true
+		}
+		matched, err := matchRepo.FindAllByUserID(id)
+		if err != nil {
+			return getUsersThrowInternalServerError("FindAllByUserID", err)
+		}
+		for _, id := range matched {
+			idmap[id] = true
+		}
+		for k := range idmap {
+			ids = append(ids, k)
+		}
 	}
-	ent, err := r.FindWithCondition(int(p.Limit), int(p.Offset), u.GetOppositeGender(), ids)
+	// 相手を探す
+	partnerInfos, err := userRepo.FindWithCondition(int(p.Limit), int(p.Offset), oppositeGender, ids)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: FindWithCondition failed: " + err.Error(),
-			})
+		return getUsersThrowInternalServerError("FindWithCondition", err)
 	}
-	if ent == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: FindWithCondition failed",
-			})
+	if partnerInfos == nil {
+		return getUsersThrowBadRequest("FindWithCondition")
 	}
-	hoge := entities.Users(ent)
+	// 相手の画像を取得する
+	var partnerImages []entities.UserImage
+	{
+		imageRepo := repositories.NewUserImageRepository()
+		partnerIDs := make([]int64, 0)
+		for _, u := range partnerInfos {
+			partnerIDs = append(partnerIDs, u.ID)
+		}
+		partnerImages, err = imageRepo.GetByUserIDs(partnerIDs)
+		if err != nil {
+			return getUsersThrowInternalServerError("GetByUserIDs", err)
+		}
+		if len(partnerImages) != len(partnerInfos) {
+			return getUsersThrowBadRequest("GetByUserIDs failed")
+		}
+	}
+	for i := range partnerInfos {
+		partnerInfos[i].ImageURI = partnerImages[i].Path
+	}
+	partners := entities.Users(partnerInfos)
 
-	return si.NewGetUsersOK().WithPayload(hoge.Build())
+	return si.NewGetUsersOK().WithPayload(partners.Build())
+}
+
+func getProfileByUserIDThrowInternalServerError(fun string, err error) *si.GetProfileByUserIDInternalServerError {
+	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+		&si.GetProfileByUserIDInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
+
+func getProfileByUserIDThrowUnauthorized(mes string) *si.GetProfileByUserIDUnauthorized {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Unauthorized (トークン認証に失敗): " + mes,
+		})
+}
+
+func getProfileByUserIDThrowBadRequest(mes string) *si.GetProfileByUserIDBadRequest {
+	return si.NewGetProfileByUserIDBadRequest().WithPayload(
+		&si.GetProfileByUserIDBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
+}
+
+func getProfileByUserIDThrowNotFound(mes string) *si.GetProfileByUserIDNotFound {
+	return si.NewGetProfileByUserIDNotFound().WithPayload(
+		&si.GetProfileByUserIDNotFoundBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	r := repositories.NewUserRepository()
-	rt := repositories.NewUserTokenRepository()
+	userRepo := repositories.NewUserRepository()
 
-	token, err := rt.GetByUserID(p.UserID)
+	// トークン認証
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Token)
+		if err != nil {
+			return getProfileByUserIDThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return getProfileByUserIDThrowUnauthorized("GetByToken failed")
+		}
+	}
+	user, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
-			&si.GetProfileByUserIDInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-			})
+		return getProfileByUserIDThrowInternalServerError("GetByUserID", err)
 	}
-	if token == nil {
-		return si.NewGetProfileByUserIDNotFound().WithPayload(
-			&si.GetProfileByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Not Found. (そのIDのユーザーは存在しません.): GetByUserID failed",
-			})
+	if user == nil {
+		return getProfileByUserIDThrowBadRequest("GetByUserID failed")
 	}
+	// 画像を取得する
+	var image *entities.UserImage
+	{
+		imageRepo := repositories.NewUserImageRepository()
+		image, err = imageRepo.GetByUserID(p.UserID)
+		if err != nil {
+			return getUsersThrowInternalServerError("GetByUserID", err)
+		}
+		if image == nil {
+			return getUsersThrowBadRequest("GetByUserID failed")
+		}
+	}
+	user.ImageURI = image.Path
 
-	t, err := rt.GetByToken(p.Token)
-	if err != nil {
-		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
-			&si.GetTokenByUserIDInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
-			})
-	}
-	if t == nil {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
-			})
-	}
-	if t.UserID != p.UserID {
-		return si.NewGetUsersUnauthorized().WithPayload(
-			&si.GetUsersUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): Token does not match",
-			})
-	}
-	u, err := r.GetByUserID(p.UserID)
-	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-			})
-	}
-	if u == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID",
-			})
-	}
-	sEnt := u.Build()
-
+	sEnt := user.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
 }
 
-func PutProfile(p si.PutProfileParams) middleware.Responder {
-	r := repositories.NewUserRepository()
-	rt := repositories.NewUserTokenRepository()
-	token, err := rt.GetByUserID(p.UserID)
-	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByUserID failed: " + err.Error(),
-			})
-	}
-	if token == nil {
-		return si.NewPutProfileBadRequest().WithPayload(
-			&si.PutProfileBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID failed",
-			})
-	}
+func putProfileThrowInternalServerError(fun string, err error) *si.PutProfileInternalServerError {
+	return si.NewPutProfileInternalServerError().WithPayload(
+		&si.PutProfileInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+		})
+}
 
-	t, err := rt.GetByToken(p.Params.Token)
-	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: GetByToken failed: " + err.Error(),
-			})
-	}
-	if t == nil {
-		return si.NewPutProfileUnauthorized().WithPayload(
-			&si.PutProfileUnauthorizedBody{
-				Code:    "401",
-				Message: "Unauthorized (トークン認証に失敗): GetByToken failed",
-			})
-	}
-	if t.UserID != p.UserID {
-		return si.NewPutProfileForbidden().WithPayload(
-			&si.PutProfileForbiddenBody{
-				Code:    "403",
-				Message: "Forbidden. (他の人のプロフィールは更新できません.): Token does not match",
-			})
-	}
-	u, err := r.GetByUserID(p.UserID)
-	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: Get By UserID failed: " + err.Error(),
-			})
-	}
-	if u == nil {
-		return si.NewPutProfileBadRequest().WithPayload(
-			&si.PutProfileBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID failed",
-			})
-	}
-	params := p.Params
-	if u.MaritalStatus != "独身(未婚)" && params.MaritalStatus == "独身(未婚)" {
+func putProfileThrowUnauthorized(mes string) *si.PutProfileUnauthorized {
+	return si.NewPutProfileUnauthorized().WithPayload(
+		&si.PutProfileUnauthorizedBody{
+			Code:    "401",
+			Message: "Unauthorized (トークン認証に失敗): " + mes,
+		})
+}
+
+func putProfileThrowBadRequest(mes string) *si.PutProfileBadRequest {
+	return si.NewPutProfileBadRequest().WithPayload(
+		&si.PutProfileBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request: " + mes,
+		})
+}
+
+func putProfileThrowForbidden(mes string) *si.PutProfileForbidden {
+	return si.NewPutProfileForbidden().WithPayload(
+		&si.PutProfileForbiddenBody{
+			Code:    "403",
+			Message: "Forbidden. (他の人のプロフィールは更新できません.): " + mes,
+		})
+}
+
+func ApplyParams(user *entities.User, params si.PutProfileBody) {
+	if user.MaritalStatus != "独身(未婚)" && params.MaritalStatus == "独身(未婚)" {
 		// 未婚でない人が未婚になることはありえないはず
 		// システム上、結婚歴で嘘をつくことを認めるかは議論の余地あり
 		// とりあえず今回は見逃す
 	}
-	u.AnnualIncome = params.AnnualIncome
-	u.BodyBuild = params.BodyBuild
-	u.Child = params.Child
-	u.CostOfDate = params.CostOfDate
-	u.Drinking = params.Drinking
-	u.Education = params.Education
-	u.Height = params.Height
-	u.Holiday = params.Holiday
-	u.HomeState = params.HomeState
-	u.Housework = params.Housework
-	u.HowToMeet = params.HowToMeet
+	user.AnnualIncome = params.AnnualIncome
+	user.BodyBuild = params.BodyBuild
+	user.Child = params.Child
+	user.CostOfDate = params.CostOfDate
+	user.Drinking = params.Drinking
+	user.Education = params.Education
+	user.Height = params.Height
+	user.Holiday = params.Holiday
+	user.HomeState = params.HomeState
+	user.Housework = params.Housework
+	user.HowToMeet = params.HowToMeet
 	// 画像の更新は post images で行う
 	// params から除外すべき
 	// u.ImageURI = params.ImageURI
-	u.Introduction = params.Introduction
-	u.Job = params.Job
-	u.MaritalStatus = params.MaritalStatus
-	u.Nickname = params.Nickname
-	u.NthChild = params.NthChild
-	u.ResidenceState = params.ResidenceState
-	u.Smoking = params.Smoking
-	u.Tweet = params.Tweet
-	u.WantChild = params.WantChild
-	u.WhenMarry = params.WhenMarry
-	err = r.Update(u)
+	user.Introduction = params.Introduction
+	user.Job = params.Job
+	user.MaritalStatus = params.MaritalStatus
+	user.Nickname = params.Nickname
+	user.NthChild = params.NthChild
+	user.ResidenceState = params.ResidenceState
+	user.Smoking = params.Smoking
+	user.Tweet = params.Tweet
+	user.WantChild = params.WantChild
+	user.WhenMarry = params.WhenMarry
+}
+
+func PutProfile(p si.PutProfileParams) middleware.Responder {
+	var err error
+	userRepo := repositories.NewUserRepository()
+
+	// トークン認証
+	{
+		tokenRepo := repositories.NewUserTokenRepository()
+		token, err := tokenRepo.GetByToken(p.Params.Token)
+		if err != nil {
+			return putProfileThrowInternalServerError("GetByToken", err)
+		}
+		if token == nil {
+			return putProfileThrowUnauthorized("GetByToken failed")
+		}
+		if token.UserID != p.UserID {
+			return putProfileThrowForbidden("Token does not match")
+		}
+	}
+	// ユーザー情報を取得して更新を反映させる
+	var user *entities.User
+	{
+		user, err = userRepo.GetByUserID(p.UserID)
+		if err != nil {
+			return putProfileThrowInternalServerError("GetByUserID", err)
+		}
+		if user == nil {
+			return putProfileThrowBadRequest("GetByUserID failed")
+		}
+		ApplyParams(user, p.Params)
+	}
+	err = userRepo.Update(user)
 	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: Update failed: " + err.Error(),
-			})
+		return putProfileThrowInternalServerError("Update", err)
 	}
-	u, err = r.GetByUserID(p.UserID)
+	// 更新後のユーザーを取得し直す (これをしないと, p.Params に nil があるときに整合しない)
+	user, err = userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewPutProfileInternalServerError().WithPayload(
-			&si.PutProfileInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error: Get By UserID failed: " + err.Error(),
-			})
+		return putProfileThrowInternalServerError("GetByUserID", err)
 	}
-	if u == nil {
-		return si.NewPutProfileBadRequest().WithPayload(
-			&si.PutProfileBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request: GetByUserID failed",
-			})
+	if user == nil {
+		return putProfileThrowBadRequest("GetByUserID failed")
 	}
-	sEnt := u.Build()
+	// 画像を取得する
+	var image *entities.UserImage
+	{
+		imageRepo := repositories.NewUserImageRepository()
+		image, err = imageRepo.GetByUserID(p.UserID)
+		if err != nil {
+			return putProfileThrowInternalServerError("GetByUserID", err)
+		}
+		if image == nil {
+			return putProfileThrowBadRequest("GetByUserID failed")
+		}
+	}
+	user.ImageURI = image.Path
+	sEnt := user.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
 }
