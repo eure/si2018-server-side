@@ -30,8 +30,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// Tokenがあるかどうか
 	if p.Params.Token == "" {
-		return si.NewPostMessageUnauthorized().WithPayload(
-			&si.PostMessageUnauthorizedBody{
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
 				Code:    "401",
 				Message: "No Token",
 			})
@@ -42,16 +42,16 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	rToken := repositories.NewUserTokenRepository()
 	entToken, errToken := rToken.GetByToken(p.Params.Token)
 	if errToken != nil {
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
 
 	if entToken == nil {
-		return si.NewPostMessageUnauthorized().WithPayload(
-			&si.PostMessageUnauthorizedBody{
+		return si.NewPostImagesUnauthorized().WithPayload(
+			&si.PostImagesUnauthorizedBody{
 				Code:    "401",
 				Message: "Unauthorized Token",
 			})
@@ -74,8 +74,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	img := p.Params.Image
 	// imgが5MB以上の時は処理しない。413に対応するメソッドがない……。
 	if len(img) > 1048576*5 {
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
 				"413",
 				"Payload Too Large",
 			})
@@ -86,8 +86,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		extension = "jpg"
 		imgDecoded, errJpg := jpeg.Decode(bytes.NewReader(img))
 		if errJpg != nil {
-			return si.NewPostMessageInternalServerError().WithPayload(
-				&si.PostMessageInternalServerErrorBody{
+			return si.NewPostImagesInternalServerError().WithPayload(
+				&si.PostImagesInternalServerErrorBody{
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
@@ -96,8 +96,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		buf := new(bytes.Buffer)
 		errEncode := jpeg.Encode(buf, imgResizedDecoded, nil)
 		if errEncode != nil {
-			return si.NewPostMessageInternalServerError().WithPayload(
-				&si.PostMessageInternalServerErrorBody{
+			return si.NewPostImagesInternalServerError().WithPayload(
+				&si.PostImagesInternalServerErrorBody{
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
@@ -108,8 +108,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		extension = "png"
 		imgDecoded, errPng := png.Decode(bytes.NewReader(img))
 		if errPng != nil {
-			return si.NewPostMessageInternalServerError().WithPayload(
-				&si.PostMessageInternalServerErrorBody{
+			return si.NewPostImagesInternalServerError().WithPayload(
+				&si.PostImagesInternalServerErrorBody{
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
@@ -118,16 +118,16 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		buf := new(bytes.Buffer)
 		errEncode := png.Encode(buf, imgResizedDecoded)
 		if errEncode != nil {
-			return si.NewPostMessageInternalServerError().WithPayload(
-				&si.PostMessageInternalServerErrorBody{
+			return si.NewPostImagesInternalServerError().WithPayload(
+				&si.PostImagesInternalServerErrorBody{
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
 		}
 		img = buf.Bytes()
-	} else { // imgがjpg, png以外の時は処理しない。415に対応するメソッドがない……。
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
+	} else { // imgがjpg, png以外の時は処理しない。
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
 				"415",
 				"Unsupported Media Type",
 			})
@@ -139,8 +139,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	if errOpen != nil {
 		fmt.Println(errOpen)
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -150,8 +150,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	_, errOpen = file.Write(img)
 
 	if errOpen  != nil {
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
@@ -165,8 +165,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	errUpdate := rImage.Update(userImage)
 
 	if errUpdate != nil {
-		return si.NewPostMessageInternalServerError().WithPayload(
-			&si.PostMessageInternalServerErrorBody{
+		return si.NewPostImagesInternalServerError().WithPayload(
+			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
