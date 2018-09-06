@@ -3,6 +3,7 @@ package repositories
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/go-xorm/builder"
@@ -64,6 +65,10 @@ func (r *UserMessageRepository) Validate(u entities.UserMessage) []error {
 		res = append(res, err)
 	}
 
+	if err := isSomeMessage(u); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return res
 	}
@@ -97,6 +102,28 @@ func isMatched(u entities.UserMessage) error {
 
 	if len(matches) == 0 {
 		return errors.New("マッチング済みの相手にしかメッセージを送信できません")
+	}
+
+	return nil
+}
+
+func isSomeMessage(u entities.UserMessage) error {
+	var messages []entities.UserMessage
+	engine.
+		Where("user_id = ?", u.UserID).
+		And("partner_id = ?", u.PartnerID).
+		And("message = ?", u.Message).
+		Desc("created_at").Limit(1).Find(&messages)
+
+	if len(messages) == 0 {
+		return nil
+	}
+
+	oldMessage := time.Time(messages[0].CreatedAt)
+	now := time.Now()
+
+	if timeSub := now.Sub(oldMessage); timeSub.Seconds() < 1 {
+		return errors.New("すぐに同じメッセージを遅れません")
 	}
 
 	return nil
