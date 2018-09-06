@@ -130,13 +130,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if userIDs == nil {
-		return si.NewPostLikeBadRequest().WithPayload(
-			&si.PostLikeBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
-			})
-	}
 
 	// 利用しているユーザーといいねしたいユーザー
 	user, err := u.GetByUserID(token.UserID)
@@ -206,6 +199,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// お互いいいねになったらマッチングさせる
+	// パートナー側がいいねをしているか確認してなければそのまま終了あればマッチングさせる
 	r, err := l.GetLikeBySenderIDReceiverID(p.UserID, token.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
