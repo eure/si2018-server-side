@@ -13,9 +13,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	repUserToken := repositories.NewUserTokenRepository()
 	repUserLike := repositories.NewUserLikeRepository()
 
-	// TODO: ユーザの一覧だから必要最低限の情報だけをかえしたい
-	// 出身地でソートしたい
-
 	// tokenのバリデーション
 	err := repUserToken.ValidateToken(p.Token)
 	if err != nil {
@@ -38,8 +35,22 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	// ログインユーザーと反対の性別を取得する
-	userToken, _ := repUserToken.GetByToken(p.Token)
+	userToken, err := repUserToken.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 	loginUser, _ := repUser.GetByUserID(userToken.UserID)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 	oppositeGender := loginUser.GetOppositeGender()
 
 	// ログインユーザーがいいねした人/ログインユーザーをいいねした人のIDを取得
@@ -84,8 +95,8 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 
-	// ユーザの取得
-	user, err := repUser.GetByUserID(p.UserID)
+	// ログインユーザーの取得
+	loginUserToken, err := repUserToken.GetByToken(p.Token)
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
@@ -93,15 +104,42 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if user == nil {
+	loginUser, err := repUser.GetByUserID(loginUserToken.UserID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// ユーザの取得
+	plofileUser, err := repUser.GetByUserID(p.UserID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if plofileUser == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
-				Code:    "400",
+				Code:    "404",
 				Message: "User Not Found",
 			})
 	}
 
-	userModel := user.Build()
+	// 異性以外のプロフィールは見れない
+	if plofileUser.Gender == loginUser.Gender {
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
+	userModel := plofileUser.Build()
 
 	return si.NewGetProfileByUserIDOK().WithPayload(&userModel)
 }
@@ -121,7 +159,15 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	}
 
 	// Forbidden
-	userToken, _ := repUserToken.GetByToken(p.Params.Token)
+	userToken, err := repUserToken.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
 	if userToken.UserID != p.UserID {
 		return si.NewPutProfileForbidden().WithPayload(
 			&si.PutProfileForbiddenBody{
@@ -169,9 +215,14 @@ func bindParams(p si.PutProfileBody, entUser *entities.User ){
 	// userEntにjson変換したparamを入れる
 	json.Unmarshal(params, &entUser)
 
+	// なぜか上の実装で漏れるメンバ変数を直接ぶちこむ
+	entUser.BodyBuild = p.BodyBuild
+	entUser.MaritalStatus = p.MaritalStatus
 	entUser.HowToMeet = p.HowToMeet
 	entUser.AnnualIncome = p.AnnualIncome
 	entUser.CostOfDate = p.CostOfDate
 	entUser.NthChild = p.NthChild
 	entUser.ResidenceState = p.ResidenceState
+	entUser.WantChild = p.WantChild
+	entUser.WhenMarry = p.WhenMarry
 }

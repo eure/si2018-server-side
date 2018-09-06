@@ -63,8 +63,8 @@ func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, off
 		s.NotIn("user_id", matchIDs)
 	}
 	s.Limit(limit, offset)
-	s.Desc("created_at")
-	err := s.Find(&likes)
+	// いいね送信日時が新しい順に返す
+	err := s.Desc("created_at").Find(&likes)
 	if err != nil {
 		return likes, err
 	}

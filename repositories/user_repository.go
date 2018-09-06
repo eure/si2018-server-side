@@ -60,8 +60,8 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 		s.NotIn("id", ids)
 	}
 	s.Limit(limit, offset)
-	s.Desc("id")
 
+	// 登録日の新しい順に返す
 	err := s.Desc("created_at").Find(&users)
 	if err != nil {
 		return users, err
