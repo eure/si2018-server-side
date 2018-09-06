@@ -38,7 +38,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	var omitIds []int64
 	omitIds = append(omitIds, tokenEnt.UserID)
 
-	// いいねしている/されているユーザIDを取得する
+	// いいねしている/されているユーザIDを取得する -> これでOK
 	// いいねしてくれている人の一覧は `/likes` で取得できるから必要ないと判断
 	likeR         := repositories.NewUserLikeRepository()
 	likeIds, err  := likeR.FindLikeAll(tokenEnt.UserID)
@@ -89,6 +89,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
+	// 同性のプロフィールも確認可能にしている
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -114,6 +115,22 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code   : "500",
 				Message: "Internal Server Error",
+			})
+	}
+	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	// 同性の場合
+	if findUserEnt.GetOppositeGender() == myUserEnt.GetOppositeGender() {
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 	// ユーザが存在しない -> 404
