@@ -14,6 +14,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	// paramsの変数を定義
 	paramsToken := p.Token
+	paramsLimit := p.Limit
+	paramsOffset := p.Offset
 
 	//トークンからユーザーidを取得する為に利用
 	token, err := t.GetByToken(paramsToken)
@@ -64,8 +66,18 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	//明示的に型宣言
 	var f entities.Users
+
+	// limitが20になっているかをvalidation
+	if p.Limit != int64(20) {
+		return si.NewGetLikesBadRequest().WithPayload(
+			&si.GetLikesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
 	//探す処理
-	f, err = u.FindWithCondition(int(p.Limit), int(p.Offset), gender, userIDs)
+	f, err = u.FindWithCondition(int(paramsLimit), int(paramsOffset), gender, userIDs)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
