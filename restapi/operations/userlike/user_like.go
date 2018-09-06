@@ -19,22 +19,18 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	usrid, err := nutr.GetByToken(p.Token)
 	if err != nil {
-		return si.NewGetUsersInternalServerError().WithPayload(
-			&si.GetUsersInternalServerErrorBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+		return GetLikesRespUnauthErr()
 	}
 	// find already matching user
 	match, err := numr.FindAllByUserID(usrid.UserID)
 	if err != nil {
-		fmt.Println(err)
+		GetLikesRespInternalErr()
 	}
 
 	// find recive like except already matching user
 	usrs, err := nulr.FindGotLikeWithLimitOffset(usrid.UserID, int(p.Limit), int(p.Offset), match)
 	if err != nil {
-		fmt.Println(err)
+		GetLikesRespInternalErr()
 	}
 	var userids []int64
 	for i := 0; i < len(usrs); i++ {
@@ -43,7 +39,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	//jimae
 	ent, err := nur.FindByIDs(userids)
 	if err != nil {
-		fmt.Println(err)
+		GetLikesRespInternalErr()
 	}
 	var likeuserresp entities.LikeUserResponses
 	for _, val := range ent {
@@ -66,29 +62,29 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// validate if send same sex
 	partner, err := nur.GetByUserID(p.UserID)
 	if err != nil {
-		fmt.Println(err)
+		return PosLikesRespInternalErr()
 	}
 	user, err := nur.GetByUserID(userid.UserID)
 	if err != nil {
-		fmt.Println(err)
+		return PosLikesRespInternalErr()
 	}
 	if user.GetOppositeGender() == partner.GetOppositeGender() {
-		fmt.Println("err")
+		return PostLiksRespBadReqestErr()
 	}
 	// duplicate like send
 	duplicatelike, err := nulr.GetLikeBySenderIDReceiverID(userid.UserID, p.UserID)
 	if err != nil {
-		fmt.Println(err)
+		PostLiksRespBadReqestErr()
 	}
 	if duplicatelike == nil {
-		fmt.Println(duplicatelike)
+		PostLiksRespBadReqestErr()
 	}
 	var userlike entities.UserLike
 	BindUserLike(&userlike, userid.UserID, partner.ID)
 
 	err = nulr.Create(userlike)
 	if err != nil {
-		fmt.Println(err)
+		PosLikesRespInternalErr()
 	}
 	fmt.Println(err)
 	return si.NewPostLikeOK().WithPayload(
@@ -102,4 +98,52 @@ func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
 	like.PartnerID = partnerid
 	like.CreatedAt = strfmt.DateTime(time.Now())
 	like.UpdatedAt = strfmt.DateTime(time.Now())
+}
+
+func GetLiksRespBadReqestErr() middleware.Responder {
+	return si.NewGetLikesBadRequest().WithPayload(
+		&si.GetLikesBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+func GetLikesRespUnauthErr() middleware.Responder {
+	return si.NewGetLikesUnauthorized().WithPayload(
+		&si.GetLikesUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func GetLikesRespInternalErr() middleware.Responder {
+	return si.NewGetLikesInternalServerError().WithPayload(
+		&si.GetLikesInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
+}
+
+func PostLiksRespBadReqestErr() middleware.Responder {
+	return si.NewPostLikeBadRequest().WithPayload(
+		&si.PostLikeBadRequestBody{
+			Code:    "400",
+			Message: "Bad Request",
+		})
+}
+
+func PostLikesRespUnauthErr() middleware.Responder {
+	return si.NewPostLikeUnauthorized().WithPayload(
+		&si.PostLikeUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
+		})
+}
+
+func PosLikesRespInternalErr() middleware.Responder {
+	return si.NewPostLikeInternalServerError().WithPayload(
+		&si.PostLikeInternalServerErrorBody{
+			Code:    "500",
+			Message: "Internal Server Error",
+		})
 }

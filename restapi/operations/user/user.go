@@ -109,19 +109,19 @@ func binduser(user si.PutProfileBody, ent *entities.User) {
 
 }
 
-func GetUserRespUnauthErr() middleware.Responder {
-	return si.NewGetUsersUnauthorized().WithPayload(
-		&si.GetUsersUnauthorizedBody{
-			Code:    "401",
-			Message: "Token Is Invalid",
-		})
-}
-
 func GetUserRespBadReqestErr() middleware.Responder {
 	return si.NewGetUsersBadRequest().WithPayload(
 		&si.GetUsersBadRequestBody{
 			Code:    "400",
 			Message: "Bad Request",
+		})
+}
+
+func GetUserRespUnauthErr() middleware.Responder {
+	return si.NewGetUsersUnauthorized().WithPayload(
+		&si.GetUsersUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
 		})
 }
 
@@ -133,19 +133,19 @@ func GetUserRespInternalErr() middleware.Responder {
 		})
 }
 
-func PutProfileRespUnauthErr() middleware.Responder {
-	return si.NewPutProfileUnauthorized().WithPayload(
-		&si.PutProfileUnauthorizedBody{
-			Code:    "401",
-			Message: "Token Is Invalid",
-		})
-}
-
 func PutProfileBadRequestErr() middleware.Responder {
 	return si.NewPutProfileBadRequest().WithPayload(
 		&si.PutProfileBadRequestBody{
 			Code:    "400",
 			Message: "Bad Request",
+		})
+}
+
+func PutProfileRespUnauthErr() middleware.Responder {
+	return si.NewPutProfileUnauthorized().WithPayload(
+		&si.PutProfileUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
 		})
 }
 
@@ -165,19 +165,19 @@ func PutProfileInternalErr() middleware.Responder {
 		})
 }
 
-func GetProfileRespUnauthErr() middleware.Responder {
-	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-		&si.GetProfileByUserIDUnauthorizedBody{
-			Code:    "401",
-			Message: "Token Is Invalid",
-		})
-}
-
 func GetProfileBadRequestErr() middleware.Responder {
 	return si.NewGetProfileByUserIDBadRequest().WithPayload(
 		&si.GetProfileByUserIDBadRequestBody{
 			Code:    "400",
 			Message: "Bad Request",
+		})
+}
+
+func GetProfileRespUnauthErr() middleware.Responder {
+	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+		&si.GetProfileByUserIDUnauthorizedBody{
+			Code:    "401",
+			Message: "Token Is Invalid",
 		})
 }
 
