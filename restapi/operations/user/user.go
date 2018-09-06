@@ -33,19 +33,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	//いいねをすでに送っている人を取得
-	userIDs, err := l.FindLikeAll(token.UserID)
+	userIDs, err := l.FindLikeOnley(token.UserID)
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
-			})
-	}
-	if userIDs == nil {
-		return si.NewGetUsersBadRequest().WithPayload(
-			&si.GetUsersBadRequestBody{
-				Code:    "400",
-				Message: "Bad Request",
 			})
 	}
 
