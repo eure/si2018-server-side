@@ -24,16 +24,16 @@ func getTokenByUserIDThrowNotFound(mes string) *si.GetTokenByUserIDNotFound {
 }
 
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
-	r := repositories.NewUserTokenRepository()
+	tokenRepo := repositories.NewUserTokenRepository()
 
-	ent, err := r.GetByUserID(p.UserID)
+	token, err := tokenRepo.GetByUserID(p.UserID)
 	if err != nil {
 		return getTokenByUserIDThrowInternalServerError("GetByUserID", err)
 	}
-	if ent == nil {
+	if token == nil {
 		return getTokenByUserIDThrowNotFound("GetByUserID failed")
 	}
 
-	sEnt := ent.Build()
+	sEnt := token.Build()
 	return si.NewGetTokenByUserIDOK().WithPayload(&sEnt)
 }
