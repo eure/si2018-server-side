@@ -32,6 +32,8 @@ func getMatchesThrowBadRequest(mes string) *si.GetMatchesBadRequest {
 		})
 }
 
+// DB アクセス: 4 回
+// 計算量: O(N)
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	var err error
 	// トークン認証

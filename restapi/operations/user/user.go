@@ -32,6 +32,8 @@ func getUsersThrowBadRequest(mes string) *si.GetUsersBadRequest {
 		})
 }
 
+// DB アクセス: 6 回
+// 計算量: O(N)
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	var err error
 	userRepo := repositories.NewUserRepository()
@@ -159,6 +161,8 @@ func getProfileByUserIDThrowNotFound(mes string) *si.GetProfileByUserIDNotFound 
 		})
 }
 
+// DB アクセス: 3 回
+// 計算量: O(1)
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	userRepo := repositories.NewUserRepository()
 
@@ -262,6 +266,8 @@ func ApplyParams(user *entities.User, params si.PutProfileBody) {
 	user.WhenMarry = params.WhenMarry
 }
 
+// DB アクセス: 5 回
+// 計算量: O(1)
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	var err error
 	userRepo := repositories.NewUserRepository()

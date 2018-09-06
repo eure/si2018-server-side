@@ -23,6 +23,8 @@ func getTokenByUserIDThrowNotFound(mes string) *si.GetTokenByUserIDNotFound {
 		})
 }
 
+// DB アクセス: 1 回
+// 計算量: O(1)
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 	tokenRepo := repositories.NewUserTokenRepository()
 

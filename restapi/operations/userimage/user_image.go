@@ -102,6 +102,8 @@ func getFileType(image strfmt.Base64) (string, error) {
 	return "", errors.New("unknown file type")
 }
 
+// DB アクセス: 3 回
+// 計算量: O(1)
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	var err error
 	imageRepo := repositories.NewUserImageRepository()

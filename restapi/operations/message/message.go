@@ -35,6 +35,8 @@ func postMessageThrowBadRequest(mes string) *si.PostMessageBadRequest {
 		})
 }
 
+// DB アクセス: 3 回
+// 計算量: O(1)
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	var err error
 	messageRepo := repositories.NewUserMessageRepository()
@@ -106,6 +108,8 @@ func getMessagesThrowBadRequest(mes string) *si.GetMessagesBadRequest {
 		})
 }
 
+// DB アクセス: 2 回
+// 計算量: O(1)
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	var err error
 	messageRepo := repositories.NewUserMessageRepository()
