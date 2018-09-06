@@ -71,9 +71,6 @@ func (r *UserImageRepository) SaveImageAssets(base64Str strfmt.Base64, userID in
 	defer file.Close()
 
 	_, err = file.Write(base64Str)
-	if err != nil {
-		return "", err
-	}
 
 	return imagePath, err
 }
