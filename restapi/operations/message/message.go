@@ -18,24 +18,51 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	repUserToken := repositories.NewUserTokenRepository() // tokenからidを取得する
 	repUserMatch := repositories.NewUserMatchRepository() //
 
-	var message entities.UserMessage
-
-	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
-
-	//マッチングしていない場合エラーを返す
-	userMatch, err := repUserMatch.Get(loginUser.UserID, p.UserID)
-	if userMatch == nil{
-		return si.NewPostMessageBadRequest().WithPayload(
-			&si.PostMessageBadRequestBody{
-				Code:    "400",
-				Message: "Can't sent message for not matched user",
+	err := repUserToken.ValidateToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code: "401",
+				Message: "Token Is Invalid",
 			})
 	}
+
+	// Bad Request
+	if p.UserID < 0 {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
+			})
+	}
+
+	var message entities.UserMessage
+
+	// トークンからログインユーザーを取得
+	loginUser, _ := repUserToken.GetByToken(p.Params.Token)
+
+	// メッセージ送信相手とマッチングしていない場合, Bad Requestを返す
+	userMatch, err := repUserMatch.Get(loginUser.UserID, p.UserID)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
+			})
+	}
+	if userMatch == nil{
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request",
 			})
 	}
 
@@ -57,10 +84,9 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
 			Code:    "200",
-			Message: "Posted Your Message",
+			Message: "OK",
 		})
 }
-
 
 //- メッセージ内容取得API
 //- GET {hostname}/api/1.0/messages/{userID}
