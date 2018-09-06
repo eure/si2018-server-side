@@ -47,11 +47,15 @@ func exists(filename string) bool {
 }
 
 func getFreeFileName(path, extension string) (string, error) {
-	// 100000 枚までしか写真を保存しない
-	const limit = 100000
-	format := "img%05d" + extension
+	now := time.Now().UnixNano()
+	// 時刻がバレないように簡易的に暗号化する
+	now = now ^ 123456789123456789
+	// 同じ時刻では 100 枚までしか写真を保存しない
+	// 1 ns 単位で重複することはほぼないはずなので, サーバーの時刻を止めない限り問題ない
+	const limit = 100
+	format := "img%x%02d" + extension
 	for i := 0; i < limit; i++ {
-		filename := fmt.Sprintf(format, i)
+		filename := fmt.Sprintf(format, now, i)
 		if !exists(path + filename) {
 			return filename, nil
 		}
