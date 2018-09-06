@@ -90,10 +90,24 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	// t := repositories.NewUserTokenRepository()
+	t := repositories.NewUserTokenRepository()
 	r := repositories.NewUserRepository()
 
-	// token, _ = t.GetByToken(p.Token)
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// Bad Requestをどのタイミングで使うかわからないのであとで調査
 	// User情報を取得する
@@ -122,7 +136,21 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetUsersUnauthorized().WithPayload(
+			&si.GetUsersUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// ユーザーの情報の取得
 	us, err := u.GetByUserID(p.UserID)
