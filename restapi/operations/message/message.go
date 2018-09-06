@@ -67,15 +67,27 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	numr := repositories.NewUserMessageRepository()
 	nutr := repositories.NewUserTokenRepository()
 	nur := repositories.NewUserRepository()
-	usertoken, err := nutr.GetByToken(p.Token)
+
+	token := p.Token
+	userID := p.UserID
+	limit := int(*p.Limit)
+	latest := p.Latest
+	oldest := p.Oldest
+
+	usertoken, err := nutr.GetByToken(token)
 	if err != nil {
 		return GetMsgRespUnauthErr()
 	}
-	userid, err := nur.GetByUserID(p.UserID)
+
+	if usertoken == nil {
+		return GetMsgBadReqestErr()
+	}
+
+	userprofile, err := nur.GetByUserID(userID)
 	if err != nil {
 		return GetMsgRespInternalErr()
 	}
-	msg, _ := numr.GetMessages(usertoken.UserID, userid.ID, int(*p.Limit), p.Latest, p.Oldest)
+	msg, _ := numr.GetMessages(usertoken.UserID, userprofile.ID, limit, latest, oldest)
 	var respmsg entities.UserMessages
 	for _, msg := range msg {
 		respmsg = append(respmsg, msg)
