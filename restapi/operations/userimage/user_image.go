@@ -7,7 +7,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
-	"time"
 
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
@@ -60,10 +59,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	//write picture
 	file.Write(writeimage)
 	userimage := entities.UserImage{
-		UserID:    usertokn.UserID,
-		Path:      pathdir,
-		CreatedAt: strfmt.DateTime(time.Now()),
-		UpdatedAt: strfmt.DateTime(time.Now()),
+		UserID: usertokn.UserID,
+		Path:   pathdir,
 	}
 
 	err = userimageHandler.Update(userimage)

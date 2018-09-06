@@ -1,19 +1,15 @@
 package message
 
 import (
-	"time"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	numr := repositories.NewUserMessageRepository()
 	nutr := repositories.NewUserTokenRepository()
-	//nur := repositories.NewUserRepository()
 	numar := repositories.NewUserMatchRepository()
 	// get my user id
 	postParams := p.Params
@@ -51,8 +47,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		UserID:    usertoken.UserID,
 		PartnerID: p.UserID,
 		Message:   p.Params.Message,
-		CreatedAt: strfmt.DateTime(time.Now()),
-		UpdatedAt: strfmt.DateTime(time.Now()),
 	}
 
 	err = numr.Create(user)

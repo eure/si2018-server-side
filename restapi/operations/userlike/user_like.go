@@ -2,13 +2,11 @@ package userlike
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 )
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -104,8 +102,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {
 	like.UserID = userid
 	like.PartnerID = partnerid
-	like.CreatedAt = strfmt.DateTime(time.Now())
-	like.UpdatedAt = strfmt.DateTime(time.Now())
 }
 
 // return 400 Bad Request
