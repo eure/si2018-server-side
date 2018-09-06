@@ -13,7 +13,21 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Token)
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetMatchesUnauthorized().WithPayload(
+			&si.GetMatchesUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// マッチ済みのユーザーを取得
 	match, err := m.FindByUserIDWithLimitOffset(token.UserID, int(p.Limit), int(p.Offset))
