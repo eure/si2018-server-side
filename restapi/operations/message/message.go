@@ -16,7 +16,21 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	match := repositories.NewUserMatchRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// 自分が既にマッチングしている全てのUserIDを取得
 	userIDs, err := match.FindAllByUserID(token.UserID)
@@ -75,7 +89,21 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	match := repositories.NewUserMatchRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Token)
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetMessagesUnauthorized().WithPayload(
+			&si.GetMessagesUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// matchingしているユーザーの取得
 	userIDs, err := match.FindAllByUserID(token.UserID)
