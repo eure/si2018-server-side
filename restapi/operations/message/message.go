@@ -16,17 +16,34 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	//nur := repositories.NewUserRepository()
 	numar := repositories.NewUserMatchRepository()
 	// get my user id
-	usertoken, err := nutr.GetByToken(p.Params.Token)
+	postParams := p.Params
+	userID := p.UserID
+
+	usertoken, err := nutr.GetByToken(postParams.Token)
 	if err != nil {
 		return PostMsgRespUnauthErr()
 	}
 
-	// validate already matching
-	existmatch, err := numar.Get(usertoken.UserID, p.UserID)
+	// Is There a collect user token?
+	if usertoken == nil {
+		return PostMsgBadReqestErr()
+	}
+
+	// Is there already matching?
+	existmatch, err := numar.Get(usertoken.UserID, userID)
 	if err != nil {
 		return PostMsgRespInternalErr()
 	}
+
 	if existmatch == nil {
+		return PostMsgBadReqestErr()
+	}
+	// validate already matching opposite
+	existmatchopposite, err := numar.Get(usertoken.UserID, userID)
+	if err != nil {
+		return PostMsgRespInternalErr()
+	}
+	if existmatchopposite == nil {
 		return PostMsgBadReqestErr()
 	}
 
@@ -38,13 +55,12 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		UpdatedAt: strfmt.DateTime(time.Now()),
 	}
 
-	numr.Create(user)
+	err = numr.Create(user)
+	if err != nil {
+		return PostMsgRespInternalErr()
+	}
 
-	return si.NewPostMessageOK().WithPayload(
-		&si.PostMessageOKBody{
-			Code:    "200",
-			Message: "OK",
-		})
+	return PostMsgOK()
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
@@ -90,6 +106,14 @@ func GetMsgRespInternalErr() middleware.Responder {
 		&si.GetMessagesInternalServerErrorBody{
 			Code:    "500",
 			Message: "Internal Server Error",
+		})
+}
+
+func PostMsgOK() middleware.Responder {
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			Code:    "200",
+			Message: "OK",
 		})
 }
 

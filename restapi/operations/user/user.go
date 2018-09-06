@@ -1,8 +1,6 @@
 package user
 
 import (
-	"strings"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
@@ -17,29 +15,29 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	//ngur := repositories.NewGetUserRepository()
 	// find userid
 	token := p.Token
-	//limit := p.Limit
-	//offset := p.Offset
+	limit := int(p.Limit)
+	offset := int(p.Offset)
 
-	// Validate usertoken format is collect
-	if strings.HasPrefix("USERTOKEN", token) {
-		return GetProfileRespUnauthErr()
-	}
-
-	usrid, err := nutr.GetByToken(token)
+	usertoken, err := nutr.GetByToken(token)
 	if err != nil {
-		return GetUserRespInternalErr()
+		return GetUserRespUnauthErr()
+	}
+	// Is There a collect user token?
+	if usertoken == nil {
+		return GetProfileBadRequestErr()
 	}
 	// find userlike
-	userlike, err := nulr.FindLikeAll(usrid.UserID)
+	userlike, err := nulr.FindLikeAll(usertoken.UserID)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
 	// find user
-	userdesc, err := nur.GetByUserID(usrid.UserID)
+	userprofile, err := nur.GetByUserID(usertoken.UserID)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
-	ent, err := nur.FindWithCondition(int(p.Limit), int(p.Offset), userdesc.GetOppositeGender(), userlike)
+	oppositeGenger := userprofile.GetOppositeGender()
+	ent, err := nur.FindWithCondition(limit, offset, oppositeGenger, userlike)
 	if err != nil {
 		return GetUserRespInternalErr()
 	}
@@ -57,36 +55,64 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	nur := repositories.NewUserRepository()
 	nut := repositories.NewUserTokenRepository()
-	usrid, err := nur.GetByUserID(p.UserID)
+	token := p.Token
+	myuserid := p.UserID
+
+	userprofile, err := nur.GetByUserID(myuserid)
 	if err != nil {
 		return GetProfileInternalErr()
 	}
-	usrtoken, err := nut.GetByToken(p.Token)
+	// Is There a exist UserProfile?
+	if userprofile == nil {
+		return GetProfileNotFoundErr()
+	}
+	usertoken, err := nut.GetByToken(token)
 	if err != nil {
 		return GetProfileRespUnauthErr()
 
 	}
-	if usrid.ID != usrtoken.UserID {
-		return GetProfileNotFoundErr()
+	// Is There a collect user token?
+	if usertoken == nil {
+		return GetProfileBadRequestErr()
 	}
-	sEnt := usrid.Build()
+	// Is token and userid is match?
+	if userprofile.ID != usertoken.UserID {
+		return GetProfileBadRequestErr()
+	}
+	sEnt := userprofile.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	nur := repositories.NewUserRepository()
+	nutr := repositories.NewUserTokenRepository()
+	userID := p.UserID
+	putParams := p.Params
 	//Find user
-	user, err := nur.GetByUserID(p.UserID)
+	user, err := nur.GetByUserID(userID)
 	if err != nil {
 		return PutProfileInternalErr()
 	}
-	binduser(p.Params, user)
-	err = nur.Update(user)
+	// Is there a User through token
+	usertoken, err := nutr.GetByToken(putParams.Token)
 	if err != nil {
+		return PutProfileInternalErr()
+	}
+	// Is threre token Authorized
+	if usertoken == nil {
+		return PutProfileRespUnauthErr()
+	}
+
+	if usertoken.UserID != userID {
 		return PutProfileForbiddenErr()
 	}
-	// Want Response User profile
-	respuser, err := nur.GetByUserID(p.UserID)
+	binduser(putParams, user)
+	err = nur.Update(user)
+	if err != nil {
+		return PutProfileInternalErr()
+	}
+	// Is update User profile
+	respuser, err := nur.GetByUserID(userID)
 	if err != nil {
 		return PutProfileInternalErr()
 	}
