@@ -216,6 +216,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// レポジトリを初期化する
 	tokenR := repositories.NewUserTokenRepository()
 	userR := repositories.NewUserRepository()
+	userImageR := repositories.NewUserImageRepository()
 
 	// トークンを検索する
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
@@ -305,8 +306,26 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		}
 	}
 
+	// ユーザーのimage_uriを取得する
+	myUserImageEnt, err := userImageR.GetByUserID(myUpdatedUserEnt.ID)
+
+	// 500エラー
+	if err != nil {
+		if err != nil {
+			return si.NewPutProfileInternalServerError().WithPayload(
+				&si.PutProfileInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+	}
+
 	// モデルにマッピングする
 	myUpdatedUser := myUpdatedUserEnt.Build()
+	
+	if myUserImageEnt != nil {
+		myUpdatedUser.ImageURI = myUserImageEnt.Path
+	}
 
 	// 結果を返す
 	return si.NewPutProfileOK().WithPayload(&myUpdatedUser)
