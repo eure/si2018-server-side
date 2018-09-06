@@ -17,7 +17,21 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Token)
+	token, err := t.GetByToken(p.Token)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewGetLikesUnauthorized().WithPayload(
+			&si.GetLikesUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// match済みのユーザーを取得
 	match, err := m.FindAllByUserID(token.UserID)
@@ -90,7 +104,21 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	u := repositories.NewUserRepository()
 
 	// ユーザーID取得用
-	token, _ := t.GetByToken(p.Params.Token)
+	token, err := t.GetByToken(p.Params.Token)
+	if err != nil {
+		return si.NewPostLikeInternalServerError().WithPayload(
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if token == nil {
+		return si.NewPostLikeUnauthorized().WithPayload(
+			&si.PostLikeUnauthorizedBody{
+				Code:    "401",
+				Message: "Your Token Is Invalid",
+			})
+	}
 
 	// ユーザーがすでにいいねしている人を取得
 	userIDs, err := l.FindLikeOnley(token.UserID)
