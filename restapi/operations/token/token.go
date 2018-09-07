@@ -7,28 +7,19 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+// DB アクセス: 1 回
+// 計算量: O(1)
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
-	r := repositories.NewUserTokenRepository()
+	tokenRepo := repositories.NewUserTokenRepository()
 
-	ent, err := r.GetByUserID(p.UserID)
-
+	token, err := tokenRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
-			&si.GetTokenByUserIDInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
+		return si.GetTokenByUserIDThrowInternalServerError(err)
 	}
-	if ent == nil {
-		return si.NewGetTokenByUserIDNotFound().WithPayload(
-			&si.GetTokenByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+	if token == nil {
+		return si.GetTokenByUserIDThrowNotFound()
 	}
 
-	sEnt := ent.Build()
+	sEnt := token.Build()
 	return si.NewGetTokenByUserIDOK().WithPayload(&sEnt)
 }
-
-

@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"log"
-
 	"github.com/go-openapi/strfmt"
 	"github.com/go-xorm/builder"
 
@@ -30,7 +28,7 @@ func (r *UserMessageRepository) GetMessages(userID, partnerID int64, limit int, 
 	var ids = []int64{userID, partnerID}
 
 	s := engine.NewSession()
-	defer func() { log.Println(s.LastSQL()) }()
+	// defer func() { log.Println(s.LastSQL()) }()
 	s.Where(builder.In("user_id", ids))
 	s.And(builder.In("partner_id", ids))
 	if latest != nil {
@@ -41,6 +39,7 @@ func (r *UserMessageRepository) GetMessages(userID, partnerID int64, limit int, 
 	}
 	s.Desc("created_at")
 	s.Limit(limit)
+	s.Desc("created_at")
 	err := s.Find(&messages)
 	if err != nil {
 		return messages, err
