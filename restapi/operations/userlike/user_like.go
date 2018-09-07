@@ -108,7 +108,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	token := p.Params.Token
 	rid := p.UserID
-	/* TODO bad request */
 
 	err := util.ValidateToken(token)
 	if err != nil {
