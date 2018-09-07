@@ -24,20 +24,19 @@ import (
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	/*
-	1.	tokenのバリデーション
-	2.	tokenから使用者のuseridを取得
-	3.	画像をassetsの中に書き込む（本当はユニークな文字列にしなくてはいけない）
-	4.	（画像を削除する）
-	// userIDは送信者, partnerIDは受信者
+		1.	tokenのバリデーション
+		2.	tokenから使用者のuseridを取得
+		3.	画像をassetsの中に書き込む（本当はユニークな文字列にしなくてはいけない）
+		4.	（画像を削除する）
+		// userIDは送信者, partnerIDは受信者
 	*/
-
 
 	// Tokenがあるかどうか
 	if p.Params.Token == "" {
 		return si.NewPostImagesUnauthorized().WithPayload(
 			&si.PostImagesUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -69,18 +68,18 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// 拡張子の判別
 	/*
-	バイナリの先頭部分からjpg, pngを判定する（それ以外の場合はbad requestを返す）
-	jpegファイルの場合は\xff\xd8
-	pngファイルの場合は\x89\x50\x4e\x47\x0d\x0a\x1a\x0a
-	400*400におさまるようにリサイズします。
+		バイナリの先頭部分からjpg, pngを判定する（それ以外の場合はbad requestを返す）
+		jpegファイルの場合は\xff\xd8
+		pngファイルの場合は\x89\x50\x4e\x47\x0d\x0a\x1a\x0a
+		400*400におさまるようにリサイズします。
 	*/
 	img := p.Params.Image
 	// imgが5MB以上の時は処理しない。
 	if len(img) > 1048576*5 {
 		return si.NewPostImagesBadRequest().WithPayload(
 			&si.PostImagesBadRequestBody{
-				"413",
-				"Payload Too Large",
+				Code:    "413",
+				Message: "Payload Too Large",
 			})
 	}
 
@@ -91,17 +90,17 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	buf := new(bytes.Buffer)
 	switch {
-	case bytes.HasPrefix(img,[]byte{0xff, 0xd8}):
+	case bytes.HasPrefix(img, []byte{0xff, 0xd8}):
 		extension = "jpg"
 		imgDecoded, errDecode = jpeg.Decode(bytes.NewReader(img))
-	case bytes.HasPrefix(img,[]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}):
+	case bytes.HasPrefix(img, []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}):
 		extension = "png"
 		imgDecoded, errDecode = png.Decode(bytes.NewReader(img))
 	default:
 		return si.NewPostImagesUnsupportedMediaType().WithPayload(
 			&si.PostImagesUnsupportedMediaTypeBody{
-				"415",
-				"Unsupported Media Type",
+				Code:    "415",
+				Message: "Unsupported Media Type",
 			})
 	}
 
@@ -113,16 +112,16 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
-	imgResizedDecoded := resize.Thumbnail(400,400,imgDecoded, resize.Lanczos3)
+	imgResizedDecoded := resize.Thumbnail(400, 400, imgDecoded, resize.Lanczos3)
 
-	switch extension{
+	switch extension {
 	case "jpg":
 		errEncode = jpeg.Encode(buf, imgResizedDecoded, nil)
 	case "png":
 		errEncode = png.Encode(buf, imgResizedDecoded)
 	}
 
-	if errEncode!= nil || buf == nil {
+	if errEncode != nil || buf == nil {
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
@@ -133,9 +132,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// ファイル名……userID+時刻をmd5hashに変換
 	filestring := strconv.FormatInt(sEntToken.UserID, 10) + "_" + time.Now().String()
-	filehash :=  md5.Sum([]byte(filestring))
-	filename := hex.EncodeToString(filehash[:])+"."+extension
-
+	filehash := md5.Sum([]byte(filestring))
+	filename := hex.EncodeToString(filehash[:]) + "." + extension
 
 	file, errOpen := os.OpenFile(assets_path+filename, os.O_WRONLY|os.O_CREATE, 0666)
 
@@ -160,7 +158,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
-
 	var userImage entities.UserImage
 	baseAddress := "https://127.0.0.1:8888/assets/"
 	userImage.UserID = sEntToken.UserID
@@ -176,10 +173,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 
-	// 正常に終了したら画像を削除
-
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			strfmt.URI(baseAddress + filename),
+			ImageURI: strfmt.URI(baseAddress + filename),
 		})
 }

@@ -13,21 +13,20 @@ import (
 
 func GetLikes(p si.GetLikesParams) middleware.Responder {
 	/*
-	1.	tokenのvalidation
-	2.	tokenからuseridを取得
-	3.	userIDからマッチ済みの相手matchIDを取得
-	4.	useridからマッチ済み以外のいいねの受信リストを取得
-	5.	いいねの受信リストからユーザーのプロフィールのリストを取得
-	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
+		1.	tokenのvalidation
+		2.	tokenからuseridを取得
+		3.	userIDからマッチ済みの相手matchIDを取得
+		4.	useridからマッチ済み以外のいいねの受信リストを取得
+		5.	いいねの受信リストからユーザーのプロフィールのリストを取得
+		// userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	*/
-
 
 	// Tokenがあるかどうか
 	if p.Token == "" {
 		return si.NewGetLikesUnauthorized().WithPayload(
 			&si.GetLikesUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -53,7 +52,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	sEntToken := entToken.Build()
 
-
 	// matchIDsの取得
 
 	rMatch := repositories.NewUserMatchRepository()
@@ -67,14 +65,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-
-
 	//fmt.Println("matchIDs",matchIDs)
 	// マッチ済み以外のいいね受信リストを取得する
 	rLike := repositories.NewUserLikeRepository()
 	limit := int(p.Limit)
 	offset := int(p.Offset)
-	if limit < 0 || offset < 0{
+	if limit < 0 || offset < 0 {
 		return si.NewGetLikesBadRequest().WithPayload(
 			&si.GetLikesBadRequestBody{
 				"400",
@@ -93,8 +89,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-
-
 	// fmt.Println("likes",likes)
 	userLikes := entities.UserLikes(likes)
 
@@ -104,21 +98,19 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	partnerLikedAt := map[int64]strfmt.DateTime{}
 
-
 	for _, sUser := range sUsers {
 		partnerLikedAt[sUser.UserID] = sUser.CreatedAt
 	}
 
 	// fmt.Println("partnerLikedAt",partnerLikedAt)
 
-
 	rUser := repositories.NewUserRepository()
 
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
 
 	var IDs []int64
-	for _, sUser := range sUsers{
-		IDs = append(IDs,sUser.UserID)
+	for _, sUser := range sUsers {
+		IDs = append(IDs, sUser.UserID)
 	}
 
 	partners, errFind := rUser.FindByIDs(IDs)
@@ -137,7 +129,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		r.ApplyUser(partner)
 		r.LikedAt = partnerLikedAt[partner.ID]
 		m := r.Build()
-		payloads = append(payloads,&m)
+		payloads = append(payloads, &m)
 	}
 
 	//fmt.Println("payloads",payloads)
@@ -146,21 +138,20 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	/*
-	1.	Tokenのバリデーション
-	2.	tokenから送信者のuseridを取得
-	3.	送信者のuseridから送信者のプロフィルを持ってきて性別を確認
-	4.	p.useridから送信相手のプロフィルを持ってきて異性かどうか確認
-	5.	すでにいいねしているか確認
-	6.	いいねを送信
+		1.	Tokenのバリデーション
+		2.	tokenから送信者のuseridを取得
+		3.	送信者のuseridから送信者のプロフィルを持ってきて性別を確認
+		4.	p.useridから送信相手のプロフィルを持ってきて異性かどうか確認
+		5.	すでにいいねしているか確認
+		6.	いいねを送信
 	*/
-
 
 	// Tokenがあるかどうか
 	if p.Params.Token == "" {
 		return si.NewPostLikeUnauthorized().WithPayload(
 			&si.PostLikeUnauthorizedBody{
 				Code:    "401",
-				Message: "Token Is Invalid",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -172,7 +163,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
-				Message: "Internal Server Errorg",
+				Message: "Internal Server Error",
 			})
 	}
 
@@ -185,7 +176,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	sEntToken := entToken.Build()
-
 
 	// 送信者のuseridから送信者のプロフィルを持ってきて性別を確認
 	// genderを確認するためだけに、useridからプロフィルを取得する……
@@ -239,24 +229,23 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-
 	// すでにいいねしているかどうか確認する
 	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	rLike := repositories.NewUserLikeRepository()
 	entLike, errLike := rLike.GetLikeBySenderIDReceiverID(sEntToken.UserID, p.UserID)
 	if errLike != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
-		&si.PostLikeInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
+			&si.PostLikeInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
 	}
 	// すでにいいねしている場合
 	if entLike != nil {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code:    "400",
-				Message: "Bad Request",
+				Message: "Already Liked",
 			})
 	}
 

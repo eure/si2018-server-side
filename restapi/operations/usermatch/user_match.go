@@ -11,19 +11,18 @@ import (
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	/*
-	1. tokenのvalidation
-	2. tokenからuseridを取得
-	3. useridからマッチングしたユーザーの一覧を取得
-	// userIDはいいねを送った人, partnerIDはいいねを受け取った人
+		1. tokenのvalidation
+		2. tokenからuseridを取得
+		3. useridからマッチングしたユーザーの一覧を取得
+		// userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	*/
-
 
 	// Tokenがあるかどうか
 	if p.Token == "" {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -42,7 +41,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -73,7 +72,6 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	rUser := repositories.NewUserRepository()
 
-
 	partnerMatchedAt := map[int64]strfmt.DateTime{}
 
 	for _, sMatch := range sMatches {
@@ -83,7 +81,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
 
 	var IDs []int64
-	for _, sMatch := range sMatches{
+	for _, sMatch := range sMatches {
 		IDs = append(IDs, sMatch.PartnerID)
 	}
 
@@ -103,7 +101,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		r.ApplyUser(partner)
 		r.MatchedAt = partnerMatchedAt[partner.ID]
 		m := r.Build()
-		payloads = append(payloads,&m)
+		payloads = append(payloads, &m)
 	}
 
 	return si.NewGetMatchesOK().WithPayload(payloads)

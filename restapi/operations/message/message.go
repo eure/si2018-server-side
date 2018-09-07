@@ -24,7 +24,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
 				Code:    "401",
-				Message: "Token Is Invalid",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -52,17 +52,16 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	// userIDがマッチしているIDを見つける
 	rMatch := repositories.NewUserMatchRepository()
-	ids, err := rMatch.FindAllByUserID(sEntToken.UserID)
+	ids, errMatch := rMatch.FindAllByUserID(sEntToken.UserID)
 
-	if err != nil {
+	if errMatch != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
 				Message: "Internal Server Error",
 			})
 	}
-	fmt.Println(ids)
-	fmt.Println(p.UserID)
+
 	var id_contains bool
 	for _, id := range ids {
 		if id == p.UserID {
@@ -70,38 +69,37 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			break
 		}
 	}
-	if id_contains {
-		rMessage := repositories.NewUserMessageRepository()
-		var message entities.UserMessage
-		message.UserID = sEntToken.UserID
-		message.PartnerID = p.UserID
-		message.Message = p.Params.Message
-		message.CreatedAt = strfmt.DateTime(time.Now())
-		message.UpdatedAt = message.CreatedAt
-		errorCreate := rMessage.Create(message)
 
-		if errorCreate != nil {
-			return si.NewPostMessageInternalServerError().WithPayload(
-				&si.PostMessageInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
-		}
-
-		return si.NewPostMessageOK().WithPayload(
-			&si.PostMessageOKBody{
-				"200",
-				"OK",
-			})
-	} else {
+	if !id_contains {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code:    "400",
 				Message: "Bad Request",
 			})
-
 	}
 
+	rMessage := repositories.NewUserMessageRepository()
+	var message entities.UserMessage
+	message.UserID = sEntToken.UserID
+	message.PartnerID = p.UserID
+	message.Message = p.Params.Message
+	message.CreatedAt = strfmt.DateTime(time.Now())
+	message.UpdatedAt = message.CreatedAt
+	errorCreate := rMessage.Create(message)
+
+	if errorCreate != nil {
+		return si.NewPostMessageInternalServerError().WithPayload(
+			&si.PostMessageInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	return si.NewPostMessageOK().WithPayload(
+		&si.PostMessageOKBody{
+			"200",
+			"OK",
+		})
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
@@ -109,6 +107,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		1. 	Tokenのバリデーション
 		2.	Tokenから使用者のuserIDを取得
 		3.	メッセージ送り先のuseridがマッチング済みの相手かどうかを確認する
+		4.	メッセージの送信
 	*/
 
 	// Tokenがあるかどうか
@@ -116,7 +115,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
 				Code:    "401",
-				Message: "Token Is Invalid",
+				Message: "Token Is Required",
 			})
 	}
 
@@ -163,44 +162,39 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		}
 	}
 
-	if id_contains {
-
-		rMessage := repositories.NewUserMessageRepository()
-
-		limit := int(*(p.Limit))
-		/*
-			latest := time.Time(*(p.Latest))
-			oldest := time.Time(*(p.Oldest))
-			now := time.Now()
-			// oldest latest now ->（時系列）の順になっていないとおかしい
-			if limit < 0 || !(oldest.Before(latest) && latest.Before(now)) {
-				return si.NewGetMessagesBadRequest().WithPayload(
-					&si.GetMessagesBadRequestBody{
-						Code:    "400",
-						Message: "Bad Request",
-					})
-			}*/
-		// latestとoldestの役割が逆じゃない？
-		entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, limit, p.Latest, p.Oldest)
-
-		if errMessage != nil {
-			return si.NewGetMessagesInternalServerError().WithPayload(
-				&si.GetMessagesInternalServerErrorBody{
-					Code:    "500",
-					Message: "Internal Server Error",
-				})
-		}
-		userMessages := entities.UserMessages(entMessage)
-
-		sMsgs := userMessages.Build()
-
-		return si.NewGetMessagesOK().WithPayload(sMsgs)
-	} else {
+	if !id_contains {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",
 				Message: "Bad Request",
 			})
 	}
+
+	rMessage := repositories.NewUserMessageRepository()
+
+	limit := int(*(p.Limit))
+
+	if limit < 0 {
+		return si.NewGetMessagesBadRequest().WithPayload(
+			&si.GetMessagesBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
+	}
+
+	entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, limit, p.Latest, p.Oldest)
+
+	if errMessage != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	userMessages := entities.UserMessages(entMessage)
+
+	sMsgs := userMessages.Build()
+
+	return si.NewGetMessagesOK().WithPayload(sMsgs)
 
 }
