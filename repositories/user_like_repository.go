@@ -1,6 +1,12 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"fmt"
+	"time"
+
+	"github.com/eure/si2018-server-side/entities"
+	"github.com/go-openapi/strfmt"
+)
 
 type UserLikeRepository struct{}
 
@@ -70,4 +76,24 @@ func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, off
 	}
 
 	return likes, nil
+}
+
+func (r *UserLikeRepository) FindAllLikeUserResponse(ids []int64) ([]entities.LikeUserResponse, error) {
+	// kadai4
+	var usr []entities.User
+	var likeresp []entities.LikeUserResponse
+
+	s := engine.NewSession()
+	err := s.In("id", ids).Find(&usr)
+	if err != nil {
+		return likeresp, err
+	}
+	likeresp[0].User.CreatedAt = usr[0].CreatedAt
+	likeresp[0].LikedAt = strfmt.DateTime(time.Now())
+	//fmt.Println(likeresp[0].User)
+	//for i := 0; 0 < len(usr); i++ {
+	//	likeresp[i].User = usr[i]
+	//}
+	fmt.Println(usr)
+	return likeresp, nil
 }

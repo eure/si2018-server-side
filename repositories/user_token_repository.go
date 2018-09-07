@@ -1,6 +1,8 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"github.com/eure/si2018-server-side/entities"
+)
 
 type UserTokenRepository struct{}
 
