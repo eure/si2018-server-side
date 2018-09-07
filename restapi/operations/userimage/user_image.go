@@ -158,7 +158,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		if err != nil {
 			return si.PostImageThrowInternalServerError(err)
 		}
-		fmt.Println("file:", localFile, ", size:", len(p.Params.Image))
 		// file.Close() でも error が吐かれる可能性がある
 		// とりあえず今は対処しない
 		defer file.Close()
