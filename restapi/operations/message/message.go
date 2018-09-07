@@ -21,6 +21,9 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	if p.Params.Message == "" {
 		return si.PostMessageThrowBadRequest("empty message")
 	}
+	if len(p.Params.Message) > 3000 {
+		return si.PostMessageThrowBadRequest("message too long")
+	}
 	messageRepo := repositories.NewUserMessageRepository()
 	// トークン認証
 	var id int64
