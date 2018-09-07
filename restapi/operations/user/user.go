@@ -40,6 +40,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	// いいねしている/されているユーザIDを取得する -> これでOK
 	// いいねしてくれている人の一覧は `/likes` で取得できるから必要ないと判断
+	// いいねして、されている -> マッチングしている
 	likeR         := repositories.NewUserLikeRepository()
 	likeIds, err  := likeR.FindLikeAll(tokenEnt.UserID)
 	if err != nil {
@@ -50,14 +51,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 	omitIds = append(omitIds, likeIds...)
-	//for _, likeId := range likeIds {
-	//	omitIds = append(omitIds, likeId)
-	//}
 
 	// 自分の性別情報の取得
 	userR       := repositories.NewUserRepository()
 	myEnt, err  := userR.GetByUserID(tokenEnt.UserID)
-	myGender    := myEnt.GetOppositeGender()
 	if err != nil {
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
@@ -65,6 +62,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+	myGender    := myEnt.GetOppositeGender()
 	// omitIds以外のユーザ情報を取得する
 	findUsers, err := userR.FindWithCondition(int(p.Limit), int(p.Offset), myGender, omitIds)
 	if err != nil {
@@ -80,16 +78,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		tmp = append(tmp, userEnt)
 	}
 	responseData := tmp.Build()
-	//var responseData []*models.User
-	//for _, userEnt := range findUsers {
-	//	userModel    := userEnt.Build()
-	//	responseData  = append(responseData, &userModel)
-	//}
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
 
 func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
-	// 同性のプロフィールも確認可能にしている
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Token)
 	if err != nil {
@@ -125,20 +117,20 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	// 同性の場合
-	if findUserEnt.GetOppositeGender() == myUserEnt.GetOppositeGender() {
-		return si.NewGetProfileByUserIDBadRequest().WithPayload(
-			&si.GetProfileByUserIDBadRequestBody{
-				Code   : "400",
-				Message: "Bad Request",
-			})
-	}
 	// ユーザが存在しない -> 404
 	if findUserEnt == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code   : "404",
 				Message: "User Not Found",
+			})
+	}
+	//同性の場合
+	if findUserEnt.ID != myUserEnt.ID && findUserEnt.GetOppositeGender() == myUserEnt.GetOppositeGender() {
+		return si.NewGetProfileByUserIDBadRequest().WithPayload(
+			&si.GetProfileByUserIDBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 
