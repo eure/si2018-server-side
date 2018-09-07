@@ -60,11 +60,13 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// Create image file
 	ap := os.Getenv("ASSETS_PATH")
+
 	rand.Seed(time.Now().UnixNano())
 	const filenamelen = 8
+
 	filename := getRandStr(filenamelen) + filetype
 
-	f, err := os.Create(filepath.Join(ap, filename))
+	f, err := os.Create(filepath.Join(ap, filename)) // Permission 0666
 	if err != nil {
 		fmt.Println("File create failed")
 		fmt.Println(err)
@@ -75,6 +77,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			})
 	}
 	defer f.Close()
+
 	_, err = f.Write(img)
 	if err != nil {
 		fmt.Println("File write failed")
@@ -93,7 +96,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	r := repositories.NewUserImageRepository()
 
-	old, err := r.GetByUserID(id) /* TODO check existance? */
+	old, _ := r.GetByUserID(id) /* TODO check existance? */
 	fmt.Println(old)
 
 	err = r.Update(ui) 
@@ -110,7 +113,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI(ap + filename),
+			ImageURI: strfmt.URI(filepath.Join(ap, filename)),
 		})
 }
 

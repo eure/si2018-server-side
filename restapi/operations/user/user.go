@@ -90,7 +90,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 	// Same gender?
-	if user.Gender == me.Gender { 
+	if user.Gender == me.Gender && myid != id { 
 		return si.NewGetProfileByUserIDBadRequest().WithPayload(
 			&si.GetProfileByUserIDBadRequestBody{
 				Code:    "400",
@@ -98,6 +98,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 	
+	// Prepare response
 	res := user.Build()
 
 	return si.NewGetProfileByUserIDOK().WithPayload(&res)

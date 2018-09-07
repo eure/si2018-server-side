@@ -14,16 +14,8 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	offset := p.Offset
 	token := p.Token
 
+	// Validation
 	err := util.ValidateToken(token)
-	if err != nil {
-		return si.NewGetMatchesUnauthorized().WithPayload(
-			&si.GetMatchesUnauthorizedBody{
-				Code:    "401",
-				Message: "Token Is Invalid",
-			})
-	}
-
-	err = util.ValidateToken(token)
 	if err != nil {
 		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
@@ -37,6 +29,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	ru := repositories.NewUserRepository()
 	rm := repositories.NewUserMatchRepository()
 	
+	// Get matching users
 	matches, err := rm.FindByUserIDWithLimitOffset(id, int(limit), int(offset))
 	if err != nil {
 		fmt.Print("Find matches err: ")
@@ -73,6 +66,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		um[u.ID] = u
 	}
 
+	// Prepare response
 	res := make([]entities.MatchUserResponse, 0)
 	
 	for _, mat := range matches{
