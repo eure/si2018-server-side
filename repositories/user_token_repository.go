@@ -1,6 +1,8 @@
 package repositories
 
-import "github.com/eure/si2018-server-side/entities"
+import (
+	"github.com/eure/si2018-server-side/entities"
+)
 
 type UserTokenRepository struct{}
 
@@ -28,8 +30,10 @@ func (r *UserTokenRepository) Update(ent entities.UserToken, cols []string) erro
 
 func (r *UserTokenRepository) GetByUserID(userID int64) (*entities.UserToken, error) {
 	var ent = entities.UserToken{UserID: userID}
+	/*entities/user_token.go*/
 
 	has, err := engine.Get(&ent)
+
 	if err != nil {
 		return nil, err
 	}
