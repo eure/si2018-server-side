@@ -258,7 +258,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	}
 	responseEnt.ImageURI = imageEnt.Path
 
-
 	responseData := responseEnt.Build()
 	return si.NewPutProfileOK().WithPayload(&responseData)
 }

@@ -84,12 +84,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
-	var userLists entities.Users
+	var userList entities.Users
 	for _, u := range userEntList {
 		for _, i := range imageEnt {
 			if u.ID == i.UserID{
 				u.ImageURI = i.Path
-				userLists = append(userLists, u)
+				userList = append(userList, u)
 			}
 		}
 	}
@@ -97,7 +97,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// likeしてくれているユーザ情報をlikeのcreated順に作成する
 	var array entities.LikeUserResponses
 	for _, l := range likeEntList {
-		for _, u := range userLists {
+		for _, u := range userList {
 			if l.UserID == u.ID {
 				var tmp entities.LikeUserResponse
 				tmp.ApplyUser(u)
