@@ -247,6 +247,18 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	imageR := repositories.NewUserImageRepository()
+	imageEnt, err := imageR.GetByUserID(responseEnt.ID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	responseEnt.ImageURI = imageEnt.Path
+
+
 	responseData := responseEnt.Build()
 	return si.NewPutProfileOK().WithPayload(&responseData)
 }
