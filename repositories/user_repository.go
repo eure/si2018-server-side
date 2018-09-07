@@ -40,7 +40,7 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	has, err := engine.Table("user").Select("user.* , path").Join("INNER","user_image","user.id = user_image.user_id").Get(&ent)
 	if err != nil {
 		return nil, err
-	}d
+	}
 
 	if has {
 		return &ent, nil
@@ -64,8 +64,6 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	s.Limit(limit, offset)
 	s.Desc("id")
 	
-	
-
 	err := s.Find(&users)
 	if err != nil {
 		return users, err
