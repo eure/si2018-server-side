@@ -135,7 +135,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if users[0].Gender == users[1].Gender {
+	if len(users) != 2 || users[0].Gender == users[1].Gender { // Believe short-circuit evaluation
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
 				Code:    "400",
