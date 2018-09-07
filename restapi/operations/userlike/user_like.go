@@ -47,7 +47,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// Get users already matching
 	matches, err := rm.FindAllByUserID(id)
 	if err != nil {
-		fmt.Print("Find matches err: ") /* TODO use log */
+		fmt.Print("Find matches err: ")
 		fmt.Println(err)
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{

@@ -11,7 +11,7 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 */ /* TODO injection */
+func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 */ /* TODO injection? */
 	message := p.Params.Message
 	token := p.Params.Token
 	pid := p.UserID
