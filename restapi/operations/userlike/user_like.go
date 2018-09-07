@@ -1,6 +1,8 @@
 package userlike
 
 import (
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -15,6 +17,11 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	token := p.Token
 	limit := int(p.Limit)
 	offset := int(p.Offset)
+	// Validate limit, offset
+	if limit < offset {
+		return GetLiksRespBadReqestErr()
+	}
+
 	usertoken, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetLikesRespUnauthErr()
@@ -32,6 +39,15 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	usrs, err := userlikeHandler.FindGotLikeWithLimitOffset(usertoken.UserID, limit, offset, match)
 	if err != nil {
 		GetLikesRespInternalErr()
+	}
+	fmt.Println(match)
+	fmt.Println(usrs)
+
+	// If not matcheing to anyone
+	if len(usrs) == 0 {
+		var notmatches entities.LikeUserResponses
+		resp := notmatches.Build()
+		return si.NewGetLikesOK().WithPayload(resp)
 	}
 	var userids []int64
 	for i := 0; i < len(usrs); i++ {

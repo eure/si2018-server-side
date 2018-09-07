@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -47,6 +48,19 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	}
 
 	return nil, nil
+}
+
+func (r *UserRepository) GetByUserIDWithImage(userID int64) (*entities.User, error) {
+	var ent = entities.UserWithImg{}
+	var img = entities.UserImage{UserID: userID}
+	var user entities.User
+	err := engine.Sql("select * from user inner join user_image on user.id = user_image.user_id where user_image.user_id = 1").Find(&ent)
+	_, err = engine.Get(img)
+	fmt.Println(ent)
+	if err != nil {
+		return &user, err
+	}
+	return &user, nil
 }
 
 // limit / offset / 検索対象の性別 でユーザーを取得

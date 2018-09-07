@@ -2,6 +2,7 @@ package usermatch
 
 import (
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
@@ -15,32 +16,55 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	token := p.Token
 	limit := int(p.Limit)
 	offset := int(p.Offset)
+	// Find user using token
 	user, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetMatchessRespUnauthErr()
 	}
+	// Does exist user?
+	if user == nil {
+		return GetMatchessRespBadReqestErr()
+	}
+
+	// Find all match user
 	ent, err := usermatchHandler.FindByUserIDWithLimitOffset(user.UserID, limit, offset)
 	if err != nil {
 		return GetMatchesRespInternalErr()
 	}
+
+	// If not matcheing to anyone
+	if len(ent) == 0 {
+		var notmatches entities.MatchUserResponses
+		resp := notmatches.Build()
+		return GetMatchesRespOK(resp)
+	}
+
 	var userids []int64
 	for _, val := range ent {
-		userids = append(userids, val.PartnerID)
+		if val.UserID == user.UserID {
+			userids = append(userids, val.PartnerID)
+			continue
+		}
+		userids = append(userids, val.UserID)
 	}
+
+	// Find all match user profile
 	ents, _ := userHandler.FindByIDs(userids)
 	var allmatches entities.MatchUserResponses
 	for _, val := range ents {
 		var tmp = entities.MatchUserResponse{}
-		if val.ID == user.UserID {
-			continue
-		} else {
-			tmp.ApplyUser(val)
-		}
+		tmp.ApplyUser(val)
+
 		allmatches = append(allmatches, tmp)
 	}
 	sEnt := allmatches.Build()
 
 	return si.NewGetMatchesOK().WithPayload(sEnt)
+}
+
+//return 200
+func GetMatchesRespOK(response []*models.MatchUserResponse) middleware.Responder {
+	return si.NewGetMatchesOK().WithPayload(response)
 }
 
 // return 400 Bad Request
