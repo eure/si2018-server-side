@@ -114,10 +114,28 @@ func getFileType(image strfmt.Base64) (string, error) {
 	return "", errors.New("unknown file type")
 }
 
+// 画像サイズの制限
+// ギリギリ 10.1 MB 未満にすることで, 10 MB に制限
+const ImageSizeLimit = 10590617
+
 // DB アクセス: 3 回
 // 計算量: O(1)
 func PostImage(p si.PostImagesParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return postImageThrowBadRequest("missing token")
+	}
+	if p.Params.Image == nil {
+		return postImageThrowBadRequest("broken image")
+	}
 	var err error
+	// 画像のバリデーション
+	if len(p.Params.Image) > ImageSizeLimit {
+		return postImageThrowBadRequest("Image is too large")
+	}
+	extension, err := getFileType(p.Params.Image)
+	if err != nil {
+		return postImageThrowInternalServerError("getFileType", err)
+	}
 	imageRepo := repositories.NewUserImageRepository()
 	// トークン認証
 	var id int64
@@ -141,10 +159,6 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	{
 		path := os.Getenv("ASSETS_PATH")
 		uri := os.Getenv("ASSETS_BASE_URI")
-		extension, err := getFileType(p.Params.Image)
-		if err != nil {
-			return postImageThrowInternalServerError("getFileType", err)
-		}
 		filename, err := getFreeFileName(path, extension)
 		if err != nil {
 			return postImageThrowInternalServerError("getFreeFileName", err)
@@ -158,6 +172,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		if err != nil {
 			return postImageThrowInternalServerError("Create", err)
 		}
+		fmt.Println("file:", localFile, ", size:", len(p.Params.Image))
 		// file.Close() でも error が吐かれる可能性がある
 		// とりあえず今は対処しない
 		defer file.Close()

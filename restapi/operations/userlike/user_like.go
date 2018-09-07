@@ -146,6 +146,9 @@ func postLikeThrowBadRequest(mes string) *si.PostLikeBadRequest {
 // DB アクセス: 6,7 回
 // 計算量: O(1)
 func PostLike(p si.PostLikeParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return postLikeThrowBadRequest("missing token")
+	}
 	userRepo := repositories.NewUserRepository()
 	likeRepo := repositories.NewUserLikeRepository()
 	// トークン認証

@@ -39,6 +39,12 @@ func postMessageThrowBadRequest(mes string) *si.PostMessageBadRequest {
 // 計算量: O(1)
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	var err error
+	if p.Params.Token == "" {
+		return postMessageThrowBadRequest("missing token")
+	}
+	if p.Params.Message == "" {
+		return postMessageThrowBadRequest("empty message")
+	}
 	messageRepo := repositories.NewUserMessageRepository()
 	// トークン認証
 	var id int64
