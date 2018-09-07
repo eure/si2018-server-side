@@ -39,7 +39,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	rl := repositories.NewUserLikeRepository()
 
 	id, _ := util.GetIDByToken(token)
-	user, err := ru.GetByUserID(id)
+	user, _ := ru.GetByUserID(id)
 
 	likes, err := rl.FindLikeAll(id) /* TODO filter? */
 	if err != nil {
