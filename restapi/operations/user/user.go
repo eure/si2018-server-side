@@ -14,6 +14,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		3. useridからいいねを送受信した人を取得
 		4. useridから異性がどちらであるかを判断
 		5. いいねを送受信した人以外で異性の人のリストを取得する
+		6. 画像の取得
 	*/
 
 	// Tokenがあるかどうか
@@ -101,7 +102,35 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	users := entities.Users(usersFind)
+
+	var userIdList []int64
+	// usersからidのリストを取得
+	for _, user := range users {
+		userIdList = append(userIdList, user.ID)
+	}
+
+	// 画像取得
+	rImage := repositories.NewUserImageRepository()
+	entImages, errImages := rImage.GetByUserIDs(userIdList)
+	if errImages != nil || entImages == nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// id -- pathの対応リストを作成
+	idPath := map[int64]string{}
+	for _, entImage := range entImages {
+		idPath[entImage.UserID] = entImage.Path
+	}
 	sUsers := users.Build()
+
+	// 画像のpathを結合
+	for _, sUser := range sUsers {
+		sUser.ImageURI = idPath[sUser.ID]
+	}
 	return si.NewGetUsersOK().WithPayload(sUsers)
 }
 
@@ -165,7 +194,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 	rImage := repositories.NewUserImageRepository()
 	entImage, errImage := rImage.GetByUserID(p.UserID)
-	if errImage != nil || entImage != nil {
+	if errImage != nil || entImage == nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code:    "500",
