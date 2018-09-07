@@ -3,6 +3,7 @@ package userlike
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"sort"
 	"time"
 
 	"github.com/eure/si2018-server-side/entities"
@@ -11,6 +12,16 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+type UserResponses []*models.LikeUserResponse
+
+func (a UserResponses) Len() int      { return len(a) }
+func (a UserResponses) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a UserResponses) Less(i, j int) bool {
+	ai := time.Time(a[i].LikedAt)
+	aj := time.Time(a[j].LikedAt)
+	return !ai.Before(aj)
+}
+
 func GetLikes(p si.GetLikesParams) middleware.Responder {
 	/*
 		1.	tokenのvalidation
@@ -18,7 +29,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		3.	userIDからマッチ済みの相手matchIDを取得
 		4.	useridからマッチ済み以外のいいねの受信リストを取得
 		5.	いいねの受信リストからユーザーのプロフィールのリストを取得
-		// userIDはいいねを送った人, partnerIDはいいねを受け取った人
+		userIDはいいねを送った人, partnerIDはいいねを受け取った人
 	*/
 
 	// Tokenがあるかどうか
@@ -70,7 +81,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	rLike := repositories.NewUserLikeRepository()
 	limit := int(p.Limit)
 	offset := int(p.Offset)
-	if limit < 0 || offset < 0 {
+	if limit <= 0 || offset < 0 {
 		return si.NewGetLikesBadRequest().WithPayload(
 			&si.GetLikesBadRequestBody{
 				"400",
@@ -92,27 +103,19 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// fmt.Println("likes",likes)
 	userLikes := entities.UserLikes(likes)
 
-	//fmt.Println("userLikes",userLikes)
 	sUsers := userLikes.Build() // userID(送信元) partnerID（送信先） createdAt UpdatedAtのリスト
-	//fmt.Println("sUsers",sUsers)
 
+	// id -- 時間の対応mapとpartneridのリストの作成
 	partnerLikedAt := map[int64]strfmt.DateTime{}
-
-	for _, sUser := range sUsers {
-		partnerLikedAt[sUser.UserID] = sUser.CreatedAt
-	}
-
-	// fmt.Println("partnerLikedAt",partnerLikedAt)
-
-	rUser := repositories.NewUserRepository()
-
-	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
-
 	var IDs []int64
 	for _, sUser := range sUsers {
+		partnerLikedAt[sUser.UserID] = sUser.CreatedAt
 		IDs = append(IDs, sUser.UserID)
 	}
 
+	rUser := repositories.NewUserRepository()
+
+	// 上で取得した全てのpartnerIDについて、プロフィール情報と画像URIを取得してpayloadsに格納する。
 	partners, errFind := rUser.FindByIDs(IDs)
 	// fmt.Println("partners",partners)
 	if errFind != nil {
@@ -123,14 +126,34 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			})
 	}
 
+	// 画像URI取得
+	rImage := repositories.NewUserImageRepository()
+	entImages, errImages := rImage.GetByUserIDs(IDs)
+	if errImages != nil || entImages == nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// id -- pathの対応リストを作成
+	idPaths := map[int64]string{}
+	for _, entImage := range entImages {
+		idPaths[entImage.UserID] = entImage.Path
+	}
+
 	var payloads []*models.LikeUserResponse
 	for _, partner := range partners {
 		var r entities.LikeUserResponse
 		r.ApplyUser(partner)
 		r.LikedAt = partnerLikedAt[partner.ID]
+		r.ImageURI = idPaths[partner.ID]
 		m := r.Build()
 		payloads = append(payloads, &m)
 	}
+
+	sort.Sort(UserResponses(payloads))
 
 	//fmt.Println("payloads",payloads)
 	return si.NewGetLikesOK().WithPayload(payloads)

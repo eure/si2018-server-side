@@ -174,7 +174,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	limit := int(*(p.Limit))
 
-	if limit < 0 {
+	if limit <= 0 {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",

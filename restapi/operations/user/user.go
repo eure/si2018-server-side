@@ -84,7 +84,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// limitが0だと全件取得。
 	limit := int(p.Limit)
 	offset := int(p.Offset)
-	if limit < 0 || offset < 0 {
+	if limit <= 0 || offset < 0 {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code:    "400",
@@ -121,15 +121,15 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	// id -- pathの対応リストを作成
-	idPath := map[int64]string{}
+	idPaths := map[int64]string{}
 	for _, entImage := range entImages {
-		idPath[entImage.UserID] = entImage.Path
+		idPaths[entImage.UserID] = entImage.Path
 	}
 	sUsers := users.Build()
 
 	// 画像のpathを結合
 	for _, sUser := range sUsers {
-		sUser.ImageURI = idPath[sUser.ID]
+		sUser.ImageURI = idPaths[sUser.ID]
 	}
 	return si.NewGetUsersOK().WithPayload(sUsers)
 }

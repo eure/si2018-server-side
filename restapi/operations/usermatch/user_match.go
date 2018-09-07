@@ -51,7 +51,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	rMatch := repositories.NewUserMatchRepository()
 	limit := int(p.Limit)
 	offset := int(p.Offset)
-	if limit < 0 || offset < 0 {
+	if limit <= 0 || offset < 0 {
 		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
 				"400",
