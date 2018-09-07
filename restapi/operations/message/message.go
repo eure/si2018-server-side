@@ -3,10 +3,11 @@ package message
 import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
-	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	
 	"time"
+	
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
@@ -24,8 +25,12 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 	fromUserID := fromUser.UserID
 	
-	// メッセージ送信元UserIDの宣言
+	// メッセージ送信先UserIDの宣言
 	toUserID := p.UserID
+
+	if fromUserID == toUserID {
+		return outPutPostStatus(400)
+	}
 	
 	// メッセージの作成
 	var message entities.UserMessage
@@ -66,34 +71,58 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	r := repositories.NewUserMessageRepository()
 	m := repositories.NewUserMatchRepository()
 	
-	// loginUserのUserToken entitiesを取得(Validation)
-	loginUser , err := t.GetByToken(p.Token)
-	if err != nil {
-		outPutGetStatus(500)
-	}
-	if loginUser == nil {
-		outPutGetStatus(401)
-	}
-	
-	// UserIDから，PartnerIDたちを取得
-	loginUserID := loginUser.UserID
-	var matchedUserIDs []int64
-	matchedUserIDs , err = m.FindAllByUserID(loginUserID)
+	// tokenから UserToken entitiesを取得(Validation)
+	token := p.Token
+	loginUserToken , err := t.GetByToken(token)
 	if err != nil {
 		return outPutGetStatus(500)
 	}
-
-	var messages entities.UserMessages
-	for _,m := range matchedUserIDs {
-		messages1partner , err := r.GetMessages(loginUserID,m,int(*p.Limit),p.Latest,p.Oldest)
+	if loginUserToken == nil {
+		return outPutGetStatus(401)
+	}
+	
+	// limit が20かどうか検出
+	if *p.Limit != int64(20) {
+		return outPutGetStatus(400)
+	}
+	
+	loginUserID := loginUserToken.UserID
+	
+	if &loginUserID == nil {
+		return outPutGetStatus(400)
+	}
+	
+	// loginUserIDから，PartnerIDたちを取得
+	var partnerIDs []int64
+	
+	// loginUserIDと，指定したUserIDが同値かどうか
+	if loginUserID != p.UserID {
+		partnerIDs, err = m.FindAllByUserID(loginUserID)
 		if err != nil {
 			return outPutGetStatus(500)
 		}
-		if messages1partner == nil {
+	} else {
+	 	return outPutGetStatus(400)
+	}
+	
+	// 取得したPartnerIDsのなかに，指定したUserIDが存在するかどうか
+	for _,partnerID := range partnerIDs {
+		if partnerID != p.UserID {
+			return outPutGetStatus(400)
+		}
+	}
+	
+	var messages entities.UserMessages
+	for _,partnerID := range partnerIDs {
+		messages1Partner , err := r.GetMessages(loginUserID,partnerID,int(*p.Limit),p.Latest,p.Oldest)
+		if err != nil {
+			return outPutGetStatus(500)
+		}
+		if &messages1Partner == nil {
 			return outPutGetStatus(400)
 		}
 		
-		for _,message := range messages1partner {
+		for _,message := range messages1Partner {
 			messages = append(messages, message)
 		}
 	}

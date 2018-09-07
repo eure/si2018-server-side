@@ -3,13 +3,13 @@ package usermatch
 import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
+	"github.com/go-openapi/runtime/middleware"
 
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
-	"github.com/go-openapi/runtime/middleware"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	r := repositories.NewUserMatchRepository()
+	m := repositories.NewUserMatchRepository()
 	t := repositories.NewUserTokenRepository()
 	u := repositories.NewUserRepository()
 	
@@ -22,13 +22,22 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if loginUserToken == nil {
 		return outPutGetStatus(401)
 	}
+	
+	// limit が20かどうか検出
+	if p.Limit != int64(20) {
+		return outPutGetStatus(400)
+	}
+	// offset が0以上かどうか検出
+	if p.Offset >= int64(0) {
+		return outPutGetStatus(400)
+	}
 
-	ent, err := r.FindByUserIDWithLimitOffset(loginUserToken.UserID,int(p.Limit),int(p.Offset))
+	ent, err := m.FindByUserIDWithLimitOffset(loginUserToken.UserID,int(p.Limit),int(p.Offset))
 	if err != nil {
 		return outPutGetStatus(500)
 	}
 	if ent == nil {
-		return outPutGetStatus(400)
+		return outPutGetStatus(400)      // <<<<<<<<<　ここは，マッチしてる人がいなかったら空のJSONでいいの？
 	}
 	
 	// applied メソッドによって変換されたUsersがほしい。
@@ -36,13 +45,21 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	var appliedUsers entities.MatchUserResponses
 	for _,m := range ent {
 		var applied = entities.MatchUserResponse{}
-		matchedUsers, err := u.GetByUserID(m.PartnerID)
-		if err != nil {
-			return outPutGetStatus(500)
+		if m.PartnerID == loginUserToken.UserID {
+			matchedUsers, err := u.GetByUserID(m.UserID)
+			if err != nil {
+				return outPutGetStatus(500)
+			}
+			applied.ApplyUser(*matchedUsers)
+			appliedUsers = append (appliedUsers, applied)
+		} else {
+			matchedUsers, err := u.GetByUserID(m.PartnerID)
+			if err != nil {
+				return outPutGetStatus(500)
+			}
+			applied.ApplyUser(*matchedUsers)
+			appliedUsers = append (appliedUsers, applied)
 		}
-
-		applied.ApplyUser(*matchedUsers)
-		appliedUsers = append (appliedUsers, applied)
 	}
 
 	sEtc := appliedUsers.Build()

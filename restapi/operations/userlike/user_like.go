@@ -3,8 +3,8 @@ package userlike
 import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
-	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	
 	"time"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -25,6 +25,16 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	if loginUser == nil {
 		return outPutGetStatus(401)
 	}
+
+	// limit が20かどうか検出
+	if p.Limit != int64(20) {
+		return outPutGetStatus(400)
+	}
+	// offset が0以上かどうか検出
+	if p.Offset >= int64(0) {
+		return outPutGetStatus(400)
+	}
+	
 	loginUserID := loginUser.UserID
 
 	// マッチング済みのユーザーを取得
@@ -72,6 +82,11 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	toUserID := p.UserID
 	toUser, _ := u.GetByUserID(toUserID)
 	
+	// 自分に送ろうとしていないか
+	if fromUserID == toUserID {
+		return outPutPostStatus(400)
+	}
+	
 	// 同性かどうか
 	if toUser.Gender != fromUser.Gender {
 		// いいねをすでに送信しているか
@@ -103,16 +118,11 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				NewMatching.CreatedAt = strfmt.DateTime(time.Now())
 				NewMatching.UpdatedAt = strfmt.DateTime(time.Now())
 				_ = m.Create(NewMatching)
+				
 			}
 		}
 	} else {
-		/*return si.NewPostLikeBadRequest().WithPayload(
-			&si.PostLikeBadRequestBody{
-				Code: "400",
-				Message: "Bad Request",
-			})
-		*/
-		return outPutPostStatus(500)
+		return outPutPostStatus(400)
 	}
 
 	return si.NewPostLikeOK().WithPayload(
@@ -140,8 +150,8 @@ func outPutGetStatus (num int) middleware.Responder {
 	case 400:
 		return si.NewGetLikesBadRequest().WithPayload(
 			&si.GetLikesBadRequestBody{
-				Code:    "500",
-				Message: "Internal Server Error",
+				Code:    "400",
+				Message: "Bad Request",
 			})
 	}
 	return nil
