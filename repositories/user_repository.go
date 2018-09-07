@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"log"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -37,7 +38,7 @@ func (r *UserRepository) Update(ent *entities.User) error {
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
 
-	has, err := engine.Get(&ent)
+	has, err := engine.Join("INNER", "user_image", "user_image.user_id = user.id").Get(&ent)
 	if err != nil {
 		return nil, err
 	}
@@ -53,15 +54,17 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 // idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
 func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
 	var users []entities.User
-
 	s := engine.NewSession()
+	defer func() { log.Println(s.LastSQL()) }()
+
 	s.Where("gender = ?", gender)
+	//s.Desc("user.created_at")
 	if len(ids) > 0 {
 		s.NotIn("id", ids)
 	}
 	s.Limit(limit, offset)
-	s.Desc("id")
 
+	s.Join("INNER", "user_image", "user_image.user_id = user.id").Desc("user.created_at")
 	err := s.Find(&users)
 	if err != nil {
 		return users, err
@@ -73,7 +76,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
-	err := engine.In("id", ids).Find(&users)
+	err := engine.In("id", ids).Join("INNER", "user_image", "user_image.user_id = user.id").Find(&users)
 	if err != nil {
 		return users, err
 	}

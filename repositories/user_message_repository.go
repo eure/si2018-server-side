@@ -41,7 +41,7 @@ func (r *UserMessageRepository) GetMessages(userID, partnerID int64, limit int, 
 	}
 	s.Desc("created_at")
 	s.Limit(limit)
-	err := s.Find(&messages)
+	err := s.Desc("created_at").Find(&messages)
 	if err != nil {
 		return messages, err
 	}

@@ -8,6 +8,7 @@ func NewUserLikeRepository() UserLikeRepository {
 	return UserLikeRepository{}
 }
 
+// いいねの投稿　ここと
 func (r *UserLikeRepository) Create(ent entities.UserLike) error {
 	s := engine.NewSession()
 	if _, err := s.Insert(&ent); err != nil {
@@ -23,7 +24,7 @@ func (r *UserLikeRepository) FindLikeAll(userID int64) ([]int64, error) {
 	var ids []int64
 
 	err := engine.Where("partner_id = ?", userID).Or("user_id = ?", userID).Find(&likes)
-	if err != nil {
+	if err == nil {
 		return ids, err
 	}
 
@@ -63,11 +64,28 @@ func (r *UserLikeRepository) FindGotLikeWithLimitOffset(userID int64, limit, off
 		s.NotIn("user_id", matchIDs)
 	}
 	s.Limit(limit, offset)
-	s.Desc("created_at")
-	err := s.Find(&likes)
+	// いいね送信日時が新しい順に返す
+	err := s.Desc("created_at").Find(&likes)
 	if err != nil {
 		return likes, err
 	}
 
 	return likes, nil
+}
+
+// 自分が既にLikeしている状態の全てのUserのIDを返す.
+func (r *UserLikeRepository) FindILikedAll(userID int64) ([]int64, error) {
+	var likes []entities.UserLike
+	var ids []int64
+
+	err := engine.Where("user_id = ?", userID).Find(&likes)
+	if err != nil {
+		return ids, err
+	}
+
+	for _, l := range likes {
+		ids = append(ids, l.PartnerID)
+	}
+
+	return ids, nil
 }
