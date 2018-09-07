@@ -12,30 +12,6 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
-func getLikesThrowInternalServerError(fun string, err error) *si.GetLikesInternalServerError {
-	return si.NewGetLikesInternalServerError().WithPayload(
-		&si.GetLikesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
-		})
-}
-
-func getLikesThrowUnauthorized(mes string) *si.GetLikesUnauthorized {
-	return si.NewGetLikesUnauthorized().WithPayload(
-		&si.GetLikesUnauthorizedBody{
-			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
-		})
-}
-
-func getLikesThrowBadRequest(mes string) *si.GetLikesBadRequest {
-	return si.NewGetLikesBadRequest().WithPayload(
-		&si.GetLikesBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request: " + mes,
-		})
-}
-
 // DB アクセス: 5 回
 // 計算量: O(N)
 func GetLikes(p si.GetLikesParams) middleware.Responder {
@@ -45,10 +21,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return getLikesThrowInternalServerError("GetByToken", err)
+			return si.GetLikesThrowInternalServerError("GetByToken", err)
 		}
 		if token == nil {
-			return getLikesThrowUnauthorized("GetByToken failed")
+			return si.GetLikesThrowUnauthorized("GetByToken failed")
 		}
 		id = token.UserID
 	}
@@ -59,11 +35,11 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		matchRepo := repositories.NewUserMatchRepository()
 		matched, err := matchRepo.FindAllByUserID(id)
 		if err != nil {
-			return getLikesThrowInternalServerError("FindAllByUserID", err)
+			return si.GetLikesThrowInternalServerError("FindAllByUserID", err)
 		}
 		like, err = likeRepo.FindGotLikeWithLimitOffset(id, int(p.Limit), int(p.Offset), matched)
 		if err != nil {
-			return getLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
+			return si.GetLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
 		}
 	}
 	// 相手の ID の取得
@@ -82,10 +58,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		userRepo := repositories.NewUserRepository()
 		shuffledUsers, err := userRepo.FindByIDs(ids)
 		if err != nil {
-			return getLikesThrowInternalServerError("FindByIDs", err)
+			return si.GetLikesThrowInternalServerError("FindByIDs", err)
 		}
 		if len(shuffledUsers) != count {
-			return getLikesThrowBadRequest("FindByIDs failed")
+			return si.GetLikesThrowBadRequest("FindByIDs failed")
 		}
 		for _, u := range shuffledUsers {
 			users[mapping[u.ID]] = u
@@ -97,10 +73,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		imageRepo := repositories.NewUserImageRepository()
 		shuffledImages, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
-			return getLikesThrowInternalServerError("GetByUserIDs", err)
+			return si.GetLikesThrowInternalServerError("GetByUserIDs", err)
 		}
 		if len(shuffledImages) != count {
-			return getLikesThrowBadRequest("GetByUserIDs failed")
+			return si.GetLikesThrowBadRequest("GetByUserIDs failed")
 		}
 		for _, im := range shuffledImages {
 			images[mapping[im.UserID]] = im
@@ -119,35 +95,11 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	return si.NewGetLikesOK().WithPayload(sEnt)
 }
 
-func postLikeThrowInternalServerError(fun string, err error) *si.PostLikeInternalServerError {
-	return si.NewPostLikeInternalServerError().WithPayload(
-		&si.PostLikeInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
-		})
-}
-
-func postLikeThrowUnauthorized(mes string) *si.PostLikeUnauthorized {
-	return si.NewPostLikeUnauthorized().WithPayload(
-		&si.PostLikeUnauthorizedBody{
-			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
-		})
-}
-
-func postLikeThrowBadRequest(mes string) *si.PostLikeBadRequest {
-	return si.NewPostLikeBadRequest().WithPayload(
-		&si.PostLikeBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request: " + mes,
-		})
-}
-
 // DB アクセス: 6,7 回
 // 計算量: O(1)
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return postLikeThrowBadRequest("missing token")
+		return si.PostLikeThrowBadRequest("missing token")
 	}
 	userRepo := repositories.NewUserRepository()
 	likeRepo := repositories.NewUserLikeRepository()
@@ -157,10 +109,10 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Params.Token)
 		if err != nil {
-			return postLikeThrowInternalServerError("GetByToken", err)
+			return si.PostLikeThrowInternalServerError("GetByToken", err)
 		}
 		if token == nil {
-			return postLikeThrowUnauthorized("GetByToken failed")
+			return si.PostLikeThrowUnauthorized("GetByToken failed")
 		}
 		id = token.UserID
 	}
@@ -169,36 +121,36 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	{
 		user, err := userRepo.GetByUserID(id)
 		if err != nil {
-			return postLikeThrowInternalServerError("GetByUserID", err)
+			return si.PostLikeThrowInternalServerError("GetByUserID", err)
 		}
 		if user == nil {
-			return postLikeThrowBadRequest("GetByUserID failed")
+			return si.PostLikeThrowBadRequest("GetByUserID failed")
 		}
 		oppositeGender = user.GetOppositeGender()
 	}
 	// 送る相手の情報を取得
 	partner, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return postLikeThrowInternalServerError("GetByUserID", err)
+		return si.PostLikeThrowInternalServerError("GetByUserID", err)
 	}
 	if partner == nil {
-		return postLikeThrowBadRequest("GetByUserID failed")
+		return si.PostLikeThrowBadRequest("GetByUserID failed")
 	}
 	if partner.Gender != oppositeGender {
-		return postLikeThrowBadRequest("genders must be opposite")
+		return si.PostLikeThrowBadRequest("genders must be opposite")
 	}
 	// いいねが重複していないかの確認
 	like, err := likeRepo.GetLikeBySenderIDReceiverID(id, partner.ID)
 	if err != nil {
-		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
+		return si.PostLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
 	}
 	if like != nil {
-		return postLikeThrowBadRequest("like action duplicates")
+		return si.PostLikeThrowBadRequest("like action duplicates")
 	}
 	// 相手からいいねが来ていたかの確認
 	reverse, err := likeRepo.GetLikeBySenderIDReceiverID(partner.ID, id)
 	if err != nil {
-		return postLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
+		return si.PostLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
 	}
 	now := strfmt.DateTime(time.Now())
 	like = new(entities.UserLike)
@@ -212,7 +164,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// transaction を利用してまとめて書きこむ必要がある
 	err = likeRepo.Create(*like)
 	if err != nil {
-		return postLikeThrowInternalServerError("Create", err)
+		return si.PostLikeThrowInternalServerError("Create", err)
 	}
 	// お互いにいいねしていればマッチング成立
 	if reverse != nil {
@@ -224,7 +176,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			UpdatedAt: now}
 		err = matchRepo.Create(match)
 		if err != nil {
-			return postLikeThrowInternalServerError("Create", err)
+			return si.PostLikeThrowInternalServerError("Create", err)
 		}
 	}
 	return si.NewPostLikeOK().WithPayload(

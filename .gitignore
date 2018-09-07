@@ -6,6 +6,7 @@
 /restapi/doc.go
 /restapi/embedded_spec.go
 /restapi/server.go
+!/restapi/summerintern/throw.go
 
 # assets (uploaded image files)
 assets/

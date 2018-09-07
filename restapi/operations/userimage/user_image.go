@@ -17,30 +17,6 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-func postImageThrowInternalServerError(fun string, err error) *si.PostImagesInternalServerError {
-	return si.NewPostImagesInternalServerError().WithPayload(
-		&si.PostImagesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
-		})
-}
-
-func postImageThrowUnauthorized(mes string) *si.PostImagesUnauthorized {
-	return si.NewPostImagesUnauthorized().WithPayload(
-		&si.PostImagesUnauthorizedBody{
-			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
-		})
-}
-
-func postImageThrowBadRequest(mes string) *si.PostImagesBadRequest {
-	return si.NewPostImagesBadRequest().WithPayload(
-		&si.PostImagesBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request: " + mes,
-		})
-}
-
 func exists(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil
@@ -122,19 +98,19 @@ const ImageSizeLimit = 10590617
 // 計算量: O(1)
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return postImageThrowBadRequest("missing token")
+		return si.PostImageThrowBadRequest("missing token")
 	}
 	if p.Params.Image == nil {
-		return postImageThrowBadRequest("broken image")
+		return si.PostImageThrowBadRequest("broken image")
 	}
 	var err error
 	// 画像のバリデーション
 	if len(p.Params.Image) > ImageSizeLimit {
-		return postImageThrowBadRequest("Image is too large")
+		return si.PostImageThrowBadRequest("Image is too large")
 	}
 	extension, err := getFileType(p.Params.Image)
 	if err != nil {
-		return postImageThrowInternalServerError("getFileType", err)
+		return si.PostImageThrowInternalServerError("getFileType", err)
 	}
 	imageRepo := repositories.NewUserImageRepository()
 	// トークン認証
@@ -143,17 +119,17 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Params.Token)
 		if err != nil {
-			return postImageThrowInternalServerError("GetByToken", err)
+			return si.PostImageThrowInternalServerError("GetByToken", err)
 		}
 		if token == nil {
-			return postImageThrowUnauthorized("GetByToken failed")
+			return si.PostImageThrowUnauthorized("GetByToken failed")
 		}
 		id = token.UserID
 	}
 	// 既にある画像のタイムスタンプを使いまわしたい
 	image, err := imageRepo.GetByUserID(id)
 	if err != nil {
-		return postImageThrowInternalServerError("GetByUserID", err)
+		return si.PostImageThrowInternalServerError("GetByUserID", err)
 	}
 	var localFile, serverFile string
 	{
@@ -161,7 +137,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		uri := os.Getenv("ASSETS_BASE_URI")
 		filename, err := getFreeFileName(path, extension)
 		if err != nil {
-			return postImageThrowInternalServerError("getFreeFileName", err)
+			return si.PostImageThrowInternalServerError("getFreeFileName", err)
 		}
 		localFile = path + filename
 		serverFile = uri + filename
@@ -170,7 +146,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	{
 		file, err := os.Create(localFile)
 		if err != nil {
-			return postImageThrowInternalServerError("Create", err)
+			return si.PostImageThrowInternalServerError("Create", err)
 		}
 		fmt.Println("file:", localFile, ", size:", len(p.Params.Image))
 		// file.Close() でも error が吐かれる可能性がある
@@ -188,12 +164,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	if image == nil {
 		err = imageRepo.Create(ent)
 		if err != nil {
-			return postImageThrowInternalServerError("Create", err)
+			return si.PostImageThrowInternalServerError("Create", err)
 		}
 	} else {
 		err = imageRepo.Update(ent)
 		if err != nil {
-			return postImageThrowInternalServerError("Update", err)
+			return si.PostImageThrowInternalServerError("Update", err)
 		}
 	}
 	return si.NewPostImagesOK().WithPayload(
