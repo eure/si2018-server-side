@@ -37,10 +37,10 @@ func (r *UserRepository) Update(ent *entities.User) error {
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
 
-	has, err := engine.Get(&ent)
+	has, err := engine.Table("user").Select("user.* , path").Join("INNER","user_image","user.id = user_image.user_id").Get(&ent)
 	if err != nil {
 		return nil, err
-	}
+	}d
 
 	if has {
 		return &ent, nil
@@ -55,12 +55,16 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	var users []entities.User
 
 	s := engine.NewSession()
+	s.Select("user.* , path")
+	s.Join("INNER","user_image","user.id = user_image.user_id")
 	s.Where("gender = ?", gender)
 	if len(ids) > 0 {
 		s.NotIn("id", ids)
 	}
 	s.Limit(limit, offset)
 	s.Desc("id")
+	
+	
 
 	err := s.Find(&users)
 	if err != nil {
