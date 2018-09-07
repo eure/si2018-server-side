@@ -10,7 +10,8 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	
+
+	"strconv"
 	"bytes"
 	"os"
 	
@@ -43,8 +44,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	dbpath = os.Getenv("ASSETS_BASE_URI")
 	
 	// プロフィール画像の保存する際の名前
-	var fileName string
-	fileName = token
+	fileName := strconv.Itoa(int(loginUserToken.UserID))
 	
 	// 取得したImageの形式を調べる
 	leader := bytes.NewBuffer(uploadImage)
