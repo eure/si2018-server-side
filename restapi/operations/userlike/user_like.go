@@ -90,10 +90,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return si.NewPostLikeUnauthorized().WithPayload(
-			&si.PostLikeUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 	tokenR        := repositories.NewUserTokenRepository()
@@ -113,7 +113,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// 相手が異性かどうか
+	// 相手が存在しない -> 400
 	userR := repositories.NewUserRepository()
 	toUserEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
@@ -123,6 +123,15 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	if toUserEnt == nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
+
+	// 相手が異性かどうか
 	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(

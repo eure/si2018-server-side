@@ -140,10 +140,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return si.NewPutProfileUnauthorized().WithPayload(
-			&si.PutProfileUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 
