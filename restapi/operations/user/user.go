@@ -15,10 +15,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	ent, err := r.GetByToken(p.Token)
 
 	if err != nil {
-		return getUsersInteralServerErrorResponse("Internal Server Error")
+		return GetUsersInteralServerErrorResponse("Internal Server Error")
 	}
 	if ent == nil {
-		return getUsersUnauthorizedResponse("Your Token Is Invalid")
+		return GetUsersUnauthorizedResponse("Your Token Is Invalid")
 	}
 
 	userToken := ent.Build()
@@ -28,13 +28,13 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	exclusionIds, err := userLikeRepository.FindLikeAll(userID)
 
 	if err != nil {
-		return getUsersInteralServerErrorResponse("Internal Server Error")
+		return GetUsersInteralServerErrorResponse("Internal Server Error")
 	}
 
 	userRepository := repositories.NewUserRepository()
 	userEnt, err := userRepository.GetByUserID(userID)
 	if err != nil {
-		return getUsersInteralServerErrorResponse("Internal Server Error")
+		return GetUsersInteralServerErrorResponse("Internal Server Error")
 	}
 
 	// int64になっているのでcastする必要がある
@@ -45,7 +45,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	var usersEnt entities.Users
 	usersEnt, err = userRepository.FindUsers(limit, offset, gender, exclusionIds)
 	if err != nil {
-		return getUsersInteralServerErrorResponse("Internal Server Error")
+		return GetUsersInteralServerErrorResponse("Internal Server Error")
 	}
 
 	var ids []int64
@@ -56,7 +56,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	userImageRepository := repositories.NewUserImageRepository()
 	images, err := userImageRepository.GetByUserIDs(ids)
 	if err != nil {
-		return getUsersInteralServerErrorResponse("Internal Server Error")
+		return GetUsersInteralServerErrorResponse("Internal Server Error")
 	}
 
 	for i := range usersEnt {
@@ -74,27 +74,27 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	userTokenEnt, err := r.GetByToken(p.Token)
 
 	if err != nil {
-		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
+		return GetUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
 	}
 	if userTokenEnt == nil {
-		return getUsersUnauthorizedResponse("Your Token Is Invalid")
+		return GetUsersUnauthorizedResponse("Your Token Is Invalid")
 	}
 
 	userID := p.UserID
 
 	userEnt, err := repositories.NewUserRepository().GetByUserID(userID)
 	if err != nil {
-		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
+		return GetUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
 	}
 
 	if userEnt == nil {
-		return getUserProfileByUserIDNotFoundResponse("User Not Found")
+		return GetUserProfileByUserIDNotFoundResponse("User Not Found")
 	}
 
 	userImageRepository := repositories.NewUserImageRepository()
 	userImage, err := userImageRepository.GetByUserID(userID)
 	if err != nil {
-		return getUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
+		return GetUserProfileByUserIDInternalServerErrorResponse("Internal Server Error")
 	}
 
 	userEnt.ImageURI = userImage.Path
@@ -108,102 +108,37 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	userTokenEnt, err := userTokenRepository.GetByToken(p.Params.Token)
 
 	if err != nil {
-		return putProfileInternalServerErrorResponse()
+		return PutProfileInternalServerErrorResponse()
 	}
 
 	if userTokenEnt == nil {
-		return putProfileUnauthorizedResponse()
+		return PutProfileUnauthorizedResponse()
 	}
 
 	userID := p.UserID
 
 	if userTokenEnt.UserID != userID {
-		return putProfileForbiddenResponse()
+		return PutProfileForbiddenResponse()
 	}
 
 	userEnt, err := repositories.NewUserRepository().GetByUserID(userID)
 
 	if err != nil || userEnt == nil {
-		return putProfileInternalServerErrorResponse()
+		return PutProfileInternalServerErrorResponse()
 	}
 
 	updateUserEnt := repositories.NewUserRepository().ParamsToUserEnt(userEnt, p.Params)
 
 	err = repositories.NewUserRepository().Update(updateUserEnt)
 	if err != nil {
-		return putProfileInternalServerErrorResponse()
+		return PutProfileInternalServerErrorResponse()
 	}
 
 	updatedUserEnt, err := repositories.NewUserRepository().GetByUserID(userID)
 	if err != nil {
-		return putProfileInternalServerErrorResponse()
+		return PutProfileInternalServerErrorResponse()
 	}
 
 	user := updatedUserEnt.Build()
 	return si.NewPutProfileOK().WithPayload(&user)
-}
-
-// ここからResponderを返す関数群
-func getUsersInteralServerErrorResponse(message string) middleware.Responder {
-	return si.NewGetUsersInternalServerError().WithPayload(
-		&si.GetUsersInternalServerErrorBody{
-			Code:    "500",
-			Message: message,
-		})
-}
-
-func getUsersUnauthorizedResponse(message string) middleware.Responder {
-	return si.NewGetUsersUnauthorized().WithPayload(
-		&si.GetUsersUnauthorizedBody{
-			Code:    "401",
-			Message: message,
-		})
-}
-
-func getUserProfileByUserIDInternalServerErrorResponse(message string) middleware.Responder {
-	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
-		&si.GetProfileByUserIDInternalServerErrorBody{
-			Code:    "500",
-			Message: message,
-		})
-}
-
-func getUserProfileByUserIDNotFoundResponse(message string) middleware.Responder {
-	return si.NewGetProfileByUserIDNotFound().WithPayload(
-		&si.GetProfileByUserIDNotFoundBody{
-			Code:    "404",
-			Message: message,
-		})
-}
-
-func getUserProfileByUserIDUnauthorizeResponse(message string) middleware.Responder {
-	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-		&si.GetProfileByUserIDUnauthorizedBody{
-			Code:    "401",
-			Message: message,
-		})
-}
-
-func putProfileInternalServerErrorResponse() middleware.Responder {
-	return si.NewPutProfileInternalServerError().WithPayload(
-		&si.PutProfileInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func putProfileUnauthorizedResponse() middleware.Responder {
-	return si.NewPutProfileUnauthorized().WithPayload(
-		&si.PutProfileUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func putProfileForbiddenResponse() middleware.Responder {
-	return si.NewPutProfileForbidden().WithPayload(
-		&si.PutProfileForbiddenBody{
-			Code:    "403",
-			Message: "Forbidden",
-		})
 }
