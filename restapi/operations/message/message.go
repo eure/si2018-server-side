@@ -23,7 +23,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	message := p.Params.Message
 	if message == "" {
-		return postMessageBadRequestResponses()
+		return postMessageEmptyBadRequestResponses()
 	}
 
 	token := p.Params.Token

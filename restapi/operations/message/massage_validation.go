@@ -31,6 +31,14 @@ func postMessageBadRequestResponses() middleware.Responder {
 		})
 }
 
+func postMessageEmptyBadRequestResponses() middleware.Responder {
+	return si.NewPostMessageBadRequest().WithPayload(
+		&si.PostMessageBadRequestBody{
+			Code:    "400",
+			Message: "Message Is Empty",
+		})
+}
+
 // メッセージは重複していますという400番エラー
 func postMessageDuplicatedRequestResponses() middleware.Responder {
 	return si.NewPostMessageBadRequest().WithPayload(

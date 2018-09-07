@@ -34,7 +34,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return getUsersInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return getUsersUnauthorizedResponse()
 	}
 
@@ -44,7 +45,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	user, err := userRepo.GetByUserID(id)
 	if err != nil {
 		return getUsersInternalServerErrorResponse()
-	} else if user == nil {
+	}
+	if user == nil {
 		return getUsersBadRequestResponses()
 	}
 
@@ -104,7 +106,8 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return getProfileByUserIDInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return getProfileByUserIDUnauthorizedResponse()
 	}
 
@@ -118,9 +121,11 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	ent, err := userRepo.GetByUserID(id)
 	if err != nil {
 		return getProfileByUserIDInternalServerErrorResponse()
-	} else if ent == nil {
+	}
+	if ent == nil {
 		return getProfileByUserIDNotFoundResponse()
 	}
+
 	ent.ImageURI = imagePath.Path
 
 	sEnt := ent.Build()

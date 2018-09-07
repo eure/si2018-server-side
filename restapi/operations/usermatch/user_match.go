@@ -1,10 +1,7 @@
 package usermatch
 
 import (
-	"fmt"
 	"log"
-
-	"sync"
 
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
@@ -63,18 +60,16 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		}
 	}
 
-	var wg sync.WaitGroup
-	usersChan := make(chan map[int64]entities.User)
-	imagesChan := make(chan map[int64]entities.UserImage)
-	errChan := make(chan error)
+	usersChan := make(chan map[int64]entities.User, 1)
+	imagesChan := make(chan map[int64]entities.UserImage, 1)
+	errChan1 := make(chan error, 1)
+	errChan2 := make(chan error, 1)
 
-	go func() {
-		defer wg.Done()
-		fmt.Println("Start Get Profile")
+	go func(result chan error) {
 		usrs, err := userRepo.FindByIDs(ids)
 		if err != nil {
 			log.Fatal(err)
-			errChan <- err
+			result <- err
 		}
 
 		mpU := map[int64]entities.User{}
@@ -84,19 +79,16 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			}
 		}
 
-		fmt.Println("End Get Profile")
-		fmt.Println(mpU)
 		usersChan <- mpU
-		close(usersChan)
-	}()
+		result <- nil
 
-	go func() {
-		defer wg.Done()
-		fmt.Println("Start Get ImagePath")
+	}(errChan1)
+
+	go func(result chan error) {
 		imgs, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
 			log.Fatal(err)
-			errChan <- err
+			result <- err
 		}
 
 		mpI := map[int64]entities.UserImage{}
@@ -106,14 +98,17 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			}
 		}
 
-		fmt.Println("End Get ImagePath")
-		fmt.Println(mpI)
 		imagesChan <- mpI
-		close(imagesChan)
-	}()
+		result <- nil
 
-	fmt.Println("END")
-	err = <-errChan
+	}(errChan2)
+
+	err = <-errChan1
+	if err != nil {
+		return getMatchesInternalServerErrorResponse()
+	}
+
+	err = <-errChan2
 	if err != nil {
 		return getMatchesInternalServerErrorResponse()
 	}

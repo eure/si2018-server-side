@@ -1,6 +1,8 @@
 package userlike
 
 import (
+	"log"
+
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/eure/si2018-server-side/entities"
@@ -35,7 +37,8 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return getLikesInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return getLikesUnauthorizedResponse()
 	}
 
@@ -53,38 +56,74 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return getLikesInternalServerErrorResponse()
 	}
 
-	// ユーザーをいいねしているお相手のIDの配列を取得します。
-	var ids []int64
+	// ユーザーをいいね!しているお相手のIDの配列を取得します。
+	ids := make([]int64, len(matches))
 	for _, like := range likes {
 		ids = append(ids, like.UserID)
 	}
 
-	// idの配列からユーザーを取得します。
-	users, err := userRepo.FindByIDs(ids)
-	if err != nil {
-		return getLikesInternalServerErrorResponse()
-	}
+	usersChan := make(chan map[int64]entities.User, 1)
+	imagesChan := make(chan map[int64]entities.UserImage, 1)
+	errChan1 := make(chan error, 1)
+	errChan2 := make(chan error, 1)
 
-	// ユーザーのプロフィール画像を取得します。
-	images, err := imageRepo.GetByUserIDs(ids)
-	if err != nil {
-		return getLikesInternalServerErrorResponse()
-	}
+	go func(result chan error) {
+		usrs, err := userRepo.FindByIDs(ids)
+		if err != nil {
+			log.Fatal(err)
+			result <- err
+		}
 
-	// 取得したお相手のIDとユーザーをいいね！しているお相手のIDを比較し、マッピングします。
-	var ents entities.LikeUserResponses
-	for _, like := range likes {
-		ent := entities.LikeUserResponse{}
-		for _, image := range images {
-			for _, user := range users {
-				if like.UserID == user.ID && image.UserID == user.ID {
-					ent.ApplyUser(user)
-					ent.LikedAt = like.CreatedAt
-					ent.ImageURI = image.Path
-				}
+		mpU := map[int64]entities.User{}
+		for _, u := range usrs {
+			if u.ID > 0 {
+				mpU[u.ID] = u
 			}
 		}
 
+		usersChan <- mpU
+		result <- nil
+
+	}(errChan1)
+
+	go func(result chan error) {
+		imgs, err := imageRepo.GetByUserIDs(ids)
+		if err != nil {
+			log.Fatal(err)
+			result <- err
+		}
+
+		mpI := map[int64]entities.UserImage{}
+		for _, img := range imgs {
+			if img.UserID > 0 {
+				mpI[img.UserID] = img
+			}
+		}
+
+		imagesChan <- mpI
+		result <- nil
+
+	}(errChan2)
+
+	err = <-errChan1
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	err = <-errChan2
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
+
+	users := <-usersChan
+	images := <-imagesChan
+
+	var ents entities.LikeUserResponses
+	for _, like := range likes {
+		ent := entities.LikeUserResponse{}
+		ent.ApplyUser(users[like.UserID])
+		ent.ImageURI = images[like.UserID].Path
+		ent.LikedAt = like.CreatedAt
 		ents = append(ents, ent)
 	}
 
@@ -157,6 +196,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		return postLikeInternalServerErrorResponse()
 	}
+
 	// 過去にいいね！されていたらマッチングします。
 	if liked != nil {
 		addMatch := entities.UserMatch{
