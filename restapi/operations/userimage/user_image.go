@@ -79,13 +79,23 @@ func isJpgFile(image strfmt.Base64) bool {
 	return tagMatches(jpgTag, image)
 }
 
-// image が png, jpg 形式であれば対応する拡張子 ".png" などを返す
+var gifTag = []byte{0x47, 0x49, 0x46, 0x38}
+
+// image のファイル形式が gif であるか
+func isGifFile(image strfmt.Base64) bool {
+	return tagMatches(gifTag, image)
+}
+
+// image が png, jpg, gif 形式であれば対応する拡張子 ".png" などを返す
 func getFileType(image strfmt.Base64) (string, error) {
 	if isPngFile(image) {
 		return ".png", nil
 	}
 	if isJpgFile(image) {
 		return ".jpg", nil
+	}
+	if isGifFile(image) {
+		return ".gif", nil
 	}
 	return "", errors.New("unknown file type")
 }
