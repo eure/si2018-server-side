@@ -40,8 +40,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	if err != nil {
 		GetLikesRespInternalErr()
 	}
-	fmt.Println(match)
-	fmt.Println(usrs)
 
 	// If not matcheing to anyone
 	if len(usrs) == 0 {
@@ -118,15 +116,17 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		PosLikesRespInternalErr()
 	}
+	fmt.Println("OK")
 
 	// Is there both likes?
 	oppositelike, err := userlikeHandler.GetLikeBySenderIDReceiverID(partner.ID, user.ID)
 	if err != nil {
-		PosLikesRespInternalErr()
+		return PosLikesRespInternalErr()
 	}
+	fmt.Println(oppositelike)
 
 	if oppositelike == nil {
-		PosLikesRespInternalErr()
+		return PostLikeOK()
 	}
 	usermatch := entities.UserMatch{
 		UserID:    user.ID,
@@ -134,7 +134,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 	err = usermatchHandler.Create(usermatch)
 	if err != nil {
-		PosLikesRespInternalErr()
+		return PosLikesRespInternalErr()
 	}
 	return PostLikeOK()
 }
