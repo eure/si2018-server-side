@@ -10,6 +10,13 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return si.NewPostMessageUnauthorized().WithPayload(
+			&si.PostMessageUnauthorizedBody{
+				Code   : "401",
+				Message: "Token Is Invalid",
+			})
+	}
 	// パラメータのmessageが存在しない可能性があった -> 400
 	if p.Params.Message == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
