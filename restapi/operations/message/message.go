@@ -13,11 +13,11 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Params.Token)
 
 	if err != nil {
-		return getMessagesInternalServerErrorResponse()
+		return GetMessagesInternalServerErrorResponse()
 	}
 
 	if userTokenEnt == nil {
-		return getMessageUnauthorizedResponse()
+		return GetMessageUnauthorizedResponse()
 	}
 
 	userID := userTokenEnt.UserID
@@ -35,15 +35,15 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	errs := messageRepository.Validate(userMessageEnt)
 	if errs != nil {
 		str := fmt.Sprintf("%v", errs)
-		return postMessageBadREquestResponse(str)
+		return PostMessageBadREquestResponse(str)
 	}
 
 	err = messageRepository.Create(userMessageEnt)
 	if err != nil {
-		return postMessageInternalServerErrorResponse()
+		return PostMessageInternalServerErrorResponse()
 	}
 
-	return postMessageOKResponse(message)
+	return PostMessageOKResponse(message)
 }
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
@@ -51,11 +51,11 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	userTokenEnt, err := repositories.NewUserTokenRepository().GetByToken(p.Token)
 
 	if err != nil {
-		return getMessagesInternalServerErrorResponse()
+		return GetMessagesInternalServerErrorResponse()
 	}
 
 	if userTokenEnt == nil {
-		return getMessageUnauthorizedResponse()
+		return GetMessageUnauthorizedResponse()
 	}
 
 	// int64になっているのでcastする必要がある
@@ -73,52 +73,4 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	userMessages := userMessagesEnt.Build()
 
 	return si.NewGetMessagesOK().WithPayload(userMessages)
-}
-
-func getMessagesInternalServerErrorResponse() middleware.Responder {
-	return si.NewGetMessagesInternalServerError().WithPayload(
-		&si.GetMessagesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func getMessageUnauthorizedResponse() middleware.Responder {
-	return si.NewGetMessagesUnauthorized().WithPayload(
-		&si.GetMessagesUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func postMessageOKResponse(message string) middleware.Responder {
-	return si.NewPostMessageOK().WithPayload(
-		&si.PostMessageOKBody{
-			Code:    "200",
-			Message: message,
-		})
-}
-
-func postMessageBadREquestResponse(message string) middleware.Responder {
-	return si.NewPostMessageBadRequest().WithPayload(
-		&si.PostMessageBadRequestBody{
-			Code:    "400",
-			Message: message,
-		})
-}
-
-func postMessageUnauthorizedResponse() middleware.Responder {
-	return si.NewPostMessageUnauthorized().WithPayload(
-		&si.PostMessageUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func postMessageInternalServerErrorResponse() middleware.Responder {
-	return si.NewPostMessageInternalServerError().WithPayload(
-		&si.PostMessageInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
 }
