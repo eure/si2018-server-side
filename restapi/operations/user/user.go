@@ -183,7 +183,14 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	updateUser.ID = p.UserID
 
 	// パラメーターの値をupdateUserに入れる
-	bindParams(p.Params, &updateUser)
+	err = bindParams(p.Params, &updateUser)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	// Userを更新
 	err = repUser.Update(&updateUser)
@@ -211,9 +218,13 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 }
 
 // private
-func bindParams(p si.PutProfileBody, entUser *entities.User ){
+func bindParams(p si.PutProfileBody, entUser *entities.User ) error{
 	// paramsをjsonに出力
-	params, _ := p.MarshalBinary()
+	params, err := p.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
 	// userEntにjson変換したparamを入れる
 	json.Unmarshal(params, &entUser)
 
@@ -227,4 +238,6 @@ func bindParams(p si.PutProfileBody, entUser *entities.User ){
 	entUser.ResidenceState = p.ResidenceState
 	entUser.WantChild = p.WantChild
 	entUser.WhenMarry = p.WhenMarry
+
+	return nil
 }
