@@ -6,7 +6,7 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/runtime/middleware"
-	"fmt"
+	"log"
 	"time"
 	"github.com/go-openapi/strfmt"
 )
@@ -33,8 +33,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 *
 
 	mat, err := rm.Get(uid, pid)
 	if err != nil {
-		fmt.Print("Get err: ")
-		fmt.Println(err)
+		log.Print("Get err: ", err)
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
@@ -61,8 +60,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder { /* TODO 連打 *
 	rs := repositories.NewUserMessageRepository()
 	err = rs.Create(ent)
 	if err != nil {
-		fmt.Print("Create message err: ")
-		fmt.Println(err)
+		log.Print("Create message err: ", err)
 		return si.NewPostMessageInternalServerError().WithPayload(
 			&si.PostMessageInternalServerErrorBody{
 				Code:    "500",
@@ -84,7 +82,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	if limit != nil {
         err := util.ValidateLimit(*limit)
         if err != nil {
-			fmt.Println("Invalid limit")
+			log.Print("Invalid limit")
         	return si.NewGetMessagesBadRequest().WithPayload(
         		&si.GetMessagesBadRequestBody{
         			Code:    "400",
@@ -94,7 +92,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	}
 
 	if (oldest != nil && latest != nil) && time.Time(*oldest).After(time.Time(*latest)) {
-		fmt.Println("Invalid duration")
+		log.Print("Invalid duration")
         	return si.NewGetMessagesBadRequest().WithPayload(
         		&si.GetMessagesBadRequestBody{
         			Code:    "400",
@@ -118,8 +116,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	mat, err := rm.Get(uid, pid)
 	if err != nil {
-		fmt.Print("Get err: ")
-		fmt.Println(err)
+		log.Print("Get err: ", err)
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
 				Code:    "500",
@@ -127,7 +124,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 	if mat == nil {
-		fmt.Println("Not matching")
+		log.Print("Not matching")
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",
@@ -140,8 +137,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	messages, err := rs.GetMessages(uid, pid, int(*limit), latest, oldest)
 	if err != nil {
-		fmt.Print("Get messages err: ")
-		fmt.Println(err)
+		log.Print("Get messages err: ", err)
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
 				Code:    "500",

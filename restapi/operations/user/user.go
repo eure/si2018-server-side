@@ -7,6 +7,7 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/eure/si2018-server-side/restapi/operations/util"
+	"log"
 )
 
 func GetUsers(p si.GetUsersParams) middleware.Responder {
@@ -18,6 +19,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	err1 := util.ValidateLimit(limit)
 	err2 := util.ValidateOffset(offset)
 	if (err1 != nil) || (err2 != nil) {
+		log.Print("Limit/Offset validation error")
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code:    "400",
@@ -36,12 +38,22 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	ru := repositories.NewUserRepository()
 	rl := repositories.NewUserLikeRepository()
 
-	id, err := util.GetIDByToken(token)
-	user, err := ru.GetByUserID(id)
+	id, _ := util.GetIDByToken(token)
+	user, _ := ru.GetByUserID(id)
+
 	likes, err := rl.FindLikeAll(id) /* TODO filter? */
+	if err != nil {
+		log.Print("Get all likes error")
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
 
 	users_ent, err := ru.FindWithCondition(int(limit), int(offset), user.GetOppositeGender(), likes);
 	if err != nil {
+		log.Print("Find user error")
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
@@ -75,6 +87,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	me, err1 := r.GetByUserID(myid)
 	user, err2 := r.GetByUserID(id)
 	if err1 != nil || err2 != nil {
+		log.Print("Get user error")
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
 			&si.GetProfileByUserIDInternalServerErrorBody{
 				Code:    "500",
@@ -90,7 +103,8 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 	// Same gender?
-	if user.Gender == me.Gender && myid != id { 
+	if user.Gender == me.Gender && myid != id {
+		log.Print("Same gender")
 		return si.NewGetProfileByUserIDBadRequest().WithPayload(
 			&si.GetProfileByUserIDBadRequestBody{
 				Code:    "400",
@@ -160,6 +174,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// Update
 	err = r.Update(&user)
 	if err != nil {
+		log.Print("Update err")
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
 				Code:    "500",
