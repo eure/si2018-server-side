@@ -31,6 +31,24 @@ func getUsersBadRequestResponses() middleware.Responder {
 		})
 }
 
+//  Limitは0より大きくする必要がありますという400番エラー
+func getUsersLimitBadRequestResponses() middleware.Responder {
+	return si.NewGetUsersBadRequest().WithPayload(
+		&si.GetUsersBadRequestBody{
+			Code:    "400",
+			Message: "Limit Should Be Bigger Than 0",
+		})
+}
+
+//  Offsetは0以上でなければならないという400番エラー
+func getUsersOffsetBadRequestResponses() middleware.Responder {
+	return si.NewGetUsersBadRequest().WithPayload(
+		&si.GetUsersBadRequestBody{
+			Code:    "400",
+			Message: "Offset Has To Be More Than 0",
+		})
+}
+
 //	ユーザー詳細API
 //	GET {hostname}/api/1.0/users/{userID}
 func getProfileByUserIDInternalServerErrorResponse() middleware.Responder {
@@ -65,6 +83,7 @@ func getProfileByUserIDBadRequestResponses() middleware.Responder {
 		})
 }
 
+//　IDは0よりも大きくあるべきという400番エラー
 func getProfileByUserIDLessThan0BadRequestResponses() middleware.Responder {
 	return si.NewGetProfileByUserIDBadRequest().WithPayload(
 		&si.GetProfileByUserIDBadRequestBody{
@@ -107,6 +126,7 @@ func putProfileBadRequestResponse() middleware.Responder {
 		})
 }
 
+//　IDは0よりも大きくあるべきという400番エラー
 func putProfileLessThan0BadRequestResponse() middleware.Responder {
 	return si.NewPutProfileBadRequest().WithPayload(
 		&si.PutProfileBadRequestBody{

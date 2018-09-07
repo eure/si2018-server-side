@@ -31,6 +31,16 @@ func postMessageBadRequestResponses() middleware.Responder {
 		})
 }
 
+//　IDは0よりも大きくあるべきという400番エラー
+func postMessageLessThan0BadRequestResponses() middleware.Responder {
+	return si.NewPostMessageBadRequest().WithPayload(
+		&si.PostMessageBadRequestBody{
+			Code:    "400",
+			Message: "ID Should Be Bigger Than 0",
+		})
+}
+
+// メッセージが空白ですという400番エラー
 func postMessageEmptyBadRequestResponses() middleware.Responder {
 	return si.NewPostMessageBadRequest().WithPayload(
 		&si.PostMessageBadRequestBody{
@@ -71,5 +81,23 @@ func getMessagesBadRequestResponse() middleware.Responder {
 		&si.GetMessagesBadRequestBody{
 			Code:    "400",
 			Message: "Bad Request",
+		})
+}
+
+//  Limitは0より大きくする必要がありますという400番エラー
+func getMessagesLimitBadRequestResponse() middleware.Responder {
+	return si.NewGetMessagesBadRequest().WithPayload(
+		&si.GetMessagesBadRequestBody{
+			Code:    "400",
+			Message: "Limit Should Be Bigger Than 0",
+		})
+}
+
+//　IDは0よりも大きくあるべきという400番エラー
+func getMessagesLessThan0BadRequestResponse() middleware.Responder {
+	return si.NewGetMessagesBadRequest().WithPayload(
+		&si.GetMessagesBadRequestBody{
+			Code:    "400",
+			Message: "ID Should Be Bigger Than 0",
 		})
 }

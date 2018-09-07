@@ -3,6 +3,8 @@ package usermatch
 import (
 	"log"
 
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -66,6 +68,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	errChan2 := make(chan error, 1)
 
 	go func(result chan error) {
+		fmt.Println("******** Start GetUserProfile ********")
 		usrs, err := userRepo.FindByIDs(ids)
 		if err != nil {
 			log.Fatal(err)
@@ -85,6 +88,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}(errChan1)
 
 	go func(result chan error) {
+		fmt.Println("******** Start GetUserImagePath ********")
 		imgs, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
 			log.Fatal(err)
@@ -115,6 +119,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	users := <-usersChan
 	images := <-imagesChan
+	fmt.Println("END")
 
 	var ents entities.MatchUserResponses
 	for _, match := range matches {

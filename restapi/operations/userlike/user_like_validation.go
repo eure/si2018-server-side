@@ -31,6 +31,22 @@ func getLikesBadRequestResponse() middleware.Responder {
 		})
 }
 
+func getLikesLimitBadRequestResponse() middleware.Responder {
+	return si.NewGetLikesBadRequest().WithPayload(
+		&si.GetLikesBadRequestBody{
+			Code:    "400",
+			Message: "Limit Should Be Bigger Than 0",
+		})
+}
+
+func getLikesOffsetBadRequestResponse() middleware.Responder {
+	return si.NewGetLikesBadRequest().WithPayload(
+		&si.GetLikesBadRequestBody{
+			Code:    "400",
+			Message: "Offset Has To Be More Than 0",
+		})
+}
+
 //	いいね！送信API
 //	POST {hostname}/api/1.0/likes/{userID}
 func postLikeInternalServerErrorResponse() middleware.Responder {
@@ -54,6 +70,14 @@ func postLikeBadRequestResponses() middleware.Responder {
 		&si.PostLikeBadRequestBody{
 			Code:    "400",
 			Message: "Bad Request",
+		})
+}
+
+func postLikeLessThan0BadRequestResponses() middleware.Responder {
+	return si.NewPostLikeBadRequest().WithPayload(
+		&si.PostLikeBadRequestBody{
+			Code:    "400",
+			Message: "ID Should Be Bigger Than 0",
 		})
 }
 

@@ -8,13 +8,19 @@ import (
 )
 
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
+	id := p.UserID
+	if id <= 0 {
+		return getTokenByUserIDBadRequestResponse()
+	}
+
 	r := repositories.NewUserTokenRepository()
 
-	ent, err := r.GetByUserID(p.UserID)
+	ent, err := r.GetByUserID(id)
 
 	if err != nil {
 		return getTokenByUserIDInternalServerErrorResponse()
-	} else if ent == nil {
+	}
+	if ent == nil {
 		return getTokenByUserIDNotFoundResponse()
 	}
 

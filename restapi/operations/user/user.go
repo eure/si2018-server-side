@@ -20,12 +20,12 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	limit := int(p.Limit)
 	if limit <= 0 {
-		return getUsersBadRequestResponses()
+		return getUsersLimitBadRequestResponses()
 	}
 
 	offset := int(p.Offset)
 	if offset < 0 {
-		return getUsersBadRequestResponses()
+		return getUsersOffsetBadRequestResponses()
 	}
 
 	token := p.Token
@@ -73,18 +73,17 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	if err != nil {
 		return getUsersInternalServerErrorResponse()
 	}
+	mapImage := map[int64]entities.UserImage{}
+	for _, img := range images {
+		mapImage[img.UserID] = img
+	}
 
 	// 取得したお相手のプロフィールとプロフィール画像をマッピングします。
 	var ents entities.Users
 	for _, user := range users {
 		ent := entities.User{}
-		for _, image := range images {
-			if user.ID == image.UserID {
-				ent = user
-				ent.ImageURI = image.Path
-			}
-		}
-
+		ent = user
+		ent.ImageURI = mapImage[user.ID].Path
 		ents = append(ents, ent)
 	}
 
@@ -111,12 +110,6 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return getProfileByUserIDUnauthorizedResponse()
 	}
 
-	// ユーザーのプロフィール画像を取得します。
-	imagePath, err := imageRepo.GetByUserID(id)
-	if err != nil {
-		return getProfileByUserIDInternalServerErrorResponse()
-	}
-
 	// ユーザーのプロフィールを取得します。
 	ent, err := userRepo.GetByUserID(id)
 	if err != nil {
@@ -124,6 +117,12 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	}
 	if ent == nil {
 		return getProfileByUserIDNotFoundResponse()
+	}
+
+	// ユーザーのプロフィール画像を取得します。
+	imagePath, err := imageRepo.GetByUserID(id)
+	if err != nil {
+		return getProfileByUserIDInternalServerErrorResponse()
 	}
 
 	ent.ImageURI = imagePath.Path
@@ -146,7 +145,8 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return putProfileInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return putProfileUnauthorizedResponse()
 	}
 
@@ -170,17 +170,18 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return putProfileInternalServerErrorResponse()
 	}
 
+	// 更新後のユーザーのプロフィールを取得します。
+	ent, err := userRepo.GetByUserID(id)
+	if err != nil {
+		return putProfileInternalServerErrorResponse()
+	}
+
 	// ユーザーのプロフィール画像を取得します。
 	imagePath, err := imageRepo.GetByUserID(id)
 	if err != nil {
 		return getProfileByUserIDInternalServerErrorResponse()
 	}
 
-	// 更新後のユーザーのプロフィールを取得します。
-	ent, err := userRepo.GetByUserID(id)
-	if err != nil {
-		return putProfileInternalServerErrorResponse()
-	}
 	ent.ImageURI = imagePath.Path
 
 	sEnt := ent.Build()

@@ -18,7 +18,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	partnerID := p.UserID
 	if partnerID <= 0 {
-		return postMessageBadRequestResponses()
+		return postMessageLessThan0BadRequestResponses()
 	}
 
 	message := p.Params.Message
@@ -32,7 +32,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return postMessageInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return postMessageUnauthorizedResponse()
 	}
 
@@ -42,7 +43,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	pastMessage, err := messageRepo.GetLastMessages(id)
 	if err != nil {
 		return postMessageInternalServerErrorResponse()
-	} else if pastMessage.Message == message {
+	}
+	if pastMessage.Message == message {
 		return postMessageDuplicatedRequestResponses()
 	}
 
@@ -50,7 +52,8 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	match, err := matchRepo.Get(id, partnerID)
 	if err != nil {
 		return postMessageInternalServerErrorResponse()
-	} else if match == nil {
+	}
+	if match == nil {
 		return postMessageBadRequestResponses()
 	}
 
@@ -77,19 +80,26 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	partnerID := p.UserID
 	if partnerID <= 0 {
-		return getMessagesBadRequestResponse()
+		return getMessagesLessThan0BadRequestResponse()
 	}
 
 	latest := p.Latest
+
 	oldest := p.Oldest
+
 	limit := int(*p.Limit)
+	if limit <= 0 {
+		return getMessagesLimitBadRequestResponse()
+	}
+
 	token := p.Token
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return getMessagesInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return getMessagesUnauthorizedResponse()
 	}
 

@@ -5,6 +5,8 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 
+	"fmt"
+
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -23,12 +25,12 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	limit := int(p.Limit)
 	if limit <= 0 {
-		return getLikesBadRequestResponse()
+		return getLikesLimitBadRequestResponse()
 	}
 
 	offset := int(p.Offset)
 	if offset < 0 {
-		return getLikesBadRequestResponse()
+		return getLikesOffsetBadRequestResponse()
 	}
 
 	token := p.Token
@@ -57,7 +59,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 
 	// ユーザーをいいね!しているお相手のIDの配列を取得します。
-	ids := make([]int64, len(matches))
+	ids := make([]int64, len(likes))
 	for _, like := range likes {
 		ids = append(ids, like.UserID)
 	}
@@ -68,6 +70,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	errChan2 := make(chan error, 1)
 
 	go func(result chan error) {
+		fmt.Println("******** Start GetUserProfile ********")
 		usrs, err := userRepo.FindByIDs(ids)
 		if err != nil {
 			log.Fatal(err)
@@ -87,6 +90,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}(errChan1)
 
 	go func(result chan error) {
+		fmt.Println("******** Start GetUserImagePath ********")
 		imgs, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
 			log.Fatal(err)
@@ -117,6 +121,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	users := <-usersChan
 	images := <-imagesChan
+	fmt.Println("END")
 
 	var ents entities.LikeUserResponses
 	for _, like := range likes {
@@ -136,7 +141,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	partnerID := p.UserID
 	if partnerID <= 0 {
-		return postLikeBadRequestResponses()
+		return postLikeLessThan0BadRequestResponses()
 	}
 
 	token := p.Params.Token
@@ -145,7 +150,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return postLikeInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return postLikeUnauthorizedResponse()
 	}
 
@@ -155,14 +161,16 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	user, err := userRepo.GetByUserID(id)
 	if err != nil {
 		return postLikeInternalServerErrorResponse()
-	} else if user == nil {
+	}
+	if user == nil {
 		return postLikeBadRequestResponses()
 	}
 
 	partner, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
 		return postLikeInternalServerErrorResponse()
-	} else if partner == nil {
+	}
+	if partner == nil {
 		return postLikeBadRequestResponses()
 	}
 

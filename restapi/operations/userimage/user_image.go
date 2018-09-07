@@ -28,7 +28,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
 		return postImagesInternalServerErrorResponse()
-	} else if tokenOwner == nil {
+	}
+	if tokenOwner == nil {
 		return postImagesUnauthorizedResponse()
 	}
 
@@ -38,10 +39,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	header := hex.EncodeToString(b64Img[:4])
 	// 画像ファイルの先頭には、そのファイルがどのような種類の画像フォーマットであるかを指し示すデータが含まれています。
 	// この先頭部分をチェックすることによって、画像フォーマットを判別することができます。
+
 	var imageType string
 
 	switch header {
-	case "ffd8":
+	case "ffd8ffe0":
 		imageType = ".jpg"
 	case "89504e47":
 		imageType = ".png"
@@ -54,6 +56,9 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	file, _ := os.Create(imagePath)
 	defer file.Close()
 	_, err = file.Write(b64Img)
+	if err != nil {
+		return postImagesInternalServerErrorResponse()
+	}
 
 	// ユーザーのプロフィール画像を取得します。
 	userImage, err := imageRepo.GetByUserID(id)

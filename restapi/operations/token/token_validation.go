@@ -20,3 +20,12 @@ func getTokenByUserIDNotFoundResponse() middleware.Responder {
 			Message: "User Token Not Found",
 		})
 }
+
+//　IDは0よりも大きくあるべきという400番エラー
+func getTokenByUserIDBadRequestResponse() middleware.Responder {
+	return si.NewGetTokenByUserIDBadRequest().WithPayload(
+		&si.GetTokenByUserIDBadRequestBody{
+			Code:    "400",
+			Message: "ID Should Be Bigger Than 0",
+		})
+}
