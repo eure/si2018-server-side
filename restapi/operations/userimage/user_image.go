@@ -20,6 +20,13 @@ import (
 const baseUri = "http://localhhost:8888/"
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {

@@ -10,6 +10,13 @@ import (
 )
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	// パラメータのmessageが存在しない可能性があった -> 400
 	if p.Params.Message == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
@@ -106,12 +113,14 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 	// 時間比較
-	if time.Time(*p.Latest).Before(time.Time(*p.Oldest)) {
-		return si.NewGetMessagesBadRequest().WithPayload(
-			&si.GetMessagesBadRequestBody{
-				Code   : "400",
-				Message: "Bad Request",
-			})
+	if p.Latest != nil && p.Oldest != nil {
+		if time.Time(*p.Latest).Before(time.Time(*p.Oldest)) {
+			return si.NewGetMessagesBadRequest().WithPayload(
+				&si.GetMessagesBadRequestBody{
+					Code   : "400",
+					Message: "Bad Request",
+				})
+		}
 	}
 
 	// Partnerかどうかのチェック

@@ -73,10 +73,31 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+
+	imageR := repositories.NewUserImageRepository()
+	imageEnt, err := imageR.GetByUserIDs(likedIds)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	var userList entities.Users
+	for _, u := range userEntList {
+		for _, i := range imageEnt {
+			if u.ID == i.UserID{
+				u.ImageURI = i.Path
+				userList = append(userList, u)
+			}
+		}
+	}
+
 	// likeしてくれているユーザ情報をlikeのcreated順に作成する
 	var array entities.LikeUserResponses
 	for _, l := range likeEntList {
-		for _, u := range userEntList {
+		for _, u := range userList {
 			if l.UserID == u.ID {
 				var tmp entities.LikeUserResponse
 				tmp.ApplyUser(u)
@@ -84,11 +105,21 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			}
 		}
 	}
+
+
+
 	responseData := array.Build()
 	return si.NewGetLikesOK().WithPayload(responseData)
 }
 
 func PostLike(p si.PostLikeParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -106,7 +137,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Token Is Invalid",
 			})
 	}
-	// 相手が異性かどうか
+	// 相手が存在しない -> 400
 	userR := repositories.NewUserRepository()
 	toUserEnt, err := userR.GetByUserID(p.UserID)
 	if err != nil {
@@ -116,6 +147,15 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	if toUserEnt == nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
+
+	// 相手が異性かどうか
 	myUserEnt, err := userR.GetByUserID(tokenEnt.UserID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(

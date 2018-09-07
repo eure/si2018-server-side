@@ -73,10 +73,30 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	var tmp entities.Users
-	for _, userEnt := range findUsers{
-		tmp = append(tmp, userEnt)
+	var findUserIds []int64
+	for _, u := range findUsers {
+		findUserIds = append(findUserIds, u.ID)
 	}
+	imageR := repositories.NewUserImageRepository()
+	images, err := imageR.GetByUserIDs(findUserIds)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	var tmp entities.Users
+	for _, u := range findUsers{
+		for _, i := range images {
+			if u.ID == i.UserID {
+				u.ImageURI = i.Path
+				tmp = append(tmp, u)
+			}
+		}
+	}
+
 	responseData := tmp.Build()
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
@@ -133,12 +153,31 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
+	// Response直前にimageUriを追加する
+	imageR := repositories.NewUserImageRepository()
+	i, err := imageR.GetByUserID(findUserEnt.ID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	findUserEnt.ImageURI = i.Path
 
 	responseData := findUserEnt.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&responseData)
 }
 
 func PutProfile(p si.PutProfileParams) middleware.Responder {
+	if p.Params.Token == "" {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
+			})
+	}
+
 	tokenR        := repositories.NewUserTokenRepository()
 	tokenEnt, err := tokenR.GetByToken(p.Params.Token)
 	if err != nil {
@@ -168,7 +207,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	newUserEnt := entities.User{
 		ID:             p.UserID,
 		Nickname:       p.Params.Nickname,
-		ImageURI:       p.Params.ImageURI,
 		Tweet:          p.Params.Tweet,
 		Introduction:   p.Params.Introduction,
 		ResidenceState: p.Params.ResidenceState,
@@ -209,6 +247,17 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+	imageR := repositories.NewUserImageRepository()
+	imageEnt, err := imageR.GetByUserID(responseEnt.ID)
+	if err != nil {
+		return si.NewPutProfileInternalServerError().WithPayload(
+			&si.PutProfileInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	responseEnt.ImageURI = imageEnt.Path
+
 	responseData := responseEnt.Build()
 	return si.NewPutProfileOK().WithPayload(&responseData)
 }

@@ -68,11 +68,30 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	imageR := repositories.NewUserImageRepository()
+	imageEnt, err := imageR.GetByUserIDs(matchIds)
+	if err != nil {
+		return si.NewGetMatchesInternalServerError().WithPayload(
+			&si.GetMatchesInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+	var userList entities.Users
+	for _, u := range userEntList {
+		for _, i := range imageEnt {
+			if u.ID == i.UserID{
+				u.ImageURI = i.Path
+				userList = append(userList, u)
+			}
+		}
+	}
+
 	// create順に修正
 	// TODO: もう少しシンプルにしたい
 	var array entities.MatchUserResponses
 	for _, m := range matchEntList {
-		for _, u := range userEntList {
+		for _, u := range userList {
 			if m.PartnerID != tokenEnt.UserID{
 				if m.PartnerID == u.ID {
 					var tmp entities.MatchUserResponse
