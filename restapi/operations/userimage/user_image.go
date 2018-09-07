@@ -62,14 +62,14 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	file.Write(writeimage)
 	userimage := entities.UserImage{
 		UserID: usertokn.UserID,
-		Path:   pathdir,
+		Path:   "https://si-2018-008.eure.jp/" + pathdir,
 	}
 
 	err = userimageHandler.Update(userimage)
 	if err != nil {
 		return RespInternalErr()
 	}
-	return PutImageOK(pathdir)
+	return PutImageOK("https://si-2018-008.eure.jp/" + pathdir)
 
 }
 
