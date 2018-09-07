@@ -106,8 +106,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		}
 	}
 
-
-
 	responseData := array.Build()
 	return si.NewGetLikesOK().WithPayload(responseData)
 }
