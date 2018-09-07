@@ -6,6 +6,7 @@
 /restapi/doc.go
 /restapi/embedded_spec.go
 /restapi/server.go
+/repositories/repository.go
 
 # assets (uploaded image files)
 assets/
