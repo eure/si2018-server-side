@@ -36,6 +36,11 @@ type User struct {
 	ImageURI string `xorm:"-"`
 }
 
+type UserWithImg struct {
+	User      `xorm:"extends"`
+	UserImage `xorm:"extends"`
+}
+
 func (u User) Build() models.User {
 	return models.User{
 		ID:             u.ID,

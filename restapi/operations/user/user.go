@@ -18,6 +18,11 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	limit := int(p.Limit)
 	offset := int(p.Offset)
 
+	// validate limit, offset
+	if limit < offset {
+		return GetProfileBadRequestErr()
+	}
+
 	usertoken, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetUserRespUnauthErr()
@@ -62,6 +67,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	if err != nil {
 		return GetProfileInternalErr()
 	}
+	/*
+		userprofile, err := userHandler.GetByUserIDWithImage(myuserid)
+		fmt.Println(userprofile)
+	*/
 	// Is There a exist UserProfile?
 	if userprofile == nil {
 		return GetProfileNotFoundErr()
@@ -80,6 +89,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return GetProfileBadRequestErr()
 	}
 	sEnt := userprofile.Build()
+
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
 }
 
