@@ -21,10 +21,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return si.GetLikesThrowInternalServerError("GetByToken", err)
+			return si.GetLikesThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.GetLikesThrowUnauthorized("GetByToken failed")
+			return si.GetLikesThrowUnauthorized()
 		}
 		id = token.UserID
 	}
@@ -35,11 +35,11 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		matchRepo := repositories.NewUserMatchRepository()
 		matched, err := matchRepo.FindAllByUserID(id)
 		if err != nil {
-			return si.GetLikesThrowInternalServerError("FindAllByUserID", err)
+			return si.GetLikesThrowInternalServerError(err)
 		}
 		like, err = likeRepo.FindGotLikeWithLimitOffset(id, int(p.Limit), int(p.Offset), matched)
 		if err != nil {
-			return si.GetLikesThrowInternalServerError("FindGotLikeWithLimitOffset", err)
+			return si.GetLikesThrowInternalServerError(err)
 		}
 	}
 	// 相手の ID の取得
@@ -58,10 +58,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		userRepo := repositories.NewUserRepository()
 		shuffledUsers, err := userRepo.FindByIDs(ids)
 		if err != nil {
-			return si.GetLikesThrowInternalServerError("FindByIDs", err)
+			return si.GetLikesThrowInternalServerError(err)
 		}
 		if len(shuffledUsers) != count {
-			return si.GetLikesThrowBadRequest("FindByIDs failed")
+			return si.GetLikesThrowInternalServerError(nil)
 		}
 		for _, u := range shuffledUsers {
 			users[mapping[u.ID]] = u
@@ -73,10 +73,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		imageRepo := repositories.NewUserImageRepository()
 		shuffledImages, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
-			return si.GetLikesThrowInternalServerError("GetByUserIDs", err)
+			return si.GetLikesThrowInternalServerError(err)
 		}
 		if len(shuffledImages) != count {
-			return si.GetLikesThrowBadRequest("GetByUserIDs failed")
+			return si.GetLikesThrowInternalServerError(nil)
 		}
 		for _, im := range shuffledImages {
 			images[mapping[im.UserID]] = im
@@ -109,10 +109,10 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Params.Token)
 		if err != nil {
-			return si.PostLikeThrowInternalServerError("GetByToken", err)
+			return si.PostLikeThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.PostLikeThrowUnauthorized("GetByToken failed")
+			return si.PostLikeThrowUnauthorized()
 		}
 		id = token.UserID
 	}
@@ -121,20 +121,20 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	{
 		user, err := userRepo.GetByUserID(id)
 		if err != nil {
-			return si.PostLikeThrowInternalServerError("GetByUserID", err)
+			return si.PostLikeThrowInternalServerError(err)
 		}
 		if user == nil {
-			return si.PostLikeThrowBadRequest("GetByUserID failed")
+			return si.PostLikeThrowInternalServerError(nil)
 		}
 		oppositeGender = user.GetOppositeGender()
 	}
 	// 送る相手の情報を取得
 	partner, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.PostLikeThrowInternalServerError("GetByUserID", err)
+		return si.PostLikeThrowInternalServerError(err)
 	}
 	if partner == nil {
-		return si.PostLikeThrowBadRequest("GetByUserID failed")
+		return si.PostLikeThrowInternalServerError(nil)
 	}
 	if partner.Gender != oppositeGender {
 		return si.PostLikeThrowBadRequest("genders must be opposite")
@@ -142,7 +142,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// いいねが重複していないかの確認
 	like, err := likeRepo.GetLikeBySenderIDReceiverID(id, partner.ID)
 	if err != nil {
-		return si.PostLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
+		return si.PostLikeThrowInternalServerError(err)
 	}
 	if like != nil {
 		return si.PostLikeThrowBadRequest("like action duplicates")
@@ -150,7 +150,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// 相手からいいねが来ていたかの確認
 	reverse, err := likeRepo.GetLikeBySenderIDReceiverID(partner.ID, id)
 	if err != nil {
-		return si.PostLikeThrowInternalServerError("GetLikeBySenderIDReceiverID", err)
+		return si.PostLikeThrowInternalServerError(err)
 	}
 	now := strfmt.DateTime(time.Now())
 	like = new(entities.UserLike)
@@ -164,7 +164,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// transaction を利用してまとめて書きこむ必要がある
 	err = likeRepo.Create(*like)
 	if err != nil {
-		return si.PostLikeThrowInternalServerError("Create", err)
+		return si.PostLikeThrowInternalServerError(err)
 	}
 	// お互いにいいねしていればマッチング成立
 	if reverse != nil {
@@ -176,7 +176,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			UpdatedAt: now}
 		err = matchRepo.Create(match)
 		if err != nil {
-			return si.PostLikeThrowInternalServerError("Create", err)
+			return si.PostLikeThrowInternalServerError(err)
 		}
 	}
 	return si.NewPostLikeOK().WithPayload(

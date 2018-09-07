@@ -18,10 +18,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return si.GetMatchesThrowInternalServerError("GetByToken", err)
+			return si.GetMatchesThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.GetMatchesThrowUnauthorized("GetByToken failed")
+			return si.GetMatchesThrowUnauthorized()
 		}
 		id = token.UserID
 	}
@@ -31,7 +31,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		matchRepo := repositories.NewUserMatchRepository()
 		matched, err = matchRepo.FindByUserIDWithLimitOffset(id, int(p.Limit), int(p.Offset))
 		if err != nil {
-			return si.GetMatchesThrowInternalServerError("FindByUserIDWithLimitOffset", err)
+			return si.GetMatchesThrowInternalServerError(err)
 		}
 	}
 	// 相手の ID の取得
@@ -50,10 +50,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		userRepo := repositories.NewUserRepository()
 		shuffledUsers, err := userRepo.FindByIDs(ids)
 		if err != nil {
-			return si.GetMatchesThrowInternalServerError("FindByIDs", err)
+			return si.GetMatchesThrowInternalServerError(err)
 		}
 		if len(shuffledUsers) != count {
-			return si.GetMatchesThrowBadRequest("FindByIDs failed")
+			return si.GetMatchesThrowInternalServerError(nil)
 		}
 		for _, u := range shuffledUsers {
 			users[mapping[u.ID]] = u
@@ -65,10 +65,10 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 		imageRepo := repositories.NewUserImageRepository()
 		shuffledImages, err := imageRepo.GetByUserIDs(ids)
 		if err != nil {
-			return si.GetMatchesThrowInternalServerError("GetByUserIDs", err)
+			return si.GetMatchesThrowInternalServerError(err)
 		}
 		if len(shuffledImages) != count {
-			return si.GetMatchesThrowBadRequest("GetByUserIDs failed")
+			return si.GetMatchesThrowInternalServerError(nil)
 		}
 		for _, im := range shuffledImages {
 			images[mapping[im.UserID]] = im

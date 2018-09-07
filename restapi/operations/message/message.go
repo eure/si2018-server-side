@@ -16,13 +16,13 @@ import (
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	var err error
 	if p.Params.Token == "" {
-		return si.PostMessageThrowBadRequest("missing token")
+		return si.PostMessageThrowBadRequest("トークンが与えられていません")
 	}
 	if p.Params.Message == "" {
-		return si.PostMessageThrowBadRequest("empty message")
+		return si.PostMessageThrowBadRequest("メッセージが空です")
 	}
 	if len(p.Params.Message) > 3000 {
-		return si.PostMessageThrowBadRequest("message too long")
+		return si.PostMessageThrowBadRequest("メッセージが長すぎます")
 	}
 	messageRepo := repositories.NewUserMessageRepository()
 	// トークン認証
@@ -32,10 +32,10 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		t, err := tokenRepo.GetByToken(p.Params.Token)
 		// トークン認証
 		if err != nil {
-			return si.PostMessageThrowInternalServerError("GetByToken", err)
+			return si.PostMessageThrowInternalServerError(err)
 		}
 		if t == nil {
-			return si.PostMessageThrowUnauthorized("GetByToken failed")
+			return si.PostMessageThrowUnauthorized()
 		}
 		id = t.UserID
 	}
@@ -44,10 +44,10 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		matchRepo := repositories.NewUserMatchRepository()
 		match, err := matchRepo.Get(p.UserID, id)
 		if err != nil {
-			return si.PostMessageThrowInternalServerError("Get", err)
+			return si.PostMessageThrowInternalServerError(err)
 		}
 		if match == nil {
-			return si.PostMessageThrowBadRequest("Get failed")
+			return si.PostMessageThrowBadRequest("マッチしていない相手にはメッセージを送ることはできません")
 		}
 	}
 	// メッセージを書きこむ
@@ -60,7 +60,7 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		CreatedAt: now}
 	err = messageRepo.Create(mes)
 	if err != nil {
-		return si.PostMessageThrowInternalServerError("Create", err)
+		return si.PostMessageThrowInternalServerError(err)
 	}
 	return si.NewPostMessageOK().WithPayload(
 		&si.PostMessageOKBody{
@@ -80,10 +80,10 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return si.GetMessagesThrowInternalServerError("GetByToken", err)
+			return si.GetMessagesThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.GetMessagesThrowUnauthorized("GetByToken failed")
+			return si.GetMessagesThrowUnauthorized()
 		}
 		id = token.UserID
 	}
@@ -97,7 +97,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	// メッセージの取得
 	message, err := messageRepo.GetMessages(p.UserID, id, limit, p.Latest, p.Oldest)
 	if err != nil {
-		return si.GetMessagesThrowInternalServerError("GetMessages", err)
+		return si.GetMessagesThrowInternalServerError(err)
 	}
 	ent := entities.UserMessages(message)
 	return si.NewGetMessagesOK().WithPayload(ent.Build())

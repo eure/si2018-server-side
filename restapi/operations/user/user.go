@@ -20,10 +20,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("GetByToken", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.GetUsersThrowUnauthorized("GetByToken failed")
+			return si.GetUsersThrowUnauthorized()
 		}
 		id = token.UserID
 	}
@@ -32,10 +32,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	{
 		user, err := userRepo.GetByUserID(id)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("GetByUserID", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		if user == nil {
-			return si.GetUsersThrowBadRequest("GetByUserID failed")
+			return si.GetUsersThrowInternalServerError(nil)
 		}
 		oppositeGender = user.GetOppositeGender()
 	}
@@ -47,14 +47,14 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		idmap := make(map[int64]bool)
 		like, err := likeRepo.FindLikeAll(id)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("FindLikeAll", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		for _, id := range like {
 			idmap[id] = true
 		}
 		matched, err := matchRepo.FindAllByUserID(id)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("FindAllByUserID", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		for _, id := range matched {
 			idmap[id] = true
@@ -66,10 +66,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// 相手を探す
 	partnerInfos, err := userRepo.FindWithCondition(int(p.Limit), int(p.Offset), oppositeGender, ids)
 	if err != nil {
-		return si.GetUsersThrowInternalServerError("FindWithCondition", err)
-	}
-	if partnerInfos == nil {
-		return si.GetUsersThrowBadRequest("FindWithCondition")
+		return si.GetUsersThrowInternalServerError(err)
 	}
 	count := len(partnerInfos)
 	// あとで順番を調整するのに用いる
@@ -87,10 +84,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		}
 		shuffledPartnerImages, err := imageRepo.GetByUserIDs(partnerIDs)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("GetByUserIDs", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		if len(shuffledPartnerImages) != count {
-			return si.GetUsersThrowBadRequest("GetByUserIDs failed")
+			return si.GetUsersThrowInternalServerError(nil)
 		}
 		// 正しい順番に直す
 		for _, im := range shuffledPartnerImages {
@@ -115,18 +112,18 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Token)
 		if err != nil {
-			return si.GetProfileByUserIDThrowInternalServerError("GetByToken", err)
+			return si.GetProfileByUserIDThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.GetProfileByUserIDThrowUnauthorized("GetByToken failed")
+			return si.GetProfileByUserIDThrowUnauthorized()
 		}
 	}
 	user, err := userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.GetProfileByUserIDThrowInternalServerError("GetByUserID", err)
+		return si.GetProfileByUserIDThrowInternalServerError(err)
 	}
 	if user == nil {
-		return si.GetProfileByUserIDThrowBadRequest("GetByUserID failed")
+		return si.GetProfileByUserIDThrowInternalServerError(nil)
 	}
 	// 画像を取得する
 	var image *entities.UserImage
@@ -134,10 +131,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		imageRepo := repositories.NewUserImageRepository()
 		image, err = imageRepo.GetByUserID(p.UserID)
 		if err != nil {
-			return si.GetUsersThrowInternalServerError("GetByUserID", err)
+			return si.GetUsersThrowInternalServerError(err)
 		}
 		if image == nil {
-			return si.GetUsersThrowBadRequest("GetByUserID failed")
+			return si.GetUsersThrowInternalServerError(nil)
 		}
 	}
 	user.ImageURI = image.Path
@@ -189,13 +186,13 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Params.Token)
 		if err != nil {
-			return si.PutProfileThrowInternalServerError("GetByToken", err)
+			return si.PutProfileThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.PutProfileThrowUnauthorized("GetByToken failed")
+			return si.PutProfileThrowUnauthorized()
 		}
 		if token.UserID != p.UserID {
-			return si.PutProfileThrowForbidden("Token does not match")
+			return si.PutProfileThrowForbidden()
 		}
 	}
 	// ユーザー情報を取得して更新を反映させる
@@ -203,24 +200,24 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	{
 		user, err = userRepo.GetByUserID(p.UserID)
 		if err != nil {
-			return si.PutProfileThrowInternalServerError("GetByUserID", err)
+			return si.PutProfileThrowInternalServerError(err)
 		}
 		if user == nil {
-			return si.PutProfileThrowBadRequest("GetByUserID failed")
+			return si.PutProfileThrowInternalServerError(nil)
 		}
 		ApplyParams(user, p.Params)
 	}
 	err = userRepo.Update(user)
 	if err != nil {
-		return si.PutProfileThrowInternalServerError("Update", err)
+		return si.PutProfileThrowInternalServerError(err)
 	}
 	// 更新後のユーザーを取得し直す (これをしないと, p.Params に nil があるときに整合しない)
 	user, err = userRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.PutProfileThrowInternalServerError("GetByUserID", err)
+		return si.PutProfileThrowInternalServerError(err)
 	}
 	if user == nil {
-		return si.PutProfileThrowBadRequest("GetByUserID failed")
+		return si.PutProfileThrowInternalServerError(nil)
 	}
 	// 画像を取得する
 	var image *entities.UserImage
@@ -228,10 +225,10 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		imageRepo := repositories.NewUserImageRepository()
 		image, err = imageRepo.GetByUserID(p.UserID)
 		if err != nil {
-			return si.PutProfileThrowInternalServerError("GetByUserID", err)
+			return si.PutProfileThrowInternalServerError(err)
 		}
 		if image == nil {
-			return si.PutProfileThrowBadRequest("GetByUserID failed")
+			return si.PutProfileThrowInternalServerError(nil)
 		}
 	}
 	user.ImageURI = image.Path

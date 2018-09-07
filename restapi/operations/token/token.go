@@ -14,10 +14,10 @@ func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 
 	token, err := tokenRepo.GetByUserID(p.UserID)
 	if err != nil {
-		return si.GetTokenByUserIDThrowInternalServerError("GetByUserID", err)
+		return si.GetTokenByUserIDThrowInternalServerError(err)
 	}
 	if token == nil {
-		return si.GetTokenByUserIDThrowNotFound("GetByUserID failed")
+		return si.GetTokenByUserIDThrowNotFound()
 	}
 
 	sEnt := token.Build()

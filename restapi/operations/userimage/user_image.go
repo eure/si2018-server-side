@@ -116,11 +116,11 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	var err error
 	// 画像のバリデーション
 	if len(p.Params.Image) > ImageSizeLimit {
-		return si.PostImageThrowBadRequest("Image is too large")
+		return si.PostImageThrowBadRequest("image is too large")
 	}
 	extension, err := getFileType(p.Params.Image)
 	if err != nil {
-		return si.PostImageThrowInternalServerError("getFileType", err)
+		return si.PostImageThrowInternalServerError(err)
 	}
 	imageRepo := repositories.NewUserImageRepository()
 	// トークン認証
@@ -129,17 +129,17 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		tokenRepo := repositories.NewUserTokenRepository()
 		token, err := tokenRepo.GetByToken(p.Params.Token)
 		if err != nil {
-			return si.PostImageThrowInternalServerError("GetByToken", err)
+			return si.PostImageThrowInternalServerError(err)
 		}
 		if token == nil {
-			return si.PostImageThrowUnauthorized("GetByToken failed")
+			return si.PostImageThrowUnauthorized()
 		}
 		id = token.UserID
 	}
 	// 既にある画像のタイムスタンプを使いまわしたい
 	image, err := imageRepo.GetByUserID(id)
 	if err != nil {
-		return si.PostImageThrowInternalServerError("GetByUserID", err)
+		return si.PostImageThrowInternalServerError(err)
 	}
 	var localFile, serverFile string
 	{
@@ -147,7 +147,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 		uri := os.Getenv("ASSETS_BASE_URI")
 		filename, err := getFreeFileName(path, extension)
 		if err != nil {
-			return si.PostImageThrowInternalServerError("getFreeFileName", err)
+			return si.PostImageThrowInternalServerError(err)
 		}
 		localFile = path + filename
 		serverFile = uri + filename
@@ -156,7 +156,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	{
 		file, err := os.Create(localFile)
 		if err != nil {
-			return si.PostImageThrowInternalServerError("Create", err)
+			return si.PostImageThrowInternalServerError(err)
 		}
 		fmt.Println("file:", localFile, ", size:", len(p.Params.Image))
 		// file.Close() でも error が吐かれる可能性がある
@@ -174,12 +174,12 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	if image == nil {
 		err = imageRepo.Create(ent)
 		if err != nil {
-			return si.PostImageThrowInternalServerError("Create", err)
+			return si.PostImageThrowInternalServerError(err)
 		}
 	} else {
 		err = imageRepo.Update(ent)
 		if err != nil {
-			return si.PostImageThrowInternalServerError("Update", err)
+			return si.PostImageThrowInternalServerError(err)
 		}
 	}
 	return si.NewPostImagesOK().WithPayload(

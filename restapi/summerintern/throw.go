@@ -1,18 +1,27 @@
 package summerintern
 
-func PostMessageThrowInternalServerError(fun string, err error) *PostMessageInternalServerError {
+const debugMode = false
+
+func debugMessage(err error) string {
+	if debugMode && err != nil {
+		return ": " + err.Error()
+	}
+	return ""
+}
+
+func PostMessageThrowInternalServerError(err error) *PostMessageInternalServerError {
 	return NewPostMessageInternalServerError().WithPayload(
 		&PostMessageInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func PostMessageThrowUnauthorized(mes string) *PostMessageUnauthorized {
+func PostMessageThrowUnauthorized() *PostMessageUnauthorized {
 	return NewPostMessageUnauthorized().WithPayload(
 		&PostMessageUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -24,19 +33,19 @@ func PostMessageThrowBadRequest(mes string) *PostMessageBadRequest {
 		})
 }
 
-func GetMessagesThrowInternalServerError(fun string, err error) *GetMessagesInternalServerError {
+func GetMessagesThrowInternalServerError(err error) *GetMessagesInternalServerError {
 	return NewGetMessagesInternalServerError().WithPayload(
 		&GetMessagesInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetMessagesThrowUnauthorized(mes string) *GetMessagesUnauthorized {
+func GetMessagesThrowUnauthorized() *GetMessagesUnauthorized {
 	return NewGetMessagesUnauthorized().WithPayload(
 		&GetMessagesUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -48,35 +57,35 @@ func GetMessagesThrowBadRequest(mes string) *GetMessagesBadRequest {
 		})
 }
 
-func GetTokenByUserIDThrowInternalServerError(fun string, err error) *GetTokenByUserIDInternalServerError {
+func GetTokenByUserIDThrowInternalServerError(err error) *GetTokenByUserIDInternalServerError {
 	return NewGetTokenByUserIDInternalServerError().WithPayload(
 		&GetTokenByUserIDInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetTokenByUserIDThrowNotFound(mes string) *GetTokenByUserIDNotFound {
+func GetTokenByUserIDThrowNotFound() *GetTokenByUserIDNotFound {
 	return NewGetTokenByUserIDNotFound().WithPayload(
 		&GetTokenByUserIDNotFoundBody{
 			Code:    "404",
-			Message: "User Token Not Found: " + mes,
+			Message: "User Token Not Found",
 		})
 }
 
-func GetUsersThrowInternalServerError(fun string, err error) *GetUsersInternalServerError {
+func GetUsersThrowInternalServerError(err error) *GetUsersInternalServerError {
 	return NewGetUsersInternalServerError().WithPayload(
 		&GetUsersInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetUsersThrowUnauthorized(mes string) *GetUsersUnauthorized {
+func GetUsersThrowUnauthorized() *GetUsersUnauthorized {
 	return NewGetUsersUnauthorized().WithPayload(
 		&GetUsersUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -88,19 +97,19 @@ func GetUsersThrowBadRequest(mes string) *GetUsersBadRequest {
 		})
 }
 
-func GetProfileByUserIDThrowInternalServerError(fun string, err error) *GetProfileByUserIDInternalServerError {
+func GetProfileByUserIDThrowInternalServerError(err error) *GetProfileByUserIDInternalServerError {
 	return NewGetProfileByUserIDInternalServerError().WithPayload(
 		&GetProfileByUserIDInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetProfileByUserIDThrowUnauthorized(mes string) *GetProfileByUserIDUnauthorized {
+func GetProfileByUserIDThrowUnauthorized() *GetProfileByUserIDUnauthorized {
 	return NewGetProfileByUserIDUnauthorized().WithPayload(
 		&GetProfileByUserIDUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -112,27 +121,27 @@ func GetProfileByUserIDThrowBadRequest(mes string) *GetProfileByUserIDBadRequest
 		})
 }
 
-func GetProfileByUserIDThrowNotFound(mes string) *GetProfileByUserIDNotFound {
+func GetProfileByUserIDThrowNotFound() *GetProfileByUserIDNotFound {
 	return NewGetProfileByUserIDNotFound().WithPayload(
 		&GetProfileByUserIDNotFoundBody{
 			Code:    "400",
-			Message: "Bad Request: " + mes,
+			Message: "User Not Found. (そのIDのユーザーは存在しません.)",
 		})
 }
 
-func PutProfileThrowInternalServerError(fun string, err error) *PutProfileInternalServerError {
+func PutProfileThrowInternalServerError(err error) *PutProfileInternalServerError {
 	return NewPutProfileInternalServerError().WithPayload(
 		&PutProfileInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func PutProfileThrowUnauthorized(mes string) *PutProfileUnauthorized {
+func PutProfileThrowUnauthorized() *PutProfileUnauthorized {
 	return NewPutProfileUnauthorized().WithPayload(
 		&PutProfileUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -144,27 +153,27 @@ func PutProfileThrowBadRequest(mes string) *PutProfileBadRequest {
 		})
 }
 
-func PutProfileThrowForbidden(mes string) *PutProfileForbidden {
+func PutProfileThrowForbidden() *PutProfileForbidden {
 	return NewPutProfileForbidden().WithPayload(
 		&PutProfileForbiddenBody{
 			Code:    "403",
-			Message: "Forbidden. (他の人のプロフィールは更新できません.): " + mes,
+			Message: "Forbidden. (他の人のプロフィールは更新できません.)",
 		})
 }
 
-func PostImageThrowInternalServerError(fun string, err error) *PostImagesInternalServerError {
+func PostImageThrowInternalServerError(err error) *PostImagesInternalServerError {
 	return NewPostImagesInternalServerError().WithPayload(
 		&PostImagesInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func PostImageThrowUnauthorized(mes string) *PostImagesUnauthorized {
+func PostImageThrowUnauthorized() *PostImagesUnauthorized {
 	return NewPostImagesUnauthorized().WithPayload(
 		&PostImagesUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -176,19 +185,19 @@ func PostImageThrowBadRequest(mes string) *PostImagesBadRequest {
 		})
 }
 
-func GetLikesThrowInternalServerError(fun string, err error) *GetLikesInternalServerError {
+func GetLikesThrowInternalServerError(err error) *GetLikesInternalServerError {
 	return NewGetLikesInternalServerError().WithPayload(
 		&GetLikesInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetLikesThrowUnauthorized(mes string) *GetLikesUnauthorized {
+func GetLikesThrowUnauthorized() *GetLikesUnauthorized {
 	return NewGetLikesUnauthorized().WithPayload(
 		&GetLikesUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -200,19 +209,19 @@ func GetLikesThrowBadRequest(mes string) *GetLikesBadRequest {
 		})
 }
 
-func PostLikeThrowInternalServerError(fun string, err error) *PostLikeInternalServerError {
+func PostLikeThrowInternalServerError(err error) *PostLikeInternalServerError {
 	return NewPostLikeInternalServerError().WithPayload(
 		&PostLikeInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func PostLikeThrowUnauthorized(mes string) *PostLikeUnauthorized {
+func PostLikeThrowUnauthorized() *PostLikeUnauthorized {
 	return NewPostLikeUnauthorized().WithPayload(
 		&PostLikeUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
@@ -224,19 +233,19 @@ func PostLikeThrowBadRequest(mes string) *PostLikeBadRequest {
 		})
 }
 
-func GetMatchesThrowInternalServerError(fun string, err error) *GetMatchesInternalServerError {
+func GetMatchesThrowInternalServerError(err error) *GetMatchesInternalServerError {
 	return NewGetMatchesInternalServerError().WithPayload(
 		&GetMatchesInternalServerErrorBody{
 			Code:    "500",
-			Message: "Internal Server Error: " + fun + " failed: " + err.Error(),
+			Message: "Internal Server Error" + debugMessage(err),
 		})
 }
 
-func GetMatchesThrowUnauthorized(mes string) *GetMatchesUnauthorized {
+func GetMatchesThrowUnauthorized() *GetMatchesUnauthorized {
 	return NewGetMatchesUnauthorized().WithPayload(
 		&GetMatchesUnauthorizedBody{
 			Code:    "401",
-			Message: "Unauthorized (トークン認証に失敗): " + mes,
+			Message: "Unauthorized (トークン認証に失敗)",
 		})
 }
 
