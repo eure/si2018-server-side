@@ -3,12 +3,14 @@ package entities
 import (
 	"github.com/eure/si2018-server-side/models"
 	"github.com/go-openapi/strfmt"
+	"time"
 )
 
 type LikeUserResponse struct {
 	User
 	LikedAt strfmt.DateTime
 }
+
 
 func (res LikeUserResponse) Build() models.LikeUserResponse {
 	return models.LikeUserResponse{
@@ -44,6 +46,8 @@ func (res LikeUserResponse) Build() models.LikeUserResponse {
 }
 
 func (res *LikeUserResponse) ApplyUser(u User) {
+
+
 	res.ID = u.ID
 	res.Gender = u.Gender
 	res.Birthday = u.Birthday
@@ -71,6 +75,7 @@ func (res *LikeUserResponse) ApplyUser(u User) {
 	res.Housework = u.Housework
 	res.CreatedAt = u.CreatedAt
 	res.UpdatedAt = u.UpdatedAt
+	res.LikedAt = strfmt.DateTime(time.Now())
 }
 
 type LikeUserResponses []LikeUserResponse

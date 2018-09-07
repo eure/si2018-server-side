@@ -10,6 +10,13 @@ type MatchUserResponse struct {
 	MatchedAt strfmt.DateTime
 }
 
+func (u User) MakeUserResopnse() LikeUserResponse {
+	return LikeUserResponse{
+		User: u,
+		LikedAt: u.CreatedAt,
+	}
+}
+
 func (res MatchUserResponse) Build() models.MatchUserResponse {
 	return models.MatchUserResponse{
 		MatchedAt:      res.MatchedAt,

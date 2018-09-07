@@ -3,6 +3,7 @@ package entities
 import (
 	"github.com/eure/si2018-server-side/models"
 	"github.com/go-openapi/strfmt"
+	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
 type User struct {
@@ -33,8 +34,34 @@ type User struct {
 	CreatedAt      strfmt.DateTime `xorm:"created_at"`
 	UpdatedAt      strfmt.DateTime `xorm:"updated_at"`
 
-	ImageURI string `xorm:"-"`
+	ImageURI string `xorm:"path"`
 }
+
+func (u *User) ApplyParams(params si.PutProfileBody) {
+	u.AnnualIncome = params.AnnualIncome
+	u.BodyBuild = params.BodyBuild
+	u.Child = params.Child
+	u.CostOfDate = params.CostOfDate
+	u.Drinking = params.Drinking
+	u.Education = params.Education
+	u.Height = params.Height
+	u.Holiday = params.Holiday
+	u.HomeState = params.HomeState
+	u.Housework = params.Housework
+	u.HowToMeet = params.HowToMeet
+	u.ImageURI = params.ImageURI
+	u.Introduction = params.Introduction
+	u.Job = params.Job
+	u.MaritalStatus = params.MaritalStatus
+	u.Nickname = params.Nickname
+	u.NthChild = params.NthChild
+	u.ResidenceState = params.ResidenceState
+	u.Smoking = params.Smoking
+	u.Tweet = params.Tweet
+	u.WantChild = params.WantChild
+	u.WhenMarry = params.WhenMarry
+}
+
 
 func (u User) Build() models.User {
 	return models.User{
@@ -76,6 +103,16 @@ func (u User) GetOppositeGender() string {
 }
 
 type Users []User
+
+// func (users *Users) MakeUserResponses() LikeUserResponses {
+// 	var userResponses *LikeUserResponses
+
+// 	for _, u := range *users {
+// 		userResponse := u.MakeUserResopnse()
+// 		userResponses = append(userResponses, &userResponse)
+// 	}
+// 	return userResponses
+// }
 
 func (users *Users) Build() []*models.User {
 	var sUsers []*models.User
