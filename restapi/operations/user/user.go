@@ -73,10 +73,30 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 			})
 	}
 
-	var tmp entities.Users
-	for _, userEnt := range findUsers{
-		tmp = append(tmp, userEnt)
+	var findUserIds []int64
+	for _, u := range findUsers {
+		findUserIds = append(findUserIds, u.ID)
 	}
+	imageR := repositories.NewUserImageRepository()
+	images, err := imageR.GetByUserIDs(findUserIds)
+	if err != nil {
+		return si.NewGetUsersInternalServerError().WithPayload(
+			&si.GetUsersInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	var tmp entities.Users
+	for _, u := range findUsers{
+		for _, i := range images {
+			if u.ID == i.UserID {
+				u.ImageURI = i.Path
+				tmp = append(tmp, u)
+			}
+		}
+	}
+
 	responseData := tmp.Build()
 	return si.NewGetUsersOK().WithPayload(responseData)
 }
