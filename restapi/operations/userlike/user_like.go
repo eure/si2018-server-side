@@ -213,6 +213,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
+	// 過去にいいねをしているかどうか、検索する
 	pastLike, err := userLikeR.GetLikeBySenderIDReceiverID(tokenEnt.UserID, p.UserID)
 
 	// 500エラー
