@@ -2,6 +2,8 @@ package userimage
 
 import (
 	"bytes"
+	"crypto/sha512"
+	"encoding/hex"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -35,8 +37,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	// Define save directory
 	writeimage := p.Params.Image
-
-	pathdir := "assets/" + usertokn.Token
+	convert := sha512.Sum512([]byte(usertokn.Token))
+	pathdir := "assets/" + hex.EncodeToString(convert[:])
 	checkext := bytes.NewReader(writeimage)
 	_, extension, err := image.DecodeConfig(checkext)
 	if err != nil {

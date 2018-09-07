@@ -1,8 +1,6 @@
 package userlike
 
 import (
-	"fmt"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -58,6 +56,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	userlikeHandler := repositories.NewUserLikeRepository()
 	usertokenHandler := repositories.NewUserTokenRepository()
 	userHandler := repositories.NewUserRepository()
+	usermatchHandler := repositories.NewUserMatchRepository()
 	// find myuser data
 	userID := p.UserID
 	postlikeParam := p.Params
@@ -78,25 +77,49 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if err != nil {
 		return PosLikesRespInternalErr()
 	}
-	if user.GetOppositeGender() == partner.GetOppositeGender() {
+	if user.Gender == partner.Gender {
 		return PostLiksRespBadReqestErr()
 	}
-	// duplicate like send
-	duplicatelike, err := userlikeHandler.GetLikeBySenderIDReceiverID(usertoken.UserID, userID)
-	if err != nil {
-		PostLiksRespBadReqestErr()
+
+	// Duplicate user
+	if user.ID == partner.ID {
+		return PostLiksRespBadReqestErr()
 	}
-	if duplicatelike == nil {
-		PostLiksRespBadReqestErr()
+
+	// duplicate like send
+	duplicatelike, err := userlikeHandler.GetLikeBySenderIDReceiverID(user.ID, partner.ID)
+	if err != nil {
+		return PostLiksRespBadReqestErr()
+	}
+	if duplicatelike != nil {
+		return PostLiksRespBadReqestErr()
 	}
 	var userlike entities.UserLike
-	BindUserLike(&userlike, userID, partner.ID)
+	BindUserLike(&userlike, user.ID, partner.ID)
 
+	// Create userlike
 	err = userlikeHandler.Create(userlike)
 	if err != nil {
 		PosLikesRespInternalErr()
 	}
-	fmt.Println(err)
+
+	// Is there both likes?
+	oppositelike, err := userlikeHandler.GetLikeBySenderIDReceiverID(partner.ID, user.ID)
+	if err != nil {
+		PosLikesRespInternalErr()
+	}
+
+	if oppositelike == nil {
+		PosLikesRespInternalErr()
+	}
+	usermatch := entities.UserMatch{
+		UserID:    user.ID,
+		PartnerID: partner.ID,
+	}
+	err = usermatchHandler.Create(usermatch)
+	if err != nil {
+		PosLikesRespInternalErr()
+	}
 	return PostLikeOK()
 }
 func BindUserLike(like *entities.UserLike, userid int64, partnerid int64) {

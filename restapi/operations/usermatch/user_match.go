@@ -1,8 +1,6 @@
 package usermatch
 
 import (
-	"fmt"
-
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -13,11 +11,15 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	usertokenHandler := repositories.NewUserTokenRepository()
 	usermatchHandler := repositories.NewUserMatchRepository()
 	userHandler := repositories.NewUserRepository()
-	user, err := usertokenHandler.GetByToken(p.Token)
+
+	token := p.Token
+	limit := int(p.Limit)
+	offset := int(p.Offset)
+	user, err := usertokenHandler.GetByToken(token)
 	if err != nil {
 		return GetMatchessRespUnauthErr()
 	}
-	ent, err := usermatchHandler.FindByUserIDWithLimitOffset(user.UserID, int(p.Limit), int(p.Offset))
+	ent, err := usermatchHandler.FindByUserIDWithLimitOffset(user.UserID, limit, offset)
 	if err != nil {
 		return GetMatchesRespInternalErr()
 	}
@@ -25,12 +27,15 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	for _, val := range ent {
 		userids = append(userids, val.PartnerID)
 	}
-	fmt.Println(userids)
 	ents, _ := userHandler.FindByIDs(userids)
 	var allmatches entities.MatchUserResponses
 	for _, val := range ents {
 		var tmp = entities.MatchUserResponse{}
-		tmp.ApplyUser(val)
+		if val.ID == user.UserID {
+			continue
+		} else {
+			tmp.ApplyUser(val)
+		}
 		allmatches = append(allmatches, tmp)
 	}
 	sEnt := allmatches.Build()
