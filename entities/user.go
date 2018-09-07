@@ -34,7 +34,7 @@ type User struct {
 	CreatedAt      strfmt.DateTime `xorm:"created_at"`
 	UpdatedAt      strfmt.DateTime `xorm:"updated_at"`
 
-	ImageURI string `xorm:"-"`
+	ImageURI string `xorm:"path"`
 }
 
 func (u *User) ApplyParams(params si.PutProfileBody) {

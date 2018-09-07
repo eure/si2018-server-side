@@ -15,6 +15,15 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	mr := repositories.NewUserMessageRepository()
 	mchr := repositories.NewUserMatchRepository()
 
+
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. message must need any value",
+			})
+	}
+
 	token, err := tr.GetByToken(p.Params.Token)
 	if err != nil {
 		return si.NewPostMessageInternalServerError().WithPayload(
@@ -106,7 +115,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
-	partnerIDs, err := matchr.FindAllByUserID(p.UserID)
+	partnerIDs, err := matchr.FindAllByUserID(token.UserID)
 	if err != nil {
 		return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{
@@ -125,7 +134,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 
 	var msgses entities.UserMessages
 	for _, pID := range partnerIDs {
-		messages, err := mr.GetMessages(p.UserID, pID, int(*p.Limit), p.Latest, p.Oldest)
+		messages, err := mr.GetMessages(token.UserID, pID, int(*p.Limit), p.Latest, p.Oldest)
 		if err != nil {
 			return si.NewGetMessagesInternalServerError().WithPayload(
 			&si.GetMessagesInternalServerErrorBody{

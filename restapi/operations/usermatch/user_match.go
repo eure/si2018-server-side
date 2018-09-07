@@ -14,15 +14,14 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	token, err := tr.GetByToken(p.Token)
 	if err != nil {
-		si.NewGetMatchesInternalServerError().WithPayload(
+		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
 				Code: "500",
 				Message: "ISE (in get token)",
 			})
 	}
-
 	if token == nil {
-		si.NewGetMatchesUnauthorized().WithPayload(
+		return si.NewGetMatchesUnauthorized().WithPayload(
 			&si.GetMatchesUnauthorizedBody{
 				Code: "401",
 				Message: "Unauthorized",
@@ -30,23 +29,26 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	user, err := ur.GetByUserID(token.UserID)
+	println(user.Child)
 	if err != nil {
-		si.NewGetMatchesInternalServerError().WithPayload(
+		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
 				Code: "500",
 				Message: "ISE (in get token)",
 			})
 	}
+
 	if user == nil {
-		si.NewGetMatchesBadRequest().WithPayload(
+		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
 				Code: "400",
 				Message: "Bad Request",
 			})
 	}
+	println("c")
 
 	if p.Limit < 0 {
-		si.NewGetMatchesBadRequest().WithPayload(
+		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
 				Code: "400",
 				Message: "limit must be Natural*",
@@ -54,12 +56,13 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	}
 
 	if p.Offset < 0 {
-		si.NewGetMatchesBadRequest().WithPayload(
+		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
 				Code: "400",
 				Message: "offset must be Natural*",
 			})
 	}
+	println("d")
 
 	var ents entities.UserMatches
 	ents, err = mr.FindByUserIDWithLimitOffset(user.ID, int(p.Limit), int(p.Offset))

@@ -12,6 +12,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	tr := repositories.NewUserTokenRepository()
 	ur := repositories.NewUserRepository()
 	lr := repositories.NewUserLikeRepository()
+	// uir := repositories.NewUserImageRepository()
 
 	token, err := tr.GetByToken(p.Token)
 	if err != nil {
@@ -46,6 +47,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 				Message: "User not found",
 			})
 	}
+
 
 	likes, err := lr.FindLikeAll(usr.ID)
 	if err != nil {
@@ -172,6 +174,16 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	ur := repositories.NewUserRepository()
 
 	token, err := tr.GetByToken(p.Params.Token)
+	println(p.Params.Token)
+
+	if p.Params.Token == "" {
+		return si.NewPutProfileBadRequest().WithPayload(
+			&si.PutProfileBadRequestBody{
+				Code: "400",
+				Message: "Bad Request (in get user)",
+			})
+	}
+
 	if err != nil {
 		return si.NewPutProfileInternalServerError().WithPayload(
 			&si.PutProfileInternalServerErrorBody{
@@ -179,7 +191,11 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 				Message: "Internal Server Error (in get token)",
 			})
 	}
-
+	println("start")
+	println(token)
+	println(token.UserID)
+	println(token.Token)
+	println("end")
 	if token == nil {
 		return si.NewPutProfileUnauthorized().WithPayload(
 			&si.PutProfileUnauthorizedBody{

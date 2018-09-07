@@ -186,15 +186,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "double like",
 			})
 	} else {
-		if usr.Gender == ptnr.Gender {
-			// 同性なのでerror
-			return si.NewPostLikeBadRequest().WithPayload(
-				&si.PostLikeBadRequestBody{
-					Code: "400",
-					Message: "same gener",
-				})
-		}
-		
+
+				
 		if usr.ID == ptnr.ID {
 			// 自分自身へのlikeなのでerror
 			return si.NewPostLikeBadRequest().WithPayload(
@@ -203,6 +196,16 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 					Message: "like yourself",
 				})
 		}
+		
+		if usr.Gender == ptnr.Gender {
+			// 同性なのでerror
+			return si.NewPostLikeBadRequest().WithPayload(
+				&si.PostLikeBadRequestBody{
+					Code: "400",
+					Message: "same geneder",
+				})
+		}
+
 
 		newLike := entities.NewUserLike(usr.ID, ptnr.ID)
 		err := ulr.Create(newLike)

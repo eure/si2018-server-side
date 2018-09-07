@@ -1,11 +1,11 @@
 package repositories
 
 import (
+	// "fmt"
 	"time"
 	
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
-
 )
 
 type UserRepository struct{}
@@ -36,7 +36,7 @@ func (r *UserRepository) Update(ent *entities.User) error {
 
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
-	has, err := engine.Get(&ent)
+	has, err := engine.Join("INNER", "user_image", "user_image.user_id = user.id").Get(&ent)
 	if err != nil {
 		return nil, err
 	}
@@ -78,18 +78,20 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	s.Limit(limit, offset)
 	s.Desc("id")
 
-	err := s.Find(&users)
+	err := s.Join("INNER", "user_image", "user_image.user_id = user.id").Find(&users)
 	if err != nil {
 		return users, err
 	}
-
+	// fmt.Println("xxx")
+	// fmt.Println(users[0])
+	// fmt.Println("xxx")
 	return users, nil
 }
 
 func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
-	err := engine.In("id", ids).Find(&users)
+	err := engine.Join("INNER", "user_image", "user_image.user_id = user.id").In("id", ids).Find(&users)
 	if err != nil {
 		return users, err
 	}
