@@ -6,7 +6,7 @@ import (
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/go-openapi/runtime/middleware"
-	"fmt"
+	"log"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
@@ -32,8 +32,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	// Get matching users
 	matches, err := rm.FindByUserIDWithLimitOffset(id, int(limit), int(offset))
 	if err != nil {
-		fmt.Print("Find matches err: ")
-		fmt.Println(err)
+		log.Print("Find matches err: ", err)
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
 				Code:    "500",
@@ -52,8 +51,7 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	users, err := ru.FindByIDs(ids)
 	if err != nil {
-		fmt.Print("Find users by ids err: ")
-		fmt.Println(err)
+		log.Print("Find users by ids err: ", err)
 		return si.NewGetMatchesInternalServerError().WithPayload(
 			&si.GetMatchesInternalServerErrorBody{
 				Code:    "500",

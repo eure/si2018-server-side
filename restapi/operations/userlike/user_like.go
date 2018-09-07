@@ -7,7 +7,7 @@ import (
 	"github.com/eure/si2018-server-side/restapi/operations/util"
 	"github.com/eure/si2018-server-side/repositories"
 	"github.com/eure/si2018-server-side/entities"
-	"fmt"
+	"log"
 	"time"
 	"github.com/go-openapi/strfmt"
 )
@@ -47,8 +47,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// Get users already matching
 	matches, err := rm.FindAllByUserID(id)
 	if err != nil {
-		fmt.Print("Find matches err: ")
-		fmt.Println(err)
+		log.Print("Find matches err: ", err)
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
@@ -59,8 +58,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// Get a list of UserLike the user got 
 	likes, err := rl.FindGotLikeWithLimitOffset(id, int(limit), int(offset), matches)
 	if err != nil {
-		fmt.Print("Find likes err: ")
-		fmt.Println(err)
+		log.Print("Find likes err: ", err)
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
@@ -76,8 +74,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 
 	users, err := ru.FindByIDs(ids)
 	if err != nil {
-		fmt.Print("Find users by ids err: ")
-		fmt.Println(err)
+		log.Print("Find users by ids err: ", err)
 		return si.NewGetLikesInternalServerError().WithPayload(
 			&si.GetLikesInternalServerErrorBody{
 				Code:    "500",
@@ -126,8 +123,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	// Same gender?
 	users, err := ru.FindByIDs([]int64{rid, sid})
 	if err != nil {
-		fmt.Print("FindByIDs err: ")
-		fmt.Println(err)
+		log.Print("FindByIDs err: ", err)
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
@@ -144,8 +140,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 
 	ul, err := rl.GetLikeBySenderIDReceiverID(sid, rid)
 	if err != nil {
-		fmt.Print("Get like by ids (first) err: ")
-		fmt.Println(err)
+		log.Print("Get like by ids (first) err: ", err)
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
 				Code:    "500",
@@ -155,8 +150,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	if ul == nil { 
 		ul, err := rl.GetLikeBySenderIDReceiverID(rid, sid)
 		if err != nil {
-			fmt.Print("Get like by ids (second) err: ")
-			fmt.Println(err)
+			log.Print("Get like by ids (second) err: ", err)
 			return si.NewPostLikeInternalServerError().WithPayload(
 				&si.PostLikeInternalServerErrorBody{
 					Code:    "500",
@@ -172,8 +166,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    l.UpdatedAt = strfmt.DateTime(time.Now())
 		    err := rl.Create(l)
 		    if err != nil {
-		    	fmt.Print("Create first like err: ")
-				fmt.Println(err)
+		    	log.Print("Create first like err: ", err)
 				return si.NewPostLikeInternalServerError().WithPayload(
 					&si.PostLikeInternalServerErrorBody{
 						Code:    "500",
@@ -188,8 +181,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    l.UpdatedAt = strfmt.DateTime(time.Now())
 		    err := rl.Create(l)
 		    if err != nil {
-		    	fmt.Print("Create matching like err: ")
-				fmt.Println(err)
+		    	log.Print("Create matching like err: ", err)
 				return si.NewPostLikeInternalServerError().WithPayload(
 					&si.PostLikeInternalServerErrorBody{
 						Code:    "500",
@@ -206,8 +198,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		    rm := repositories.NewUserMatchRepository()
 		    err = rm.Create(m)
 		    if err != nil {
-				fmt.Print("Create match err: ")
-				fmt.Println(err)
+				log.Print("Create match err: ", err)
 				return si.NewPostLikeInternalServerError().WithPayload(
 					&si.PostLikeInternalServerErrorBody{
 						Code:    "500",

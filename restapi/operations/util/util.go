@@ -2,7 +2,7 @@ package util
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"github.com/eure/si2018-server-side/repositories"
 )
 
@@ -35,8 +35,7 @@ func userExists(token string) bool {
 	r := repositories.NewUserTokenRepository()
 	ut, err := r.GetByToken(token)
 	if err != nil {
-		fmt.Println("Get id by token err:")
-		fmt.Println(err)
+		log.Print("Get id by token err:", err)
 		return false
 	}
 

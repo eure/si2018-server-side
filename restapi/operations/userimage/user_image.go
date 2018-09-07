@@ -12,7 +12,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	strfmt "github.com/go-openapi/strfmt"
 	"os"
-	"fmt"
+	"log"
 	//"strconv"
 	"encoding/hex"
 	"strings"
@@ -68,8 +68,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	f, err := os.Create(filepath.Join(ap, filename)) // Permission 0666
 	if err != nil {
-		fmt.Println("File create failed")
-		fmt.Println(err)
+		log.Print("File create failed")
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
@@ -80,8 +79,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	_, err = f.Write(img)
 	if err != nil {
-		fmt.Println("File write failed")
-		fmt.Println(err)
+		log.Print("File write failed")
 		return si.NewPostImagesInternalServerError().WithPayload(
 			&si.PostImagesInternalServerErrorBody{
 				Code:    "500",
@@ -97,7 +95,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	r := repositories.NewUserImageRepository()
 
 	old, _ := r.GetByUserID(id) /* TODO check existance? */
-	fmt.Println(old)
+	log.Print(old)
 
 	err = r.Update(ui) 
 	if err != nil {
@@ -109,7 +107,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	new, _ := r.GetByUserID(id)
-	fmt.Println(new)
+	log.Print(new)
 
 	return si.NewPostImagesOK().WithPayload(
 		&si.PostImagesOKBody{
