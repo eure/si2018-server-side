@@ -182,8 +182,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// 同じ人への２回いいねのエラーハンドリング
-	// FindILikedAllで自分がいいねした人のIDを返す
-	alreadyLikedIDs, err := repUserLike.FindILikedAll(loginUser.ID)
+	// 自分がいいねした人のIDを返す
+	alreadyLiked, err :=  repUserLike.GetLikeBySenderIDReceiverID(loginUser.ID, likeUser.ID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -191,14 +191,12 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	for _, alreadyLikedID := range alreadyLikedIDs {
-		if likeUser.ID == alreadyLikedID {
-			return si.NewPostLikeBadRequest().WithPayload(
-				&si.PostLikeBadRequestBody{
-					Code:    "400",
-					Message: "Bad Request",
-				})
-		}
+	if alreadyLiked != nil {
+		return si.NewPostLikeBadRequest().WithPayload(
+			&si.PostLikeBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
+			})
 	}
 
 	// UserLikeの作成
@@ -219,7 +217,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// いいねした人が自分をいいねしているか確認
-	match, err :=  repUserLike.GetLikeBySenderIDReceiverID(likeUser.ID, loginUser.ID)
+	willMatch, err :=  repUserLike.GetLikeBySenderIDReceiverID(likeUser.ID, loginUser.ID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -229,7 +227,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	// いいねした人が自分をいいねしていた場合マッチングさせる
-	if match != nil {
+	if willMatch != nil {
 		var userMatch entities.UserMatch
 		userMatch.UserID = userLike.PartnerID
 		userMatch.PartnerID = userLike.UserID
@@ -243,7 +241,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 					Code:    "500",
 					Message: "Internal Server Error",
 				})
-
 		}
 	}
 
