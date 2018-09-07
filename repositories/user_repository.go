@@ -37,7 +37,8 @@ func (r *UserRepository) Update(ent *entities.User) error {
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
 
-	has, err := engine.Get(&ent)
+	has, err := engine.Table("user").Select("user.* , path").Join("INNER", "user_image", "user.id = user_image.user_id").Get(&ent)
+	// has, err := engine.Get(&ent)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	s.Limit(limit, offset)
 	s.Desc("id")
 
-	err := s.Find(&users)
+	err := s.Table("user").Select("user.* , path").Join("INNER", "user_image", "user.id = user_image.user_id").Find(&users)
 	if err != nil {
 		return users, err
 	}
@@ -73,7 +74,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
-	err := engine.In("id", ids).Find(&users)
+	err := engine.Table("user").Select("user.* , path").Join("INNER", "user_image", "user.id = user_image.user_id").In("id", ids).Find(&users)
 	if err != nil {
 		return users, err
 	}

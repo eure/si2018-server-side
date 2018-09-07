@@ -8,9 +8,12 @@ import (
 )
 
 func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
-	r := repositories.NewUserTokenRepository()
+	u := repositories.NewUserTokenRepository()
 
-	ent, err := r.GetByUserID(p.UserID)
+	// paramsの変数を定義
+	paramsUserID := p.UserID
+
+	userToken, err := u.GetByUserID(paramsUserID)
 
 	if err != nil {
 		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
@@ -19,7 +22,7 @@ func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	if ent == nil {
+	if userToken == nil {
 		return si.NewGetTokenByUserIDNotFound().WithPayload(
 			&si.GetTokenByUserIDNotFoundBody{
 				Code:    "404",
@@ -27,8 +30,6 @@ func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 			})
 	}
 
-	sEnt := ent.Build()
+	sEnt := userToken.Build()
 	return si.NewGetTokenByUserIDOK().WithPayload(&sEnt)
 }
-
-
