@@ -12,20 +12,19 @@ import (
 
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	/*
-	1.	tokenのバリデーション
-	2.	tokenから使用者のuseridを取得
-	3.	メッセージ送り先のuseridがマッチング済みの相手かどうかを確認する
-	4.	メッセージを送信する
-	// userIDは送信者, partnerIDは受信者
+		1.	tokenのバリデーション
+		2.	tokenから使用者のuseridを取得
+		3.	メッセージ送り先のuseridがマッチング済みの相手かどうかを確認する
+		4.	メッセージを送信する
+		// userIDは送信元, partnerIDは送信先
 	*/
-
 
 	// Tokenがあるかどうか
 	if p.Params.Token == "" {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -45,12 +44,13 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		return si.NewPostMessageUnauthorized().WithPayload(
 			&si.PostMessageUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
 	sEntToken := entToken.Build()
 
+	// userIDがマッチしているIDを見つける
 	rMatch := repositories.NewUserMatchRepository()
 	ids, err := rMatch.FindAllByUserID(sEntToken.UserID)
 
@@ -78,7 +78,15 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		message.Message = p.Params.Message
 		message.CreatedAt = strfmt.DateTime(time.Now())
 		message.UpdatedAt = message.CreatedAt
-		rMessage.Create(message)
+		errorCreate := rMessage.Create(message)
+
+		if errorCreate != nil {
+			return si.NewPostMessageInternalServerError().WithPayload(
+				&si.PostMessageInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
 
 		return si.NewPostMessageOK().WithPayload(
 			&si.PostMessageOKBody{
@@ -98,10 +106,9 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	/*
-	1. 	Tokenのバリデーション
-	2.	Tokenから使用者のuserIDを取得
-	3.	メッセージ送り先のuseridを取得する
-	badrequestの必要がない？
+		1. 	Tokenのバリデーション
+		2.	Tokenから使用者のuserIDを取得
+		3.	メッセージ送り先のuseridがマッチング済みの相手かどうかを確認する
 	*/
 
 	// Tokenがあるかどうか
@@ -109,7 +116,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
 				Code:    "401",
-				Message: "No Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
@@ -129,20 +136,66 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 		return si.NewGetMessagesUnauthorized().WithPayload(
 			&si.GetMessagesUnauthorizedBody{
 				Code:    "401",
-				Message: "Unauthorized Token",
+				Message: "Token Is Invalid",
 			})
 	}
 
 	sEntToken := entToken.Build()
 
-	rMessage := repositories.NewUserMessageRepository()
+	// userIDがマッチしているIDを見つける
+	rMatch := repositories.NewUserMatchRepository()
+	ids, err := rMatch.FindAllByUserID(sEntToken.UserID)
 
-	limit := int(*(p.Limit))
-	latest := time.Time(*(p.Latest))
-	oldest := time.Time(*(p.Oldest))
-	now := time.Now()
-	// oldest latest now ->（時系列）の順になっていないとおかしい
-	if limit < 0 || !(oldest.Before(latest) && latest.Before(now)) {
+	if err != nil {
+		return si.NewGetMessagesInternalServerError().WithPayload(
+			&si.GetMessagesInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	fmt.Println(ids)
+	fmt.Println(p.UserID)
+	var id_contains bool
+	for _, id := range ids {
+		if id == p.UserID {
+			id_contains = true
+			break
+		}
+	}
+
+	if id_contains {
+
+		rMessage := repositories.NewUserMessageRepository()
+
+		limit := int(*(p.Limit))
+		/*
+			latest := time.Time(*(p.Latest))
+			oldest := time.Time(*(p.Oldest))
+			now := time.Now()
+			// oldest latest now ->（時系列）の順になっていないとおかしい
+			if limit < 0 || !(oldest.Before(latest) && latest.Before(now)) {
+				return si.NewGetMessagesBadRequest().WithPayload(
+					&si.GetMessagesBadRequestBody{
+						Code:    "400",
+						Message: "Bad Request",
+					})
+			}*/
+		// latestとoldestの役割が逆じゃない？
+		entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, limit, p.Latest, p.Oldest)
+
+		if errMessage != nil {
+			return si.NewGetMessagesInternalServerError().WithPayload(
+				&si.GetMessagesInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+		}
+		userMessages := entities.UserMessages(entMessage)
+
+		sMsgs := userMessages.Build()
+
+		return si.NewGetMessagesOK().WithPayload(sMsgs)
+	} else {
 		return si.NewGetMessagesBadRequest().WithPayload(
 			&si.GetMessagesBadRequestBody{
 				Code:    "400",
@@ -150,20 +203,4 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 			})
 	}
 
-	entMessage, errMessage := rMessage.GetMessages(sEntToken.UserID, p.UserID, limit, p.Latest, p.Oldest)
-
-	if errMessage != nil {
-		return si.NewGetMessagesInternalServerError().WithPayload(
-			&si.GetMessagesInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-
-	}
-
-	userMessages := entities.UserMessages(entMessage)
-
-	sMsgs := userMessages.Build()
-
-	return si.NewGetMessagesOK().WithPayload(sMsgs)
 }
