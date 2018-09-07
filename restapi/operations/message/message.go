@@ -59,14 +59,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			})
 	}
 
-	// if matchIDs == nil {
-	// 	return si.NewPostMessageBadRequest().WithPayload(
-	// 		&si.PostMessageBadRequestBody{
-	// 			Code: "400",
-	// 			Message: "Bad Request",
-	// 		})
-	// } 
-
 	if !common.Contains(matchIDs, p.UserID) {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{

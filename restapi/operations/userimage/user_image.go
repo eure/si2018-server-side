@@ -68,6 +68,7 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	var extension string
 	if format == "png" || format == "jpeg" || format == "gif" {
 		extension = "." + format
+
 	} else {
 		return si.NewPostImagesBadRequest().WithPayload(
 			&si.PostImagesBadRequestBody{

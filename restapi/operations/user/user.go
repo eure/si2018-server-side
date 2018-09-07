@@ -60,7 +60,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code: "400",
-				Message: "Bad Request",
+				Message: "Bad Request. limit must be natural number+",
 			})
 	}
 
@@ -68,7 +68,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return si.NewGetUsersBadRequest().WithPayload(
 			&si.GetUsersBadRequestBody{
 				Code: "400",
-				Message: "Bad Request",
+				Message: "Bad Request. offset must be natural number*",
 			})
 	}
 
@@ -148,16 +148,16 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return si.NewGetProfileByUserIDBadRequest().WithPayload(
 			&si.GetProfileByUserIDBadRequestBody{
 				Code: "400",
-				Message: "Bad Request",
+				Message: "Bad Request.",
 			})
 	}
 
-
-	if user.Gender == oppositeUser.Gender {
+	
+	if user.Gender == oppositeUser.Gender && oppositeUser.ID != user.ID {
 		return si.NewGetProfileByUserIDBadRequest().WithPayload(
 			&si.GetProfileByUserIDBadRequestBody{
 				Code: "400",
-				Message: "Bad Request",
+				Message: "Bad Request. same gender",
 			})
 	}
 
