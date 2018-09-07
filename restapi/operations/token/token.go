@@ -1,7 +1,7 @@
 package token
 
 import (
-	middleware "github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"

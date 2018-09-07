@@ -60,7 +60,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 		s.NotIn("id", ids)
 	}
 	s.Limit(limit, offset)
-	s.Desc("id")
+	s.Desc("created_at")
 
 	err := s.Find(&users)
 	if err != nil {
