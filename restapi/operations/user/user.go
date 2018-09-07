@@ -66,9 +66,10 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// ログインユーザーがいいねしていない人&ログインユーザーをいいねしていない人を取得
 	user, err := repUser.FindWithCondition(int(p.Limit), int(p.Offset), oppositeGender, exceptIds)
 	if err != nil {
+		println(err.Error())
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
-				Code:    "500",
+				Code:    "5001",
 				Message: "Internal Server Error",
 			})
 	}
@@ -104,6 +105,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
+
 	loginUser, err := repUser.GetByUserID(loginUserToken.UserID)
 	if err != nil {
 		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
