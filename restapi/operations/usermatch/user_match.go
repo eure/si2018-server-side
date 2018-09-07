@@ -6,16 +6,15 @@ import (
 	"github.com/eure/si2018-server-side/repositories"
 
 	"github.com/eure/si2018-server-side/entities"
-	"strings"
 )
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
-	// Tokenの形式がおかしい -> 401
-	if !(strings.HasPrefix(p.Token, "USERTOKEN"))  {
-		return si.NewGetMatchesUnauthorized().WithPayload(
-			&si.GetMatchesUnauthorizedBody{
-				Code   : "401",
-				Message: "Token Is Invalid",
+	// LIMIT OFFSET Check -> 400
+	if p.Limit <= 0 || p.Offset < 0 {
+		return si.NewGetMatchesBadRequest().WithPayload(
+			&si.GetMatchesBadRequestBody{
+				Code   : "400",
+				Message: "Bad Request",
 			})
 	}
 	// Tokenのユーザが存在しない -> 401
@@ -49,11 +48,16 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	// マッチしているuserIdsからPartnerユーザ情報の取得
+	// マッチしているユーザIDを作成
 	var matchIds []int64
 	for _, u := range matchEntList {
-		matchIds = append(matchIds, u.PartnerID)
+		if u.PartnerID != tokenEnt.UserID {
+			matchIds = append(matchIds, u.PartnerID)
+		}else if u.UserID != tokenEnt.UserID {
+			matchIds = append(matchIds, u.UserID)
+		}
 	}
+	// マッチしているユーザIDからPartnerユーザ情報の取得
 	userR            := repositories.NewUserRepository()
 	userEntList, err := userR.FindByIDs(matchIds)
 	if err != nil {
@@ -64,14 +68,26 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
-	// TODO: 修正の余地あり?
+	// create順に修正
+	// TODO: もう少しシンプルにしたい
 	var array entities.MatchUserResponses
-	for _, u := range userEntList {
-		var tmp entities.MatchUserResponse
-		tmp.ApplyUser(u)
-		array = append(array, tmp)
+	for _, m := range matchEntList {
+		for _, u := range userEntList {
+			if m.PartnerID != tokenEnt.UserID{
+				if m.PartnerID == u.ID {
+					var tmp entities.MatchUserResponse
+					tmp.ApplyUser(u)
+					array = append(array, tmp)
+				}
+			}else if m.UserID != tokenEnt.UserID{
+				if m.UserID == u.ID {
+					var tmp entities.MatchUserResponse
+					tmp.ApplyUser(u)
+					array = append(array, tmp)
+				}
+			}
+		}
 	}
-
 	responseData := array.Build()
 	return si.NewGetMatchesOK().WithPayload(responseData)
 }
