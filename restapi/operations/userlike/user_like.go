@@ -109,7 +109,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	return si.NewGetLikesOK().WithPayload(likeUserResesModel)
 }
 
-
 //- POST {hostname}/api/1.0/likes/{userID}
 //- 相手にいいね！を送信してください
 //- TokenのValidation処理を実装してください
@@ -149,7 +148,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-
 	// tokenからユーザーIDを取得し、そのIDのユーザーを取得
 	loginUserToken, _ := repUserToken.GetByToken(p.Params.Token)
 	loginUser, err := repUser.GetByUserID(loginUserToken.UserID)
@@ -174,7 +172,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.NewPostLikeBadRequest()
 	}
 
-	// 同性時のエラーハンドリング
+	// 同性のエラーハンドリング
 	if loginUser.Gender == likeUser.Gender {
 		return si.NewPostLikeBadRequest().WithPayload(
 			&si.PostLikeBadRequestBody{
@@ -210,6 +208,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	userLike.CreatedAt = strfmt.DateTime(time.Now())
 	userLike.UpdatedAt = userLike.CreatedAt
 
+	// likeの更新
 	err = repUserLike.Create(userLike)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
@@ -219,8 +218,8 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-	// いいねした人がいいねした人のIDを全取得
-	likedIDs, err := repUserLike.FindILikedAll(likeUser.ID)
+	// いいねした人が自分をいいねしているか確認
+	match, err :=  repUserLike.GetLikeBySenderIDReceiverID(likeUser.ID, loginUser.ID)
 	if err != nil {
 		return si.NewPostLikeInternalServerError().WithPayload(
 			&si.PostLikeInternalServerErrorBody{
@@ -229,23 +228,22 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 			})
 	}
 
-	// いいねした人が自分をいいねしているか確認し、いいねしていた場合マッチングさせる
-	for _, likedID := range likedIDs {
-		if loginUser.ID == likedID {
-			var userMatch entities.UserMatch
-			userMatch.UserID = userLike.PartnerID
-			userMatch.PartnerID = userLike.UserID
-			userMatch.CreatedAt = userLike.CreatedAt
-			userMatch.UpdatedAt = userLike.UpdatedAt
+	// いいねした人が自分をいいねしていた場合マッチングさせる
+	if match != nil {
+		var userMatch entities.UserMatch
+		userMatch.UserID = userLike.PartnerID
+		userMatch.PartnerID = userLike.UserID
+		userMatch.CreatedAt = userLike.CreatedAt
+		userMatch.UpdatedAt = userLike.UpdatedAt
 
-			err := repUserMatch.Create(userMatch)
-			if err != nil {
-				return si.NewPostLikeInternalServerError().WithPayload(
-					&si.PostLikeInternalServerErrorBody{
-						Code:    "500",
-						Message: "Internal Server Error",
-					})
-			}
+		err := repUserMatch.Create(userMatch)
+		if err != nil {
+			return si.NewPostLikeInternalServerError().WithPayload(
+				&si.PostLikeInternalServerErrorBody{
+					Code:    "500",
+					Message: "Internal Server Error",
+				})
+
 		}
 	}
 

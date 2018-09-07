@@ -8,6 +8,7 @@ func NewUserLikeRepository() UserLikeRepository {
 	return UserLikeRepository{}
 }
 
+// いいねの投稿　ここと
 func (r *UserLikeRepository) Create(ent entities.UserLike) error {
 	s := engine.NewSession()
 	if _, err := s.Insert(&ent); err != nil {
