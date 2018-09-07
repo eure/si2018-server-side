@@ -64,7 +64,7 @@ func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids
 	}
 	s.Limit(limit, offset)
 
-	s.Join("INNER", "user_image", "user_image.user_id = user.id")
+	s.Join("INNER", "user_image", "user_image.user_id = user.id").Desc("user.created_at")
 	err := s.Find(&users)
 	if err != nil {
 		return users, err
