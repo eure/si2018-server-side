@@ -20,8 +20,18 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return outPutGetStatus(500)
 	}
 	if loginUserToken == nil {
+		return outPutGetStatus(401)
+	}
+	
+	// limit が20かどうか検出
+	if p.Limit != int64(20) {
 		return outPutGetStatus(400)
 	}
+	// offset が0以上かどうか検出
+	if p.Offset >= int64(0) {
+		return outPutGetStatus(400)
+	}
+	
 	loginUser, err := u.GetByUserID(loginUserToken.UserID)
 	if err != nil {
 		return outPutGetStatus(500)
@@ -31,8 +41,8 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 	
 	// すでにいいね！しているユーザーのUserID int64を集める
-	likedUserIDs, err := l.FindLikeAll(loginUserToken.UserID)
-	
+	likedUserIDs, err := l.FindLikePart(loginUserToken.UserID)
+
 	if err != nil {
 		return outPutGetStatus(500)
 	}
@@ -70,19 +80,29 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 			})
 	}
 	if loginUser == nil {
+		return si.NewGetProfileByUserIDUnauthorized().WithPayload(
+			&si.GetProfileByUserIDUnauthorizedBody{
+				Code:    "401",
+				Message: "Unauthorized (トークン認証に失敗)",
+			})
+	}
+	
+	// Paramsから Profileを取得したいユーザーのIDを取得
+	profileUserID := p.UserID
+	ent, err := r.GetByUserID(profileUserID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+	if ent == nil {
 		return si.NewGetProfileByUserIDNotFound().WithPayload(
 			&si.GetProfileByUserIDNotFoundBody{
 				Code:    "404",
 				Message: "User Not Found",
 			})
-	}
-	
-	ent, err := r.GetByUserID(loginUser.UserID)
-	if err != nil {
-		return outPutGetStatus(500)
-	}
-	if ent == nil {
-		return outPutGetStatus(401)
 	}
 
 	sEnt := ent.Build()
@@ -124,7 +144,7 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	if err != nil {
 		return outPutPutStatus(500)
 	}
-	if ent != nil {
+	if ent == nil {
 		return outPutPutStatus(400)
 	}
 	sEnt := ent.Build()
