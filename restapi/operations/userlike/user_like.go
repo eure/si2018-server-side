@@ -73,10 +73,31 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 				Message : "Internal Server Error",
 			})
 	}
+
+	imageR := repositories.NewUserImageRepository()
+	imageEnt, err := imageR.GetByUserIDs(likedIds)
+	if err != nil {
+		return si.NewGetLikesInternalServerError().WithPayload(
+			&si.GetLikesInternalServerErrorBody{
+				Code    : "500",
+				Message : "Internal Server Error",
+			})
+	}
+
+	var userLists entities.Users
+	for _, u := range userEntList {
+		for _, i := range imageEnt {
+			if u.ID == i.UserID{
+				u.ImageURI = i.Path
+				userLists = append(userLists, u)
+			}
+		}
+	}
+
 	// likeしてくれているユーザ情報をlikeのcreated順に作成する
 	var array entities.LikeUserResponses
 	for _, l := range likeEntList {
-		for _, u := range userEntList {
+		for _, u := range userLists {
 			if l.UserID == u.ID {
 				var tmp entities.LikeUserResponse
 				tmp.ApplyUser(u)
@@ -84,6 +105,9 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 			}
 		}
 	}
+
+
+
 	responseData := array.Build()
 	return si.NewGetLikesOK().WithPayload(responseData)
 }
