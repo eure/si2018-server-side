@@ -124,7 +124,7 @@ func GetProfileByUserIDThrowBadRequest(mes string) *GetProfileByUserIDBadRequest
 func GetProfileByUserIDThrowNotFound() *GetProfileByUserIDNotFound {
 	return NewGetProfileByUserIDNotFound().WithPayload(
 		&GetProfileByUserIDNotFoundBody{
-			Code:    "400",
+			Code:    "404",
 			Message: "User Not Found. (そのIDのユーザーは存在しません.)",
 		})
 }
