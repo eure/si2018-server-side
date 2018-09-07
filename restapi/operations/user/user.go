@@ -176,7 +176,6 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	newUserEnt := entities.User{
 		ID:             p.UserID,
 		Nickname:       p.Params.Nickname,
-		ImageURI:       p.Params.ImageURI,
 		Tweet:          p.Params.Tweet,
 		Introduction:   p.Params.Introduction,
 		ResidenceState: p.Params.ResidenceState,
