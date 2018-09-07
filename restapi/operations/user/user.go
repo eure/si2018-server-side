@@ -153,6 +153,17 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 				Message: "Bad Request",
 			})
 	}
+	// Response直前にimageUriを追加する
+	imageR := repositories.NewUserImageRepository()
+	i, err := imageR.GetByUserID(findUserEnt.ID)
+	if err != nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code   : "500",
+				Message: "Internal Server Error",
+			})
+	}
+	findUserEnt.ImageURI = i.Path
 
 	responseData := findUserEnt.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&responseData)
