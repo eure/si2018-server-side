@@ -108,15 +108,15 @@ const ImageSizeLimit = 10590617
 // 計算量: O(1)
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return si.PostImageThrowBadRequest("missing token")
+		return si.PostImageThrowBadRequest("トークンが与えられていません")
 	}
 	if p.Params.Image == nil {
-		return si.PostImageThrowBadRequest("broken image")
+		return si.PostImageThrowBadRequest("画像が与えられていません")
 	}
 	var err error
 	// 画像のバリデーション
 	if len(p.Params.Image) > ImageSizeLimit {
-		return si.PostImageThrowBadRequest("image is too large")
+		return si.PostImageThrowBadRequest("画像ファイルが大きすぎます")
 	}
 	extension, err := getFileType(p.Params.Image)
 	if err != nil {

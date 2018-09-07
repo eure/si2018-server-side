@@ -99,7 +99,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 // 計算量: O(1)
 func PostLike(p si.PostLikeParams) middleware.Responder {
 	if p.Params.Token == "" {
-		return si.PostLikeThrowBadRequest("missing token")
+		return si.PostLikeThrowBadRequest("トークンが与えられていません")
 	}
 	userRepo := repositories.NewUserRepository()
 	likeRepo := repositories.NewUserLikeRepository()
@@ -137,7 +137,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.PostLikeThrowInternalServerError(nil)
 	}
 	if partner.Gender != oppositeGender {
-		return si.PostLikeThrowBadRequest("genders must be opposite")
+		return si.PostLikeThrowBadRequest("同性にはいいねを送れません")
 	}
 	// いいねが重複していないかの確認
 	like, err := likeRepo.GetLikeBySenderIDReceiverID(id, partner.ID)
@@ -145,7 +145,7 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 		return si.PostLikeThrowInternalServerError(err)
 	}
 	if like != nil {
-		return si.PostLikeThrowBadRequest("like action duplicates")
+		return si.PostLikeThrowBadRequest("いいねが重複しています")
 	}
 	// 相手からいいねが来ていたかの確認
 	reverse, err := likeRepo.GetLikeBySenderIDReceiverID(partner.ID, id)
