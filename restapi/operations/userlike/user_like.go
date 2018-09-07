@@ -31,7 +31,7 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return outPutGetStatus(400)
 	}
 	// offset が0以上かどうか検出
-	if p.Offset >= int64(0) {
+	if p.Offset < int64(0) {
 		return outPutGetStatus(400)
 	}
 	
