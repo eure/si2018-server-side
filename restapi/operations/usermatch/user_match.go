@@ -7,7 +7,19 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"sort"
+	"time"
 )
+
+type UserResponses []*models.MatchUserResponse
+
+func (a UserResponses) Len() int      { return len(a) }
+func (a UserResponses) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a UserResponses) Less(i, j int) bool {
+	ai := time.Time(a[i].MatchedAt)
+	aj := time.Time(a[j].MatchedAt)
+	return !ai.Before(aj)
+}
 
 func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	/*
@@ -54,8 +66,8 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 	if limit <= 0 || offset < 0 {
 		return si.NewGetMatchesBadRequest().WithPayload(
 			&si.GetMatchesBadRequestBody{
-				"400",
-				"Bad Request",
+				Code:    "400",
+				Message: "Bad Request",
 			})
 	}
 	entMatch, errMatch := rMatch.FindByUserIDWithLimitOffset(sEntToken.UserID, limit, offset)
@@ -72,19 +84,20 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 
 	rUser := repositories.NewUserRepository()
 
+	var IDs []int64
 	partnerMatchedAt := map[int64]strfmt.DateTime{}
-
+	// id -- 時間の対応mapとpartneridのリストの作成
 	for _, sMatch := range sMatches {
 		partnerMatchedAt[sMatch.PartnerID] = sMatch.CreatedAt
-	}
-
-	// 上で取得した全てのpartnerIDについて、プロフィール情報を取得してpayloadsに格納する。
-
-	var IDs []int64
-	for _, sMatch := range sMatches {
 		IDs = append(IDs, sMatch.PartnerID)
 	}
 
+	if IDs == nil {
+		var payloads []*models.MatchUserResponse
+		return si.NewGetMatchesOK().WithPayload(payloads)
+	}
+
+	// 上で取得した全てのpartnerIDについて、プロフィール情報と画像URIを取得してpayloadsに格納する。
 	partners, errFind := rUser.FindByIDs(IDs)
 
 	if errFind != nil {
@@ -95,14 +108,34 @@ func GetMatches(p si.GetMatchesParams) middleware.Responder {
 			})
 	}
 
+	// 画像URI取得
+	rImage := repositories.NewUserImageRepository()
+	entImages, errImages := rImage.GetByUserIDs(IDs)
+	if errImages != nil || entImages == nil {
+		return si.NewGetProfileByUserIDInternalServerError().WithPayload(
+			&si.GetProfileByUserIDInternalServerErrorBody{
+				Code:    "500",
+				Message: "Internal Server Error",
+			})
+	}
+
+	// id -- pathの対応リストを作成
+	idPaths := map[int64]string{}
+	for _, entImage := range entImages {
+		idPaths[entImage.UserID] = entImage.Path
+	}
+
 	var payloads []*models.MatchUserResponse
 	for _, partner := range partners {
 		var r entities.MatchUserResponse
 		r.ApplyUser(partner)
 		r.MatchedAt = partnerMatchedAt[partner.ID]
+		r.ImageURI = idPaths[partner.ID]
 		m := r.Build()
 		payloads = append(payloads, &m)
 	}
+
+	sort.Sort(UserResponses(payloads))
 
 	return si.NewGetMatchesOK().WithPayload(payloads)
 }

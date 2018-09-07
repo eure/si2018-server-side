@@ -112,7 +112,10 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		partnerLikedAt[sUser.UserID] = sUser.CreatedAt
 		IDs = append(IDs, sUser.UserID)
 	}
-
+	if IDs == nil {
+		var payloads []*models.LikeUserResponse
+		return si.NewGetLikesOK().WithPayload(payloads)
+	}
 	rUser := repositories.NewUserRepository()
 
 	// 上で取得した全てのpartnerIDについて、プロフィール情報と画像URIを取得してpayloadsに格納する。

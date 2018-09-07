@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/eure/si2018-server-side/entities"
+	"github.com/eure/si2018-server-side/models"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
@@ -107,6 +108,11 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// usersからidのリストを取得
 	for _, user := range users {
 		userIdList = append(userIdList, user.ID)
+	}
+
+	if userIdList == nil {
+		var sUsers []*models.User
+		return si.NewGetUsersOK().WithPayload(sUsers)
 	}
 
 	// 画像取得
