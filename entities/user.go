@@ -33,7 +33,7 @@ type User struct {
 	CreatedAt      strfmt.DateTime `xorm:"created_at created"`
 	UpdatedAt      strfmt.DateTime `xorm:"updated_at updated"`
 
-	ImageURI string `xorm:"-"`
+	ImageURI string `xorm:"path"`
 }
 
 func (u User) Build() models.User {

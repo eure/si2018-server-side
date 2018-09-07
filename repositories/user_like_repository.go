@@ -142,7 +142,7 @@ func isLiked(userLike entities.UserLike) error {
 func isHeterosexual(userLike entities.UserLike) error {
 	var sender = entities.User{ID: userLike.UserID}
 
-	has, err := engine.Get(&sender)
+	has, err := engine.Select("user.gender").Get(&sender)
 
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func isHeterosexual(userLike entities.UserLike) error {
 
 	var destination = entities.User{ID: userLike.PartnerID}
 
-	has, err = engine.Get(&destination)
+	has, err = engine.Select("user.gender").Get(&destination)
 	if err != nil {
 		return err
 	}

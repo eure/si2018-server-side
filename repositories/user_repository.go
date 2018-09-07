@@ -31,7 +31,7 @@ func (r *UserRepository) Update(ent *entities.User) error {
 func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 	var ent = entities.User{ID: userID}
 
-	has, err := engine.Get(&ent)
+	has, err := engine.Join("INNER", "user_image", "user_image.user_id = user.id").Get(&ent)
 	if err != nil {
 		return nil, err
 	}
@@ -45,43 +45,28 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 
 // limit / offset / 検索対象の性別 でユーザーを取得
 // idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
-func (r *UserRepository) FindWithCondition(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
-	var users []entities.User
-
-	s := engine.NewSession()
-	s.Where("gender = ?", gender)
-	if len(ids) > 0 {
-		s.NotIn("id", ids)
-	}
-	s.Limit(limit, offset)
-	s.Desc("id")
-
-	err := s.Find(&users)
-	if err != nil {
-		return users, err
-	}
-
-	return users, nil
-}
-
-// limit / offset / 検索対象の性別 でユーザーを取得
-// idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
 func (r *UserRepository) FindUsers(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
-	var users []entities.User
 
-	s := engine.NewSession()
+  var users []entities.User
+  s := engine.NewSession()
 
-	s.Where("gender = ?", gender)
-	if len(ids) > 0 {
-		s.NotIn("id", ids)
-	}
-	s.Limit(limit, offset)
-	s.Desc("created_at")
+  s.
+    Select("user.*, path").
+    Join("INNER", "user_image", "user_image.user_id = user.id").
+    Where("gender = ?", gender)
 
-	err := s.Find(&users)
-	if err != nil {
-		return users, err
-	}
+  if len(ids) > 0 {
+    s.NotIn("id", ids)
+  }
+
+  s.Limit(limit, offset)
+  s.Desc("id")
+  s.Desc("created_at")
+
+  err := s.Find(&users)
+  if err != nil {
+    return users, err
+  }
 
 	return users, nil
 }
@@ -89,7 +74,9 @@ func (r *UserRepository) FindUsers(limit, offset int, gender string, ids []int64
 func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
-	err := engine.In("id", ids).Find(&users)
+	err := engine.In("id", ids).
+  Join("INNER", "user_image", "user_image.user_id = user.id").
+  Find(&users)
 	if err != nil {
 		return users, err
 	}
