@@ -16,12 +16,30 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	userMatchR := repositories.NewUserMatchRepository()
 	userMessageR := repositories.NewUserMessageRepository()
 
-	// 400エラー
+	// トークン空バリデーション
 	if p.Params.Token == "" {
 		return si.NewPostMessageBadRequest().WithPayload(
 			&si.PostMessageBadRequestBody{
 				Code: "400",
-				Message: "Can't find token.",
+				Message: "Can't find token in request body.",
+			})
+	}
+
+	// メッセージ空バリデーション
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "Can't find message in request body.",
+			})
+	}
+
+	// メッセージ文字数バリデーション
+	if len(p.Params.Message) > 5000 {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code: "400",
+				Message: "A message over 5000 can't be accepted.",
 			})
 	}
 

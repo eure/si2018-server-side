@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/go-openapi/strfmt"
+	"bytes"
 )
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
@@ -48,6 +49,17 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 			&si.PostImagesInternalServerErrorBody{
 				Code: "500",
 				Message: "Interval Server Error.",
+			})
+	}
+
+	// 画像サイズを10MB以下のバリデーションをかける
+	bytesReader := bytes.NewReader(p.Params.Image)
+
+	if bytesReader.Size() > 1e7 {
+		return si.NewPostImagesBadRequest().WithPayload(
+			&si.PostImagesBadRequestBody{
+				Code: "400",
+				Message: "Bad Request. Image size must be under 1MB.",
 			})
 	}
 
