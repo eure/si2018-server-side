@@ -8,8 +8,8 @@ import (
 type UserMatch struct {
 	UserID    int64           `xorm:"user_id"`
 	PartnerID int64           `xorm:"partner_id"`
-	CreatedAt strfmt.DateTime `xorm:"created_at created updated"`
-	UpdatedAt strfmt.DateTime `xorm:"updated_at created updated"`
+	CreatedAt strfmt.DateTime `xorm:"created_at created"`
+	UpdatedAt strfmt.DateTime `xorm:"updated_at updated"`
 }
 
 func (u UserMatch) Build() models.UserMatch {
