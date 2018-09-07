@@ -76,8 +76,8 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	img := p.Params.Image
 	// imgが5MB以上の時は処理しない。
 	if len(img) > 1048576*5 {
-		return si.NewPostImagesBadRequest().WithPayload(
-			&si.PostImagesBadRequestBody{
+		return si.NewPostImagesRequestEntityTooLarge().WithPayload(
+			&si.PostImagesRequestEntityTooLargeBody{
 				Code:    "413",
 				Message: "Payload Too Large",
 			})

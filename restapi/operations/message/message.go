@@ -1,7 +1,6 @@
 package message
 
 import (
-	"fmt"
 	"github.com/eure/si2018-server-side/entities"
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
@@ -25,6 +24,14 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 			&si.PostMessageUnauthorizedBody{
 				Code:    "401",
 				Message: "Token Is Required",
+			})
+	}
+
+	if p.Params.Message == "" {
+		return si.NewPostMessageBadRequest().WithPayload(
+			&si.PostMessageBadRequestBody{
+				Code:    "400",
+				Message: "Bad Request",
 			})
 	}
 
@@ -152,8 +159,7 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 				Message: "Internal Server Error",
 			})
 	}
-	fmt.Println(ids)
-	fmt.Println(p.UserID)
+
 	var id_contains bool
 	for _, id := range ids {
 		if id == p.UserID {
