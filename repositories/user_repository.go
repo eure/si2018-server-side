@@ -47,26 +47,26 @@ func (r *UserRepository) GetByUserID(userID int64) (*entities.User, error) {
 // idsには取得対象に含めないUserIDを入れる (いいね/マッチ/ブロック済みなど)
 func (r *UserRepository) FindUsers(limit, offset int, gender string, ids []int64) ([]entities.User, error) {
 
-  var users []entities.User
-  s := engine.NewSession()
+	var users []entities.User
+	s := engine.NewSession()
 
-  s.
-    Select("user.*, path").
-    Join("INNER", "user_image", "user_image.user_id = user.id").
-    Where("gender = ?", gender)
+	s.
+		Select("user.*, path").
+		Join("INNER", "user_image", "user_image.user_id = user.id").
+		Where("gender = ?", gender)
 
-  if len(ids) > 0 {
-    s.NotIn("id", ids)
-  }
+	if len(ids) > 0 {
+		s.NotIn("id", ids)
+	}
 
-  s.Limit(limit, offset)
-  s.Desc("id")
-  s.Desc("created_at")
+	s.Limit(limit, offset)
+	s.Desc("id")
+	s.Desc("created_at")
 
-  err := s.Find(&users)
-  if err != nil {
-    return users, err
-  }
+	err := s.Find(&users)
+	if err != nil {
+		return users, err
+	}
 
 	return users, nil
 }
@@ -75,8 +75,8 @@ func (r *UserRepository) FindByIDs(ids []int64) ([]entities.User, error) {
 	var users []entities.User
 
 	err := engine.In("id", ids).
-  Join("INNER", "user_image", "user_image.user_id = user.id").
-  Find(&users)
+		Join("INNER", "user_image", "user_image.user_id = user.id").
+		Find(&users)
 	if err != nil {
 		return users, err
 	}
