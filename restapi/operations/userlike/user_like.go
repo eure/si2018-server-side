@@ -8,6 +8,14 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+var (
+	tokenRepo = repositories.NewUserTokenRepository()
+	likeRepo  = repositories.NewUserLikeRepository()
+	matchRepo = repositories.NewUserMatchRepository()
+	userRepo  = repositories.NewUserRepository()
+	imageRepo = repositories.NewUserImageRepository()
+)
+
 // いいね！表示API
 func GetLikes(p si.GetLikesParams) middleware.Responder {
 	// 入力値のValidation処理をします。
@@ -22,11 +30,6 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 	}
 
 	token := p.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	likeRepo := repositories.NewUserLikeRepository()
-	matchRepo := repositories.NewUserMatchRepository()
-	userRepo := repositories.NewUserRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -62,15 +65,23 @@ func GetLikes(p si.GetLikesParams) middleware.Responder {
 		return getLikesInternalServerErrorResponse()
 	}
 
-	var ents entities.LikeUserResponses
+	// ユーザーのプロフィール画像を取得します。
+	images, err := imageRepo.GetByUserIDs(ids)
+	if err != nil {
+		return getLikesInternalServerErrorResponse()
+	}
 
 	// 取得したお相手のIDとユーザーをいいね！しているお相手のIDを比較し、マッピングします。
+	var ents entities.LikeUserResponses
 	for _, like := range likes {
 		ent := entities.LikeUserResponse{}
-		ent.LikedAt = like.CreatedAt
-		for _, user := range users {
-			if like.UserID == user.ID {
-				ent.ApplyUser(user)
+		for _, image := range images {
+			for _, user := range users {
+				if like.UserID == user.ID && image.UserID == user.ID {
+					ent.ApplyUser(user)
+					ent.LikedAt = like.CreatedAt
+					ent.ImageURI = image.Path
+				}
 			}
 		}
 
@@ -90,11 +101,6 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	token := p.Params.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	likeRepo := repositories.NewUserLikeRepository()
-	userRepo := repositories.NewUserRepository()
-	matchRepo := repositories.NewUserMatchRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -166,66 +172,4 @@ func PostLike(p si.PostLikeParams) middleware.Responder {
 	}
 
 	return postLikeOK()
-}
-
-/*			以下　Validationに用いる関数			*/
-
-//	いいね！表示API
-// 	GET {hostname}/api/1.0/likes
-func getLikesInternalServerErrorResponse() middleware.Responder {
-	return si.NewGetLikesInternalServerError().WithPayload(
-		&si.GetLikesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func getLikesUnauthorizedResponse() middleware.Responder {
-	return si.NewGetLikesUnauthorized().WithPayload(
-		&si.GetLikesUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func getLikesBadRequestResponse() middleware.Responder {
-	return si.NewGetLikesBadRequest().WithPayload(
-		&si.GetLikesBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
-}
-
-//	いいね！送信API
-//	POST {hostname}/api/1.0/likes/{userID}
-func postLikeInternalServerErrorResponse() middleware.Responder {
-	return si.NewPostLikeInternalServerError().WithPayload(
-		&si.PostLikeInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func postLikeUnauthorizedResponse() middleware.Responder {
-	return si.NewPostLikeUnauthorized().WithPayload(
-		&si.PostLikeUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func postLikeBadRequestResponses() middleware.Responder {
-	return si.NewPostLikeBadRequest().WithPayload(
-		&si.PostLikeBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
-}
-
-func postLikeOK() middleware.Responder {
-	return si.NewPostLikeOK().WithPayload(
-		&si.PostLikeOKBody{
-			Code:    "200",
-			Message: "OK",
-		})
 }

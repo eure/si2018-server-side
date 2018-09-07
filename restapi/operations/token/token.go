@@ -13,22 +13,11 @@ func GetTokenByUserID(p si.GetTokenByUserIDParams) middleware.Responder {
 	ent, err := r.GetByUserID(p.UserID)
 
 	if err != nil {
-		return si.NewGetTokenByUserIDInternalServerError().WithPayload(
-			&si.GetTokenByUserIDInternalServerErrorBody{
-				Code:    "500",
-				Message: "Internal Server Error",
-			})
-	}
-	if ent == nil {
-		return si.NewGetTokenByUserIDNotFound().WithPayload(
-			&si.GetTokenByUserIDNotFoundBody{
-				Code:    "404",
-				Message: "User Token Not Found",
-			})
+		return getTokenByUserIDInternalServerErrorResponse()
+	} else if ent == nil {
+		return getTokenByUserIDNotFoundResponse()
 	}
 
 	sEnt := ent.Build()
 	return si.NewGetTokenByUserIDOK().WithPayload(&sEnt)
 }
-
-

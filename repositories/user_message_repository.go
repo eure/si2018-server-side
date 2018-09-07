@@ -30,6 +30,22 @@ func (r *UserMessageRepository) Create(ent entities.UserMessage) error {
 	return nil
 }
 
+//　最後に送信したメッセージを取得する。
+func (r *UserMessageRepository) GetLastMessages(id int64) (*entities.UserMessage, error) {
+	var ent entities.UserMessage
+
+	has, err := engine.Where("user_id = ?", id).Desc("created_at").Get(&ent)
+	if err != nil {
+		return nil, err
+	}
+
+	if has {
+		return &ent, nil
+	}
+
+	return nil, nil
+}
+
 // userとpartnerがやりとりしたメッセージをlimit/latest/oldestで取得する.
 func (r *UserMessageRepository) GetMessages(userID, partnerID int64, limit int, latest, oldest *strfmt.DateTime) ([]entities.UserMessage, error) {
 	var messages []entities.UserMessage

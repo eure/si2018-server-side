@@ -7,6 +7,12 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
+var (
+	messageRepo = repositories.NewUserMessageRepository()
+	tokenRepo   = repositories.NewUserTokenRepository()
+	matchRepo   = repositories.NewUserMatchRepository()
+)
+
 //	メッセージ送信API
 func PostMessage(p si.PostMessageParams) middleware.Responder {
 	// 入力値のValidation処理をします。
@@ -22,10 +28,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 
 	token := p.Params.Token
 
-	messageRepo := repositories.NewUserMessageRepository()
-	tokenRepo := repositories.NewUserTokenRepository()
-	matchRepo := repositories.NewUserMatchRepository()
-
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
@@ -35,6 +37,14 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 	}
 
 	id := tokenOwner.UserID
+
+	// 連続投稿をさせたくないため、過去にあった内容と入力された内容が同じなら処理を止める。
+	pastMessage, err := messageRepo.GetLastMessages(id)
+	if err != nil {
+		return postMessageInternalServerErrorResponse()
+	} else if pastMessage.Message == message {
+		return postMessageDuplicatedRequestResponses()
+	}
 
 	// ユーザーとお相手がマッチングしているか検証します。
 	match, err := matchRepo.Get(id, partnerID)
@@ -50,7 +60,6 @@ func PostMessage(p si.PostMessageParams) middleware.Responder {
 		PartnerID: partnerID,
 		Message:   message,
 	}
-
 	err = messageRepo.Create(addMessage)
 	if err != nil {
 		return postMessageInternalServerErrorResponse()
@@ -76,9 +85,6 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	limit := int(*p.Limit)
 	token := p.Token
 
-	tokenRepo := repositories.NewUserTokenRepository()
-	messageRepo := repositories.NewUserMessageRepository()
-
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
 	if err != nil {
@@ -99,58 +105,4 @@ func GetMessages(p si.GetMessagesParams) middleware.Responder {
 	ents = messages
 	sEnt := ents.Build()
 	return si.NewGetMessagesOK().WithPayload(sEnt)
-}
-
-/*			以下　Validationに用いる関数			*/
-
-//	メッセージ送信API
-// 	POST {hostname}/api/1.0/messages/{userID}
-func postMessageInternalServerErrorResponse() middleware.Responder {
-	return si.NewPostMessageInternalServerError().WithPayload(
-		&si.PostMessageInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func postMessageUnauthorizedResponse() middleware.Responder {
-	return si.NewPostMessageUnauthorized().WithPayload(
-		&si.PostMessageUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func postMessageBadRequestResponses() middleware.Responder {
-	return si.NewPostMessageBadRequest().WithPayload(
-		&si.PostMessageBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
-}
-
-// 	メッセージ内容取得API
-//	GET {hostname}/api/1.0/messages/{userID}
-func getMessagesInternalServerErrorResponse() middleware.Responder {
-	return si.NewGetMessagesInternalServerError().WithPayload(
-		&si.GetMessagesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func getMessagesUnauthorizedResponse() middleware.Responder {
-	return si.NewGetMessagesUnauthorized().WithPayload(
-		&si.GetMessagesUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func getMessagesBadRequestResponse() middleware.Responder {
-	return si.NewGetMessagesBadRequest().WithPayload(
-		&si.GetMessagesBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
 }

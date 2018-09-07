@@ -8,6 +8,13 @@ import (
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 )
 
+var (
+	tokenRepo = repositories.NewUserTokenRepository()
+	userRepo  = repositories.NewUserRepository()
+	likeRepo  = repositories.NewUserLikeRepository()
+	imageRepo = repositories.NewUserImageRepository()
+)
+
 // 探すAPI
 func GetUsers(p si.GetUsersParams) middleware.Responder {
 	// 入力値のValidation処理をします。
@@ -22,10 +29,6 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	}
 
 	token := p.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	userRepo := repositories.NewUserRepository()
-	likeRepo := repositories.NewUserLikeRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -57,8 +60,33 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 		return getUsersInternalServerErrorResponse()
 	}
 
-	ent := entities.Users(users)
-	sEnt := ent.Build()
+	// いいね！を送っていないユーザーのIDを取得します。
+	ids = nil
+	for _, user := range users {
+		ids = append(ids, user.ID)
+	}
+
+	// ユーザーのプロフィール画像を取得します。
+	images, err := imageRepo.GetByUserIDs(ids)
+	if err != nil {
+		return getUsersInternalServerErrorResponse()
+	}
+
+	// 取得したお相手のプロフィールとプロフィール画像をマッピングします。
+	var ents entities.Users
+	for _, user := range users {
+		ent := entities.User{}
+		for _, image := range images {
+			if user.ID == image.UserID {
+				ent = user
+				ent.ImageURI = image.Path
+			}
+		}
+
+		ents = append(ents, ent)
+	}
+
+	sEnt := ents.Build()
 	return si.NewGetUsersOK().WithPayload(sEnt)
 }
 
@@ -67,13 +95,10 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	id := p.UserID
 	if id <= 0 {
-		return getProfileByUserIDBadRequestResponses()
+		return getProfileByUserIDLessThan0BadRequestResponses()
 	}
 
 	token := p.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	userRepo := repositories.NewUserRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -83,6 +108,12 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 		return getProfileByUserIDUnauthorizedResponse()
 	}
 
+	// ユーザーのプロフィール画像を取得します。
+	imagePath, err := imageRepo.GetByUserID(id)
+	if err != nil {
+		return getProfileByUserIDInternalServerErrorResponse()
+	}
+
 	// ユーザーのプロフィールを取得します。
 	ent, err := userRepo.GetByUserID(id)
 	if err != nil {
@@ -90,6 +121,7 @@ func GetProfileByUserID(p si.GetProfileByUserIDParams) middleware.Responder {
 	} else if ent == nil {
 		return getProfileByUserIDNotFoundResponse()
 	}
+	ent.ImageURI = imagePath.Path
 
 	sEnt := ent.Build()
 	return si.NewGetProfileByUserIDOK().WithPayload(&sEnt)
@@ -100,13 +132,10 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 	// 入力値のValidation処理をします。
 	id := p.UserID
 	if id <= 0 {
-		return putProfileBadRequestResponse()
+		return putProfileLessThan0BadRequestResponse()
 	}
 
 	token := p.Params.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	userRepo := repositories.NewUserRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -136,108 +165,19 @@ func PutProfile(p si.PutProfileParams) middleware.Responder {
 		return putProfileInternalServerErrorResponse()
 	}
 
+	// ユーザーのプロフィール画像を取得します。
+	imagePath, err := imageRepo.GetByUserID(id)
+	if err != nil {
+		return getProfileByUserIDInternalServerErrorResponse()
+	}
+
 	// 更新後のユーザーのプロフィールを取得します。
-	ent, err := userRepo.GetByUserID(p.UserID)
+	ent, err := userRepo.GetByUserID(id)
 	if err != nil {
 		return putProfileInternalServerErrorResponse()
 	}
+	ent.ImageURI = imagePath.Path
 
 	sEnt := ent.Build()
 	return si.NewPutProfileOK().WithPayload(&sEnt)
-}
-
-/*			以下　Validationに用いる関数			*/
-
-//	探すAPI
-// 	GET {hostname}/api/1.0/users
-func getUsersInternalServerErrorResponse() middleware.Responder {
-	return si.NewGetUsersInternalServerError().WithPayload(
-		&si.GetUsersInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func getUsersUnauthorizedResponse() middleware.Responder {
-	return si.NewGetUsersUnauthorized().WithPayload(
-		&si.GetUsersUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func getUsersBadRequestResponses() middleware.Responder {
-	return si.NewGetUsersBadRequest().WithPayload(
-		&si.GetUsersBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
-}
-
-//	ユーザー詳細API
-//	GET {hostname}/api/1.0/users/{userID}
-func getProfileByUserIDInternalServerErrorResponse() middleware.Responder {
-	return si.NewGetProfileByUserIDInternalServerError().WithPayload(
-		&si.GetProfileByUserIDInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func getProfileByUserIDNotFoundResponse() middleware.Responder {
-	return si.NewGetProfileByUserIDNotFound().WithPayload(
-		&si.GetProfileByUserIDNotFoundBody{
-			Code:    "404",
-			Message: "User Not Found",
-		})
-}
-
-func getProfileByUserIDUnauthorizedResponse() middleware.Responder {
-	return si.NewGetProfileByUserIDUnauthorized().WithPayload(
-		&si.GetProfileByUserIDUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func getProfileByUserIDBadRequestResponses() middleware.Responder {
-	return si.NewGetProfileByUserIDBadRequest().WithPayload(
-		&si.GetProfileByUserIDBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
-}
-
-//	ユーザー情報更新API
-//	PUT {hostname}/api/1.0/users/{userID}
-func putProfileInternalServerErrorResponse() middleware.Responder {
-	return si.NewPutProfileInternalServerError().WithPayload(
-		&si.PutProfileInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func putProfileForbiddenResponse() middleware.Responder {
-	return si.NewPutProfileForbidden().WithPayload(
-		&si.PutProfileForbiddenBody{
-			Code:    "403",
-			Message: "Forbidden",
-		})
-}
-
-func putProfileUnauthorizedResponse() middleware.Responder {
-	return si.NewPutProfileUnauthorized().WithPayload(
-		&si.PutProfileUnauthorizedBody{
-			Code:    "401",
-			Message: "Your Token Is Invalid",
-		})
-}
-
-func putProfileBadRequestResponse() middleware.Responder {
-	return si.NewPutProfileBadRequest().WithPayload(
-		&si.PutProfileBadRequestBody{
-			Code:    "400",
-			Message: "Bad Request",
-		})
 }

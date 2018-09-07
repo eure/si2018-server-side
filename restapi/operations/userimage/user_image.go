@@ -5,23 +5,24 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
-
 	"strconv"
+
+	"encoding/hex"
 
 	"github.com/eure/si2018-server-side/repositories"
 	si "github.com/eure/si2018-server-side/restapi/summerintern"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 )
 
-var assetsPath = os.Getenv("ASSETS_PATH")
+var (
+	assetsPath = os.Getenv("ASSETS_PATH")
+	tokenRepo  = repositories.NewUserTokenRepository()
+	imageRepo  = repositories.NewUserImageRepository()
+)
 
 func PostImage(p si.PostImagesParams) middleware.Responder {
 	b64Img := p.Params.Image
 	token := p.Params.Token
-
-	tokenRepo := repositories.NewUserTokenRepository()
-	imageRepo := repositories.NewUserImageRepository()
 
 	// トークンが有効であるか検証します。
 	tokenOwner, err := tokenRepo.GetByToken(token)
@@ -33,11 +34,26 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 
 	id := tokenOwner.UserID
 
+	// 画像ファイルのフォーマットをバイナリデータ処理で判別
+	header := hex.EncodeToString(b64Img[:4])
+	// 画像ファイルの先頭には、そのファイルがどのような種類の画像フォーマットであるかを指し示すデータが含まれています。
+	// この先頭部分をチェックすることによって、画像フォーマットを判別することができます。
+	var imageType string
+
+	switch header {
+	case "ffd8":
+		imageType = ".jpg"
+	case "89504e47":
+		imageType = ".png"
+	case "47494638":
+		imageType = ".gif"
+	}
+
 	// UPさせる画像をローカルに保存します。
-	imagePath := assetsPath + "user" + strconv.Itoa(int(id))
+	imagePath := assetsPath + "User" + strconv.Itoa(int(id)) + imageType
 	file, _ := os.Create(imagePath)
 	defer file.Close()
-	file.Write(b64Img)
+	_, err = file.Write(b64Img)
 
 	// ユーザーのプロフィール画像を取得します。
 	userImage, err := imageRepo.GetByUserID(id)
@@ -53,39 +69,4 @@ func PostImage(p si.PostImagesParams) middleware.Responder {
 	}
 
 	return postImagesOKResponse(imagePath)
-}
-
-/*			以下　Validationに用いる関数			*/
-
-// 	プロフィール写真の更新
-//	POST {hostname}/api/1.0/images
-func postImagesInternalServerErrorResponse() middleware.Responder {
-	return si.NewPostImagesInternalServerError().WithPayload(
-		&si.PostImagesInternalServerErrorBody{
-			Code:    "500",
-			Message: "Internal Server Error",
-		})
-}
-
-func postImagesUnauthorizedResponse() middleware.Responder {
-	return si.NewPostImagesUnauthorized().WithPayload(
-		&si.PostImagesUnauthorizedBody{
-			Code:    "401",
-			Message: "Token Is Invalid",
-		})
-}
-
-func postImagesBadRequestResponse() middleware.Responder {
-	return si.NewPostImagesBadRequest().WithPayload(
-		&si.PostImagesBadRequestBody{
-			Code:    "401",
-			Message: "Bad Request",
-		})
-}
-
-func postImagesOKResponse(imagePath string) middleware.Responder {
-	return si.NewPostImagesOK().WithPayload(
-		&si.PostImagesOKBody{
-			ImageURI: strfmt.URI(imagePath),
-		})
 }
