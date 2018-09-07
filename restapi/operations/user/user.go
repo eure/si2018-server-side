@@ -39,7 +39,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 	rl := repositories.NewUserLikeRepository()
 
 	id, _ := util.GetIDByToken(token)
-	user, _ := ru.GetByUserID(id)
+	user, err := ru.GetByUserID(id)
 
 	likes, err := rl.FindLikeAll(id) /* TODO filter? */
 	if err != nil {
@@ -53,7 +53,7 @@ func GetUsers(p si.GetUsersParams) middleware.Responder {
 
 	users_ent, err := ru.FindWithCondition(int(limit), int(offset), user.GetOppositeGender(), likes);
 	if err != nil {
-		log.Print("Find user error")
+		log.Print("Find user error", err)
 		return si.NewGetUsersInternalServerError().WithPayload(
 			&si.GetUsersInternalServerErrorBody{
 				Code:    "500",
