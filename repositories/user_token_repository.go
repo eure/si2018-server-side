@@ -60,6 +60,10 @@ func (r *UserTokenRepository) GetByToken(token string) (*entities.UserToken, err
 }
 
 func (r *UserTokenRepository) ValidateToken(token string) (error) {
+	if token == "" {
+		return errors.New("Token is nothing")
+	}
+
 	userToken, err := r.GetByToken(token)
 	if err != nil {
 		return err
